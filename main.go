@@ -57,13 +57,13 @@ type Args struct {
 func LoadIps() []string {
 	s, err := os.ReadFile("./config.txt")
 	if err != nil {
-		log.Fatal("Error opening ip config file", err)
+		log.Fatal("Error reading remote server config file", err)
 	}
 
 	ips := strings.Split(string(s), ",")
 
 	if len(ips) == 0 {
-		log.Fatal("Log config is empty")
+		log.Fatal("Remote server ip config is empty")
 	}
 
 	return ips
