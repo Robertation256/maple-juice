@@ -146,13 +146,13 @@ func main() {
 			for i, call := range calls {
 				if call != nil {
 					select {
-					case _, ok := <-call.Done:
-						if ok {
-							// remove, since rpc is done
+						case _, ok := <-call.Done:
+							if !ok {
+								log.Println("Channel closed for async rpc call")
+							}
 							calls[i] = nil
-						}
-					default:
-						complete = false
+						default:
+							complete = false
 					}
 				}
 			}
