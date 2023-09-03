@@ -6,76 +6,10 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-	"os"
-	"os/exec"
-	"strings"
+
+	"github.com/xinshuoLei/cs425-mp1/grep"
+	"github.com/xinshuoLei/cs425-mp1/test"
 )
-
-type GrepService struct {
-	logFileDir   string
-	logFileNames []string
-}
-
-func NewGrepService(logFileDir string) *GrepService {
-	filePaths, err := os.ReadDir(logFileDir)
-	if err != nil {
-		log.Fatal("Error reading log file directory", err)
-	}
-
-	filesNames := make([]string, len(filePaths))
-
-	for i := 0; i < len(filePaths); i++ {
-		filesNames[i] = filePaths[i].Name()
-	}
-
-	this := new(GrepService)
-	this.logFileDir = logFileDir
-	this.logFileNames = filesNames
-	return this
-}
-
-func (this *GrepService) GrepLocal(args *Args, reply *string) error {
-	pattern := args.Input
-	*reply = ""
-
-	for _, fileName := range this.logFileNames {
-		// todo: remove cmd /K for linux
-		out, err := exec.Command("cmd", "/K", "grep", "-c", pattern, this.logFileDir+"/"+fileName).Output()
-		if err != nil {
-			log.Println("Encountered error while executing grep", err)
-			return err
-		}
-		*reply += fmt.Sprintf("%s\t\t%s\n", fileName, string(out))
-	}
-	return nil
-}
-
-type Args struct {
-	Input string
-}
-
-func LoadIps() []string {
-	s, err := os.ReadFile("./config.txt")
-	if err != nil {
-		log.Fatal("Error reading remote server config file", err)
-	}
-
-	ips := strings.Split(string(s), ",")
-
-	if len(ips) == 0 {
-		log.Fatal("Remote server ip config is empty")
-	}
-
-	return ips
-}
-
-func CloseClients(clients []*rpc.Client) {
-	for _, c := range clients {
-		if c != nil {
-			c.Close()
-		}
-	}
-}
 
 func main() {
 	var localPort string
@@ -83,24 +17,28 @@ func main() {
 	var ret string
 
 	header := "file name\tcount\n"
-	ips := LoadIps()
+	ips := grep.LoadIps()
 
 	// designate port for testing on a single machine
 	fmt.Println("Enter port:")
 	fmt.Scanln(&localPort)
 	// localPort := strings.Split(ips[0], ":")[1]
 
-	clients := make([]*rpc.Client, len(ips)-1) // stores clients with established connections
-	grepResults := make([]string, len(ips)-1)
+	clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
+	grepResults := make([]string, len(ips))
 
 	for idx := range grepResults {
 		grepResults[idx] = ""
 	}
 
-	defer CloseClients(clients)
+	defer grep.CloseClients(clients)
 
-	grepService := NewGrepService("./logs")
+	grepService := grep.NewGrepService("./logs", localPort)
+	logService := new(test.LogService)
+	logService.LogFileDir = "./logs"
+
 	rpc.Register(grepService)
+	rpc.Register(logService)
 	rpc.HandleHTTP()
 
 	// assume the first line in config is the local machine
@@ -115,12 +53,12 @@ func main() {
 
 	for {
 		ret = header
-		calls := make([]*rpc.Call, len(ips)-1)
+		calls := make([]*rpc.Call, len(ips))
 		fmt.Println("Enter a pattern:")
 		fmt.Scanln(&input)
-		args := Args{Input: input}
+		args := grep.Args{Input: input}
 
-		for index, ip := range ips[1:] {
+		for index, ip := range ips {
 			// try start first time connection / reconnect for broken ones
 			if clients[index] == nil {
 				c, err := rpc.DialHTTP("tcp", ip)
@@ -135,24 +73,19 @@ func main() {
 			}
 		}
 
-		// compute local result
-		localResult := ""
-		grepService.GrepLocal(&args, &localResult)
-		ret += localResult
-
 		// iterate and look for completed rpc calls
 		for { // todo: add timeout in case some rpc takes too long to return
 			complete := true
 			for i, call := range calls {
 				if call != nil {
 					select {
-						case _, ok := <-call.Done:
-							if !ok {
-								log.Println("Channel closed for async rpc call")
-							}
-							calls[i] = nil
-						default:
-							complete = false
+					case _, ok := <-call.Done:
+						if !ok {
+							log.Println("Channel closed for async rpc call")
+						}
+						calls[i] = nil
+					default:
+						complete = false
 					}
 				}
 			}
