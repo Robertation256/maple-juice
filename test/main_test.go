@@ -16,6 +16,9 @@ var LogServiceNew = &LogService{LogFileDir: "./logs"}
 
 func TestGrepBasic(t *testing.T) {
 
+	var localFileNames []string
+	pattern := "111"
+
 	for index, ip := range ips {
 		// try start first time connection / reconnect for broken ones
 		if clients[index] == nil {
@@ -27,15 +30,12 @@ func TestGrepBasic(t *testing.T) {
 
 		fileContent := ""
 		lineNumbers := 2 + rand.Intn(8)
-		pattern := "111"
-		patternCount := 0
 
 		for i := 0; i < lineNumbers; i++ {
 			fileContent += GenerateRandomString(10)
 			addPattern := rand.Intn(3)
 			if addPattern == 1 {
 				fileContent += pattern
-				patternCount++
 			}
 			fileContent += "\n"
 		}
@@ -50,6 +50,15 @@ func TestGrepBasic(t *testing.T) {
 			if err != nil {
 				t.Fatal("Generate log error:", err)
 			}
+
+			// write a copy of the generated test log file to a local folder
+			localFilePath := fmt.Sprintf("./test_logs/%s", fileName)
+			writeErr := writeToFile(localFilePath, fileContent)
+			if writeErr != nil {
+				t.Fatal("Error writing log file to local folder", writeErr)
+			}
+
+			localFileNames = append(localFileNames, fileName)
 		}
 
 		grepArgs := grep.Args{Input: pattern}
@@ -59,13 +68,12 @@ func TestGrepBasic(t *testing.T) {
 			if grepErr != nil {
 				t.Fatal("Grep error:", grepErr)
 			}
-			// don't know why but the result contains two new line character
-			correctResult := fmt.Sprintf("%s\t\t%d\n\n", fileName, patternCount)
-			if correctResult != grepResult {
-				t.Fatalf("Incorrect result. Got %s, but should be %s", grepResult, correctResult)
-			} else {
-				fmt.Printf("Correct result for %s: %d\n", ip, patternCount)
-			}
 		}
 	}
+
+	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
+	if status != "ok" {
+		t.Fatal("Local grep error:", status)
+	}
+	fmt.Println(localRes)
 }

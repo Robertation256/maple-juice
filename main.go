@@ -16,7 +16,6 @@ func main() {
 	var input string
 	var ret string
 
-	header := "file name\tcount\n"
 	ips := grep.LoadIps()
 
 	// designate port for testing on a single machine
@@ -52,7 +51,7 @@ func main() {
 	go http.Serve(l, nil)
 
 	for {
-		ret = header
+		ret = ""
 		calls := make([]*rpc.Call, len(ips))
 		fmt.Println("Enter a pattern:")
 		fmt.Scanln(&input)
