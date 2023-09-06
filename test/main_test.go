@@ -16,9 +16,12 @@ var LogServiceNew = &LogService{LogFileDir: "./logs"}
 
 func TestGrepBasic(t *testing.T) {
 
+	defer grep.CloseClients(clients)
+
 	var localFileNames []string
 	pattern := "111"
 
+	// TODO: refactor log generation & write into a function so it can be reused
 	for index, ip := range ips {
 		// try start first time connection / reconnect for broken ones
 		if clients[index] == nil {
@@ -60,20 +63,18 @@ func TestGrepBasic(t *testing.T) {
 
 			localFileNames = append(localFileNames, fileName)
 		}
-
-		grepArgs := grep.Args{Input: pattern}
-		var grepResult string
-		if clients[index] != nil {
-			grepErr := clients[index].Call("GrepService.GrepLocal", grepArgs, &grepResult)
-			if grepErr != nil {
-				t.Fatal("Grep error:", grepErr)
-			}
-		}
 	}
+
+	distributedRes := grep.GrepAllMachines(ips, clients, pattern)
 
 	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
 	if status != "ok" {
 		t.Fatal("Local grep error:", status)
 	}
-	fmt.Println(localRes)
+
+	if distributedRes != localRes {
+		t.Fatalf("Incorrect result. Should be %s\n but got %s\n", localRes, distributedRes)
+	} else {
+		fmt.Printf("Got correct result:\n%s", localRes)
+	}
 }

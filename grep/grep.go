@@ -82,3 +82,55 @@ func CloseClients(clients []*rpc.Client) {
 		}
 	}
 }
+
+func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
+	grepResults := make([]string, len(ips))
+
+	for idx := range grepResults {
+		grepResults[idx] = ""
+	}
+
+	calls := make([]*rpc.Call, len(ips))
+	args := Args{Input: input}
+	for index, ip := range ips {
+		// try start first time connection / reconnect for broken ones
+		if clients[index] == nil {
+			c, err := rpc.DialHTTP("tcp", ip)
+			if err == nil {
+				clients[index] = c
+			}
+		}
+
+		if clients[index] != nil {
+			call := clients[index].Go("GrepService.GrepLocal", args, &(grepResults[index]), nil)
+			calls[index] = call
+		}
+	}
+
+	// iterate and look for completed rpc calls
+	for { // todo: add timeout in case some rpc takes too long to return
+		complete := true
+		for i, call := range calls {
+			if call != nil {
+				select {
+				case _, ok := <-call.Done:
+					if !ok {
+						log.Println("Channel closed for async rpc call")
+					}
+					calls[i] = nil
+				default:
+					complete = false
+				}
+			}
+		}
+		if complete {
+			break
+		}
+	}
+
+	ret := ""
+	for _, v := range grepResults {
+		ret += v
+	}
+	return ret
+}
