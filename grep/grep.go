@@ -34,12 +34,12 @@ func NewGrepService(logFileDir string, localPort string) *GrepService {
 }
 
 func (this *GrepService) GrepLocal(args *Args, reply *string) error {
-	pattern := args.Input
+	cmd := args.Input
 	*reply = ""
 
 	for _, fileName := range this.logFileNames {
 		// todo: remove cmd /K for linux
-		cmd := exec.Command("grep", "-c", pattern, this.logFileDir+"/"+fileName)
+		cmd := exec.Command(cmd, this.logFileDir+"/"+fileName)
 		output, err := cmd.CombinedOutput()
 		// exit code 1 means a match was not found
 		if err != nil && cmd.ProcessState.ExitCode() != 1 {

@@ -6,8 +6,7 @@ import (
 	"net/rpc"
 	"strings"
 	"testing"
-
-	"github.com/xinshuoLei/cs425-mp1/grep"
+	"cs425-mp1/grep"
 )
 
 var ips = grep.LoadIps()
@@ -65,9 +64,10 @@ func TestGrepBasic(t *testing.T) {
 		}
 	}
 
-	distributedRes := grep.GrepAllMachines(ips, clients, pattern)
+	cmd := "grep -c "+ pattern
+	distributedRes := grep.GrepAllMachines(ips, clients, cmd)
 
-	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
+	localRes, status := localGrepMultipleFiles(cmd, localFileNames)
 	if status != "ok" {
 		t.Fatal("Local grep error:", status)
 	}

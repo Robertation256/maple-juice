@@ -6,10 +6,10 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-
-	"github.com/xinshuoLei/cs425-mp1/grep"
-	"github.com/xinshuoLei/cs425-mp1/test"
+	"cs425-mp1/grep"
+	"cs425-mp1/test"
 )
+
 
 func main() {
 	var localPort string
@@ -47,7 +47,7 @@ func main() {
 
 	for {
 		ret = ""
-		fmt.Println("Enter a pattern:")
+		fmt.Println("Enter a grep command:")
 		fmt.Scanln(&input)
 		ret = grep.GrepAllMachines(ips, clients, input)
 
