@@ -6,10 +6,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/xinshuoLei/cs425-mp1/grep"
+	"cs425-mp1/util"
 )
 
-var ips = grep.LoadIps()
+var ips = util.LoadIps()
 var clients = make([]*rpc.Client, len(ips))
 var LogServiceNew = &LogService{LogFileDir: "./logs"}
 
@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 
 	// clean up
 	fmt.Println("Clean up")
-	grep.CloseClients(clients)
+	util.CloseClients(clients)
 	os.Exit(exitCode)
 }
 
@@ -43,7 +43,7 @@ func TestGrepRare(t *testing.T) {
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t)
 
-	distributedRes := grep.GrepAllMachines(ips, clients, pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, pattern)
 
 	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
 	if status != "ok" {
@@ -75,7 +75,7 @@ func TestGrepFrequentPattern(t *testing.T) {
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t)
 
-	distributedRes := grep.GrepAllMachines(ips, clients, pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, pattern)
 
 	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
 	if status != "ok" {
@@ -107,7 +107,7 @@ func TestGrepSomewhatFrequentPattern(t *testing.T) {
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t)
 
-	distributedRes := grep.GrepAllMachines(ips, clients, pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, pattern)
 
 	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
 	if status != "ok" {
@@ -139,7 +139,7 @@ func TestPatternOnSomeMachines(t *testing.T) {
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t)
 
-	distributedRes := grep.GrepAllMachines(ips, clients, pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, pattern)
 
 	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
 	if status != "ok" {
@@ -171,7 +171,7 @@ func TestPatternOnOneMachine(t *testing.T) {
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t)
 
-	distributedRes := grep.GrepAllMachines(ips, clients, pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, pattern)
 
 	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
 	if status != "ok" {

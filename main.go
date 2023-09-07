@@ -1,42 +1,44 @@
 package main
 
 import (
+	"cs425-mp1/util"
+	"cs425-mp1/test"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
-
-	"github.com/xinshuoLei/cs425-mp1/grep"
-	"github.com/xinshuoLei/cs425-mp1/test"
+	"bufio"
+	"os"
+	"time"
 )
+
 
 func main() {
 	var localPort string
-	var input string
 	var ret string
 
-	ips := grep.LoadIps()
+	ips := util.LoadIps()
 
 	// designate port for testing on a single machine
-	fmt.Println("Enter port:")
-	fmt.Scanln(&localPort)
+	// fmt.Println("Enter port:")
+	// fmt.Scanln(&localPort)
 	// localPort := strings.Split(ips[0], ":")[1]
 
 	clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
 
-	defer grep.CloseClients(clients)
+	defer util.CloseClients(clients)
 
-	grepService := grep.NewGrepService("./logs", localPort)
+	grepService := util.NewGrepService("../log")
 	logService := new(test.LogService)
-	logService.LogFileDir = "./logs"
+	logService.LogFileDir = "../test_log"
 
 	rpc.Register(grepService)
 	rpc.Register(logService)
 	rpc.HandleHTTP()
 
 	// assume the first line in config is the local machine
-	l, err := net.Listen("tcp", ":"+localPort)
+	l, err := net.Listen("tcp", ips[0])
 	fmt.Printf("HTTP-RPC server is listening on port %s\n", localPort)
 
 	if err != nil {
@@ -47,10 +49,14 @@ func main() {
 
 	for {
 		ret = ""
-		fmt.Println("Enter a pattern:")
-		fmt.Scanln(&input)
-		ret = grep.GrepAllMachines(ips, clients, input)
-
+		fmt.Println("\n\n----------------------\n")
+		fmt.Println("Enter a grep command:")
+		in := bufio.NewReader(os.Stdin)
+		input, _ := in.ReadString('\n')
+		start := time.Now()
+		ret = util.GrepAllMachines(ips, clients, input)
+		elasped := time.Now().Sub(start)
 		fmt.Println(ret)
+		fmt.Printf("Elapsed time: %s", elasped.Round(time.Millisecond))
 	}
 }
