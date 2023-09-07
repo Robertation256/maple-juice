@@ -43,11 +43,10 @@ func writeToFile(filePath string, fileContent string) error {
 	return nil
 }
 
-func localGrepMultipleFiles(pattern string, fileNames []string) (string, string) {
+func localGrepMultipleFiles(cmd string, fileNames []string) (string, string) {
 
 	testLogPath := fmt.Sprintf("%s/test_logs", testFolderPath)
-	grepArgs := append([]string{"-c", pattern}, fileNames...)
-	grepCmd := exec.Command("grep", grepArgs...)
+	grepCmd := exec.Command(cmd, fileNames...)
 	grepCmd.Dir = testLogPath
 	var out bytes.Buffer
 	var stderr bytes.Buffer
