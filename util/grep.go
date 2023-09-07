@@ -35,6 +35,17 @@ func NewGrepService(logFileDir string, localPort string) *GrepService {
 
 func (this *GrepService) GrepLocal(args *Args, reply *string) error {
 	grepOptions := parseUserInput(args.Input)
+	rawPattern := grepOptions[len(grepOptions)-1]
+
+	interpolateCmd := exec.Command("echo", rawPattern)
+	interpolatedRes, _ := interpolateCmd.CombinedOutput()	// interpolate a pattern enclosed in quotes, in case pattern has linebreak etc
+	grepOptions[len(grepOptions)-1] = string(interpolatedRes)
+
+	fmt.Println(string(interpolatedRes))
+
+
+
+
 	
 	*reply = ""
 
@@ -129,10 +140,13 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 			break
 		}
 	}
-
+	var totalLineCount int8 = 0
 	ret := ""
 	for _, v := range grepResults {
 		ret += v
+		totalLineCount += int8(extractLineCount(v))
 	}
+	ret += fmt.Sprintf("Total line count:%d", totalLineCount)
+
 	return ret
 }
