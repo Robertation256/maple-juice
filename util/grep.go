@@ -14,7 +14,7 @@ type GrepService struct {
 	logFileNames []string
 }
 
-func NewGrepService(logFileDir string, localPort string) *GrepService {
+func NewGrepService(logFileDir string) *GrepService {
 	filePaths, err := os.ReadDir(logFileDir)
 	if err != nil {
 		log.Fatal("Error reading log file directory", err)
@@ -28,8 +28,7 @@ func NewGrepService(logFileDir string, localPort string) *GrepService {
 
 	this := new(GrepService)
 	this.logFileDir = logFileDir
-	hardCodedName := fmt.Sprintf("%s.txt", localPort)
-	this.logFileNames = []string{hardCodedName}
+	this.logFileNames = filesNames
 	return this
 }
 
@@ -61,10 +60,7 @@ func LoadIps() []string {
 	var err error
 	s, err = os.ReadFile("../config.txt")
 	if err != nil {
-		s, err = os.ReadFile("./config.txt")
-		if err != nil {
-			log.Fatal("Error reading remote server config file", err)
-		}
+		log.Fatal("Error reading remote server config file", err)
 	}
 
 	ips := strings.Split(string(s), ",")
@@ -128,11 +124,11 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 			break
 		}
 	}
-	var totalLineCount int8 = 0
+	var totalLineCount int64 = 0
 	ret := ""
 	for _, v := range grepResults {
 		ret += v
-		totalLineCount += int8(extractLineCount(v))
+		totalLineCount += int64(extractLineCount(v))
 	}
 	ret += fmt.Sprintf("Total:%d", totalLineCount)
 
