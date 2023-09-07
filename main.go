@@ -28,9 +28,9 @@ func main() {
 
 	defer util.CloseClients(clients)
 
-	grepService := util.NewGrepService("~/log")
+	grepService := util.NewGrepService("../log")
 	logService := new(test.LogService)
-	logService.LogFileDir = "~/test_log"
+	logService.LogFileDir = "../test_log"
 
 	rpc.Register(grepService)
 	rpc.Register(logService)

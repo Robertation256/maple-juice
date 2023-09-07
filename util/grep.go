@@ -58,7 +58,7 @@ type Args struct {
 func LoadIps() []string {
 	var s []byte
 	var err error
-	s, err = os.ReadFile("~/config.txt")
+	s, err = os.ReadFile("../config.txt")
 	if err != nil {
 		log.Fatal("Error reading remote server config file", err)
 	}
