@@ -39,7 +39,6 @@ func (this *GrepService) GrepLocal(args *Args, reply *string) error {
 	*reply = ""
 
 	for _, fileName := range this.logFileNames {
-		// todo: remove cmd /K for linux
 		cmdArgs := append(grepOptions, this.logFileDir+"/"+fileName)
 		cmd := exec.Command("grep", cmdArgs...)
 		output, err := cmd.CombinedOutput()
@@ -129,10 +128,13 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 			break
 		}
 	}
-
+	var totalLineCount int8 = 0
 	ret := ""
 	for _, v := range grepResults {
 		ret += v
+		totalLineCount += int8(extractLineCount(v))
 	}
+	ret += fmt.Sprintf("Total:%d", totalLineCount)
+
 	return ret
 }
