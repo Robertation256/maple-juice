@@ -49,6 +49,7 @@ func main() {
 
 	for {
 		ret = ""
+		fmt.Println("\n\n----------------------\n")
 		fmt.Println("Enter a grep command:")
 		in := bufio.NewReader(os.Stdin)
 		input, _ := in.ReadString('\n')
@@ -56,6 +57,6 @@ func main() {
 		ret = util.GrepAllMachines(ips, clients, input)
 		elasped := time.Now().Sub(start)
 		fmt.Println(ret)
-		fmt.Println("Elapsed time: " + string(elasped) + " s")
+		fmt.Printf("Elapsed time: %d s\n\n\n", string(elasped))
 	}
 }
