@@ -2,6 +2,7 @@ package util
 
 import (
 	"log"
+	"strings"
 )
 
 
@@ -17,11 +18,15 @@ func parseUserInput(input string) []string {	// parse out the options and the pa
 			i += 2
 		} else if input[i]!=' ' {
 			ret = append(ret, input[i:])
-			return ret
+			break;
 		} else {
 			i++
 		}
 	}
+
+	for j := 0; j < len(ret); j++ {
+		ret[j] = strings.Trim(ret[j], " \n\r")
+	} 
 	
 	return ret
 }

@@ -48,7 +48,7 @@ func (this *GrepService) GrepLocal(args *Args, reply *string) error {
 			log.Println("Error while executing grep", err)
 			return err
 		}
-		*reply += fmt.Sprintf("%s:%s", fileName, output)
+		*reply += fmt.Sprintf("%s:%s", fileName, string(output))
 	}
 	return nil
 }
