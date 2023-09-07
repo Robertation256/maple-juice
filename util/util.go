@@ -16,7 +16,7 @@ func extractLineCount(str string) int32 {
 	if(err != nil){
 		log.Fatal(err)
 	}
-	return ret;
+	return int32(ret);
 }
 
 
