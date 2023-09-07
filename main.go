@@ -15,15 +15,10 @@ import (
 
 
 func main() {
-	var localPort string
+	localPort := "8000"
 	var ret string
 
 	ips := util.LoadIps()
-
-	// designate port for testing on a single machine
-	// fmt.Println("Enter port:")
-	// fmt.Scanln(&localPort)
-	// localPort := strings.Split(ips[0], ":")[1]
 
 	clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
 
@@ -38,7 +33,12 @@ func main() {
 	rpc.HandleHTTP()
 
 	// assume the first line in config is the local machine
-	l, err := net.Listen("tcp", ips[0])
+	hostname, hostNameErr := os.Hostname()
+	if hostNameErr != nil {
+		log.Fatal("Failed to get hostname", hostNameErr)
+	}
+	fmt.Println(hostname)
+	l, err := net.Listen("tcp", hostname+":"+localPort)
 	fmt.Printf("HTTP-RPC server is listening on port %s\n", localPort)
 
 	if err != nil {
