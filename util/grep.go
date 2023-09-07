@@ -1,4 +1,4 @@
-package grep
+package util
 
 import (
 	"fmt"
@@ -34,12 +34,14 @@ func NewGrepService(logFileDir string, localPort string) *GrepService {
 }
 
 func (this *GrepService) GrepLocal(args *Args, reply *string) error {
-	cmd := args.Input
+	grepOptions := parseUserInput(args.Input)
+	
 	*reply = ""
 
 	for _, fileName := range this.logFileNames {
 		// todo: remove cmd /K for linux
-		cmd := exec.Command(cmd, this.logFileDir+"/"+fileName)
+		cmdArgs := append(grepOptions, this.logFileDir+"/"+fileName)
+		cmd := exec.Command("grep", cmdArgs...)
 		output, err := cmd.CombinedOutput()
 		// exit code 1 means a match was not found
 		if err != nil && cmd.ProcessState.ExitCode() != 1 {

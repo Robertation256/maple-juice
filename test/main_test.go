@@ -6,16 +6,16 @@ import (
 	"net/rpc"
 	"strings"
 	"testing"
-	"cs425-mp1/grep"
+	"cs425-mp1/util"
 )
 
-var ips = grep.LoadIps()
+var ips = util.LoadIps()
 var clients = make([]*rpc.Client, len(ips))
 var LogServiceNew = &LogService{LogFileDir: "./logs"}
 
 func TestGrepBasic(t *testing.T) {
 
-	defer grep.CloseClients(clients)
+	defer util.CloseClients(clients)
 
 	var localFileNames []string
 	pattern := "111"
@@ -65,7 +65,7 @@ func TestGrepBasic(t *testing.T) {
 	}
 
 	cmd := "grep -c "+ pattern
-	distributedRes := grep.GrepAllMachines(ips, clients, cmd)
+	distributedRes := util.GrepAllMachines(ips, clients, cmd)
 
 	localRes, status := localGrepMultipleFiles(cmd, localFileNames)
 	if status != "ok" {

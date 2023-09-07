@@ -1,22 +1,23 @@
 package main
 
 import (
+	"cs425-mp1/util"
+	"cs425-mp1/test"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/rpc"
-	"cs425-mp1/grep"
-	"cs425-mp1/test"
+	"bufio"
+	"os"
 )
 
 
 func main() {
 	var localPort string
-	var input string
 	var ret string
 
-	ips := grep.LoadIps()
+	ips := util.LoadIps()
 
 	// designate port for testing on a single machine
 	fmt.Println("Enter port:")
@@ -25,9 +26,9 @@ func main() {
 
 	clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
 
-	defer grep.CloseClients(clients)
+	defer util.CloseClients(clients)
 
-	grepService := grep.NewGrepService("./logs", localPort)
+	grepService := util.NewGrepService("./logs", localPort)
 	logService := new(test.LogService)
 	logService.LogFileDir = "./logs"
 
@@ -48,8 +49,9 @@ func main() {
 	for {
 		ret = ""
 		fmt.Println("Enter a grep command:")
-		fmt.Scanln(&input)
-		ret = grep.GrepAllMachines(ips, clients, input)
+		in := bufio.NewReader(os.Stdin)
+		input, _ := in.ReadString('\n')
+		ret = util.GrepAllMachines(ips, clients, input)
 
 		fmt.Println(ret)
 	}
