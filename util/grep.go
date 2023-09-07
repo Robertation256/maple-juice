@@ -14,7 +14,7 @@ type GrepService struct {
 	logFileNames []string
 }
 
-func NewGrepService(logFileDir string, localPort string) *GrepService {
+func NewGrepService(logFileDir string) *GrepService {
 	filePaths, err := os.ReadDir(logFileDir)
 	if err != nil {
 		log.Fatal("Error reading log file directory", err)
@@ -28,8 +28,7 @@ func NewGrepService(logFileDir string, localPort string) *GrepService {
 
 	this := new(GrepService)
 	this.logFileDir = logFileDir
-	hardCodedName := fmt.Sprintf("%s.txt", localPort)
-	this.logFileNames = []string{hardCodedName}
+	this.logFileNames = filesNames
 	return this
 }
 
@@ -59,12 +58,9 @@ type Args struct {
 func LoadIps() []string {
 	var s []byte
 	var err error
-	s, err = os.ReadFile("../config.txt")
+	s, err = os.ReadFile("~/config.txt")
 	if err != nil {
-		s, err = os.ReadFile("./config.txt")
-		if err != nil {
-			log.Fatal("Error reading remote server config file", err)
-		}
+		log.Fatal("Error reading remote server config file", err)
 	}
 
 	ips := strings.Split(string(s), ",")

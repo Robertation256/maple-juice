@@ -20,24 +20,24 @@ func main() {
 	ips := util.LoadIps()
 
 	// designate port for testing on a single machine
-	fmt.Println("Enter port:")
-	fmt.Scanln(&localPort)
+	// fmt.Println("Enter port:")
+	// fmt.Scanln(&localPort)
 	// localPort := strings.Split(ips[0], ":")[1]
 
 	clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
 
 	defer util.CloseClients(clients)
 
-	grepService := util.NewGrepService("./logs", localPort)
+	grepService := util.NewGrepService("~/log")
 	logService := new(test.LogService)
-	logService.LogFileDir = "./logs"
+	logService.LogFileDir = "~/test_log"
 
 	rpc.Register(grepService)
 	rpc.Register(logService)
 	rpc.HandleHTTP()
 
 	// assume the first line in config is the local machine
-	l, err := net.Listen("tcp", ":"+localPort)
+	l, err := net.Listen("tcp", ips[0])
 	fmt.Printf("HTTP-RPC server is listening on port %s\n", localPort)
 
 	if err != nil {
