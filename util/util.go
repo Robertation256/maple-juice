@@ -7,8 +7,11 @@ import (
 )
 
 func extractLineCount(str string) int {
-	elems := strings.Split(str, ":")
-	countVal := strings.Trim(elems[len(elems)-1], " \r\n")
+	values := strings.Split(str, ":")
+	if(len(values) < 2){
+		return 0
+	}
+	countVal := strings.Trim(values[1], " \r\n")
 	ret, err := strconv.Atoi(countVal)
 	if(err != nil){
 		log.Fatal(err)
@@ -47,6 +50,11 @@ func parseUserInput(input string) []string {	// parse out the options and the pa
 	for j := 0; j < len(ret); j++ {
 		ret[j] = strings.Trim(ret[j], " \n\r")
 	} 
+
+	pattern := ret[len(ret)-1]
+	if(len(pattern)>1 && pattern[0]=='"' && pattern[len(pattern)-1]=='"'){
+		ret[len(ret)-1] = pattern[1:len(pattern)-1]	// strip enclosing quotes
+	}
 	
 	return ret
 }
