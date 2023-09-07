@@ -57,6 +57,6 @@ func main() {
 		ret = util.GrepAllMachines(ips, clients, input)
 		elasped := time.Now().Sub(start)
 		fmt.Println(ret)
-		fmt.Printf("Elapsed time: %d s\n\n\n", string(elasped))
+		fmt.Printf("Elapsed time: %d s\n\n\n", elasped)
 	}
 }
