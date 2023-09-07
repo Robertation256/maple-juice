@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func extractLineCount(str string) int {
+func extractLineCount(str string) int32 {
 	values := strings.Split(str, ":")
 	if(len(values) < 2){
 		return 0
