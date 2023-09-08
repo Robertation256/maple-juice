@@ -7,18 +7,11 @@ import (
 	"net/rpc"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"testing"
 	"strconv"
 	"strings"
 
 	"cs425-mp1/util"
-)
-
-var (
-	_, b, _, _     = runtime.Caller(0)
-	testFolderPath = filepath.Dir(b)
 )
 
 type LogService struct {
