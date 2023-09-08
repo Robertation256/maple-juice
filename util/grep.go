@@ -99,7 +99,7 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	for index, ip := range ips {
 		// start connection if it is not previously established
 		if clients[index] == nil {
-			c, err := rpc.DialHTTP("tcp", ip)
+			c, err := rpc.DialHTTP("tcp", ip+":8000")
 			if err == nil {
 				clients[index] = c
 			}
