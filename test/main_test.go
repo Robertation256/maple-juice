@@ -29,6 +29,7 @@ func TestMain(m *testing.M) {
 	ips = util.LoadIps(homeDir)
 	clients = make([]*rpc.Client, len(ips))
 
+	fmt.Println("Running tests")
 	// Run the actual tests.
 	exitCode := m.Run()
 
@@ -38,6 +39,8 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
+// Test whether ExtractLineCount gives correct result when the 
+// input format is correct
 func TestExtractLineCountCorrectFormat(t *testing.T) {
 
 	answerMap := make(map[string]int32)
@@ -59,6 +62,7 @@ func TestExtractLineCountCorrectFormat(t *testing.T) {
 }
 
 
+// Test whether ExtractLineCount throws error on invalid input
 func TestExtractLineCountIncorrectFormat(t *testing.T) {
 
 	args := []string{"some2", "some:another", "another:", "vm1.log:"}
@@ -72,6 +76,8 @@ func TestExtractLineCountIncorrectFormat(t *testing.T) {
 
 }
 
+// Test whether PareseInput gives correct result when the 
+// input format is correct
 func TestParseInputCorrectFormat(t *testing.T) {
 
 	answerMap := make(map[string][]string)
@@ -92,6 +98,7 @@ func TestParseInputCorrectFormat(t *testing.T) {
 	}
 }
 
+// Test whether PareseInput throws error on invalid input
 func TestParseInputIncorrectFormat(t *testing.T) {
 
 	args := []string{"grep", "grep 111", "cd lol"}

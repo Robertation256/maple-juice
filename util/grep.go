@@ -59,6 +59,7 @@ type Args struct {
 	Input string
 }
 
+// Load ips from config.txt
 func LoadIps(homeDir string) []string {
 	var s []byte
 	var err error
@@ -84,6 +85,7 @@ func CloseClients(clients []*rpc.Client) {
 	}
 }
 
+// Perform a distributed on all connected machines
 func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	grepResults := make([]string, len(ips))
 
@@ -109,7 +111,7 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	}
 
 	// iterate and look for completed rpc calls
-	for { // todo: add timeout in case some rpc takes too long to return
+	for { 
 		complete := true
 		for i, call := range calls {
 			if call != nil {
@@ -130,6 +132,7 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	}
 	var totalLineCount int64 = 0
 	ret := ""
+	// calculate total line count
 	for _, v := range grepResults {
 		ret += v
 		count, countErr := ExtractLineCount(v)
