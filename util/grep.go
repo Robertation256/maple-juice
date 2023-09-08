@@ -87,7 +87,7 @@ func CloseClients(clients []*rpc.Client) {
 	}
 }
 
-// Perform a distributed on all connected machines
+// Perform a distributed grep on all connected machines
 func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	grepResults := make([]string, len(ips))
 
