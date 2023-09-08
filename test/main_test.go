@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"cs425-mp1/util"
+
 )
 
 var homeDir string
@@ -52,24 +53,18 @@ func TestGrepRare(t *testing.T) {
 		machineProbability: 1,
 	}
 
-	fmt.Println(homeDir)
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
-	fmt.Println(localFileNames)
 
 	input := fmt.Sprintf("grep -c %s", pattern)
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
-	// localRes, status := localGrepMultipleFiles(pattern, localFileNames)
-	// if status != "ok" {
-	// 	t.Fatal("Local grep error:", status)
-	// }
+	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
+	if status != "ok" {
+		t.Fatal("Local grep error:", status)
+	}
 
-	// if distributedRes != localRes {
-	// 	t.Fatalf("Incorrect result. Should be %s\n but got %s\n", localRes, distributedRes)
-	// } else {
-	// 	fmt.Printf("Got correct result:\n%s", localRes)
-	// }
-	fmt.Println(distributedRes)
+	compareGrepResult(t, localRes, distributedRes)
+	
 }
 
 // Each machine contains a log file from 10-20 lines
@@ -90,18 +85,15 @@ func TestGrepFrequentPattern(t *testing.T) {
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
-	distributedRes := util.GrepAllMachines(ips, clients, pattern)
+	input := fmt.Sprintf("grep -c %s", pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, input)
 
-	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
+	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
 	if status != "ok" {
 		t.Fatal("Local grep error:", status)
 	}
 
-	if distributedRes != localRes {
-		t.Fatalf("Incorrect result. Should be %s\n but got %s\n", localRes, distributedRes)
-	} else {
-		fmt.Printf("Got correct result:\n%s", localRes)
-	}
+	compareGrepResult(t, localRes, distributedRes)
 }
 
 // Each machine contains a log file from 5-20 lines
@@ -122,18 +114,15 @@ func TestGrepSomewhatFrequentPattern(t *testing.T) {
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
-	distributedRes := util.GrepAllMachines(ips, clients, pattern)
+	input := fmt.Sprintf("grep -c %s", pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, input)
 
-	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
+	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
 	if status != "ok" {
 		t.Fatal("Local grep error:", status)
 	}
 
-	if distributedRes != localRes {
-		t.Fatalf("Incorrect result. Should be %s\n but got %s\n", localRes, distributedRes)
-	} else {
-		fmt.Printf("Got correct result:\n%s", localRes)
-	}
+	compareGrepResult(t, localRes, distributedRes)
 }
 
 // Each machine contains a log file from 5-20 lines
@@ -154,18 +143,15 @@ func TestPatternOnSomeMachines(t *testing.T) {
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
-	distributedRes := util.GrepAllMachines(ips, clients, pattern)
+	input := fmt.Sprintf("grep -c %s", pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, input)
 
-	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
+	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
 	if status != "ok" {
 		t.Fatal("Local grep error:", status)
 	}
 
-	if distributedRes != localRes {
-		t.Fatalf("Incorrect result. Should be %s\n but got %s\n", localRes, distributedRes)
-	} else {
-		fmt.Printf("Got correct result:\n%s", localRes)
-	}
+	compareGrepResult(t, localRes, distributedRes)
 }
 
 // Each machine contains a log file from 5-20 lines
@@ -181,21 +167,18 @@ func TestPatternOnOneMachine(t *testing.T) {
 		maxLineLength:      15,
 		pattern:            pattern,
 		patternProbability: 0.5,
-		machineProbability: -1, // a special case
+		machineProbability: -1, // a special case. only one machine has pattern
 	}
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
-	distributedRes := util.GrepAllMachines(ips, clients, pattern)
+	input := fmt.Sprintf("grep -c %s", pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, input)
 
-	localRes, status := localGrepMultipleFiles(pattern, localFileNames)
+	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
 	if status != "ok" {
 		t.Fatal("Local grep error:", status)
 	}
 
-	if distributedRes != localRes {
-		t.Fatalf("Incorrect result. Should be %s\n but got %s\n", localRes, distributedRes)
-	} else {
-		fmt.Printf("Got correct result:\n%s", localRes)
-	}
+	compareGrepResult(t, localRes, distributedRes)
 }

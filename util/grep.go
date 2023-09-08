@@ -37,7 +37,7 @@ func NewGrepService(logFileDir string) *GrepService {
 }
 
 func (this *GrepService) GrepLocal(args *Args, reply *string) error {
-	grepOptions := parseUserInput(args.Input)
+	grepOptions := ParseUserInput(args.Input)
 	
 	*reply = ""
 	fileName := this.LogFileName
@@ -132,7 +132,7 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	ret := ""
 	for _, v := range grepResults {
 		ret += v
-		totalLineCount += int64(extractLineCount(v))
+		totalLineCount += int64(ExtractLineCount(v))
 	}
 	ret += fmt.Sprintf("Total:%d", totalLineCount)
 

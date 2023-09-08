@@ -10,6 +10,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"strconv"
+	"strings"
+
+	"cs425-mp1/util"
 )
 
 var (
@@ -56,10 +60,13 @@ func writeToFile(filePath string, fileContent string) error {
 	return nil
 }
 
-func localGrepMultipleFiles(cmd string, fileNames []string) (string, string) {
+func localGrepMultipleFiles(input string, fileNames []string, homeDir string) (string, string) {
 
-	testLogPath := fmt.Sprintf("%s/test_logs", testFolderPath)
-	grepCmd := exec.Command(cmd, fileNames...)
+	grepOptions := util.ParseUserInput(input)
+
+	testLogPath := fmt.Sprintf("%s/test_log_copy", homeDir)
+	cmdArgs := append(grepOptions, fileNames...)
+	grepCmd := exec.Command("grep", cmdArgs...)
 	grepCmd.Dir = testLogPath
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -137,7 +144,6 @@ func PrepareLogFiles(args RandomFileArgs, ips []string, clients []*rpc.Client, t
 		if err != nil {
 			t.Fatal("Generate log error:", err)
 		}
-		fmt.Println(logFilename)
 
 		// write a copy of the generated test log file to a local folder
 		localFilePath := fmt.Sprintf("%s/test_log_copy/%s", homeDir, logFilename)
@@ -149,4 +155,31 @@ func PrepareLogFiles(args RandomFileArgs, ips []string, clients []*rpc.Client, t
 		localFileNames = append(localFileNames, logFilename)
 	}
 	return localFileNames
+}
+
+func compareGrepResult(t *testing.T, localRes string, distributedRes string) {
+	splittedDistributedRes := strings.Split(distributedRes, "Total:")
+	if len(splittedDistributedRes) < 2 {
+		t.Fatal("Response doesn't include total line count")
+	}
+	distributedIndividual := splittedDistributedRes[0]
+	distributedTotal := splittedDistributedRes[1]
+
+	if distributedIndividual != localRes {
+		t.Fatalf("Incorrect line count for each file. Should be %s\n but got %s\n", localRes, distributedIndividual)
+	} else {
+		fmt.Printf("Got correct line count for each file:\n%s", localRes)
+	}
+
+	distributedSplittedLines := strings.Split(distributedIndividual, "\n")
+	var correctCount int32 = 0
+	for _, line := range distributedSplittedLines {
+		correctCount += util.ExtractLineCount(line)
+	}
+	correctCountStr := strconv.FormatInt(int64(correctCount), 10)
+	if string(correctCountStr) != distributedTotal {
+		t.Fatalf("Incorrect total line count. Should be %s but got %s\n", correctCountStr, distributedTotal)
+	} else {
+		fmt.Printf("Got correct total line count:%s\n", distributedTotal)
+	}
 }

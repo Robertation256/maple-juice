@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func extractLineCount(str string) int32 {
+func ExtractLineCount(str string) int32 {
 	values := strings.Split(str, ":")
 	if(len(values) < 2){
 		return 0
@@ -20,7 +20,7 @@ func extractLineCount(str string) int32 {
 }
 
 
-func parseUserInput(input string) []string {	// parse out the options and the pattern
+func ParseUserInput(input string) []string {	// parse out the options and the pattern
 	containsRequiredFlag := false
 
 	ret := make([]string,0)
