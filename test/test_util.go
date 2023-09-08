@@ -67,6 +67,8 @@ func localGrepMultipleFiles(input string, fileNames []string, homeDir string) (s
 
 	testLogPath := fmt.Sprintf("%s/test_log_copy", homeDir)
 	cmdArgs := append(grepOptions, fileNames...)
+	// add the flag to force inclusion of filename, in case there is only one vm alive
+	cmdArgs = append([]string{"-H"}, cmdArgs...)
 	grepCmd := exec.Command("grep", cmdArgs...)
 	grepCmd.Dir = testLogPath
 	var out bytes.Buffer
