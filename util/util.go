@@ -1,40 +1,44 @@
 package util
 
 import (
-	"log"
 	"strconv"
 	"strings"
+	"errors"
 )
 
-// extract line count from the output of a single server
-func extractLineCount(str string) int32 {
+func ExtractLineCount(str string) (int32, error) {
+	str = strings.Trim(str, " \r\n")
+	if len(str) == 0 {
+		return 0, nil
+	}
 	values := strings.Split(str, ":")
-	if(len(values) < 2){
-		return 0
+	if (len(values) < 2){
+		return -1, errors.New("Incorrect input format")
 	}
 	countVal := strings.Trim(values[1], " \r\n")
 	ret, err := strconv.Atoi(countVal)
-	if(err != nil){
-		log.Fatal(err)
+	if (err != nil){
+		return -1, err
 	}
-	return int32(ret);
+	return int32(ret), nil;
 }
 
 
-// verify and parse command line input into a list of cmd args
-func parseUserInput(input string) []string {
+func ParseUserInput(input string) ([]string, error) {	// parse out the options and the pattern
 	containsRequiredFlag := false
 	ret := make([]string,0)
-
-	if(len(input) < 5 || input[:4] != "grep"){
-		log.Fatal("Invalid command")
+	if len(input) < 5 || input[:4] != "grep" {
+		return nil, errors.New("Invalid option")
 	}
-	for  i := 4 ; i<len(input)-1; {
-		if input[i]=='-' {	// an option
-			if(input[i+1] == 'c'){
+	for i := 4 ; i<len(input)-1; {
+		if input[i]=='-' {
+			if input[i+1] == 'c'{
 				containsRequiredFlag = true
 			}
-			ret = append(ret, "-"+ string(input[i+1]))
+			// ignore some flag that might break stuff
+			if input[i+1] != 'H' && input[i+1] != 'f' && input[i+1] != 'q' {
+				ret = append(ret, "-"+ string(input[i+1]))
+			}
 			i += 2
 		} else if input[i]!=' ' {	// a pattern
 			ret = append(ret, input[i:])
@@ -44,8 +48,8 @@ func parseUserInput(input string) []string {
 		}
 	}
 
-	if(!containsRequiredFlag){
-		log.Fatal("Grep command must carry -c option.")
+	if !containsRequiredFlag {
+		return nil, errors.New("Grep command must carry -c option.")
 	}
 
 	
@@ -58,5 +62,5 @@ func parseUserInput(input string) []string {
 		ret[len(ret)-1] = pattern[1:len(pattern)-1]	// strip enclosing quotes
 	}
 	
-	return ret
+	return ret, nil
 }

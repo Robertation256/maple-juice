@@ -11,14 +11,14 @@ import (
 
 type GrepService struct {
 	logFileDir   string
-	logFileNames []string
+	LogFileName string
 }
 
 
 func NewGrepService(logFileDir string) *GrepService {
 	filePaths, err := os.ReadDir(logFileDir)
 	if err != nil {
-		log.Fatal("Error reading log file directory", err)
+		log.Fatal("Error reading log file directory: ", err)
 	}
 
 	filesNames := make([]string, len(filePaths))
@@ -29,27 +29,31 @@ func NewGrepService(logFileDir string) *GrepService {
 
 	this := new(GrepService)
 	this.logFileDir = logFileDir
-	this.logFileNames = filesNames
+
+	if len(filesNames) < 1 {
+		log.Fatal("Log file does nof exist")
+	}
+	this.LogFileName = filesNames[0]
 	return this
 }
 
 // execute grep command over local log file
 func (this *GrepService) GrepLocal(args *Args, reply *string) error {
-	grepOptions := parseUserInput(args.Input)
+	grepOptions, _ := ParseUserInput(args.Input)
 	
 	*reply = ""
+	fileName := this.LogFileName
 
-	for _, fileName := range this.logFileNames {
-		cmdArgs := append(grepOptions, this.logFileDir+"/"+fileName)
-		cmd := exec.Command("grep", cmdArgs...)
-		output, err := cmd.CombinedOutput()
-		// exit code 1 means a match was not found
-		if err != nil && cmd.ProcessState.ExitCode() != 1 {
-			log.Println("Error while executing grep", err)
-			return err
-		}
-		*reply += fmt.Sprintf("%s:%s", fileName, string(output))
+	cmdArgs := append(grepOptions, this.logFileDir+"/"+fileName)
+	cmd := exec.Command("grep", cmdArgs...)
+	output, err := cmd.CombinedOutput()
+	// exit code 1 means a match was not found
+	if err != nil && cmd.ProcessState.ExitCode() != 1 {
+		log.Println("Error while executing grep", err)
+		return err
 	}
+	*reply += fmt.Sprintf("%s:%s", fileName, string(output))
+
 	return nil
 }
 
@@ -57,11 +61,10 @@ type Args struct {
 	Input string
 }
 
-//load a list of host address from config file
-func LoadIps() []string {
+func LoadIps(homeDir string) []string {
 	var s []byte
 	var err error
-	s, err = os.ReadFile("../config.txt")
+	s, err = os.ReadFile(homeDir + "/config.txt")
 	if err != nil {
 		log.Fatal("Error reading remote server config file", err)
 	}
@@ -135,7 +138,11 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	ret := ""
 	for _, v := range grepResults {
 		ret += v
-		totalLineCount += int64(extractLineCount(v))
+		count, countErr := ExtractLineCount(v)
+		if countErr != nil {
+			log.Fatal("Error extracting number", countErr)
+		}
+		totalLineCount += int64(count)
 	}
 	ret += fmt.Sprintf("Total:%d", totalLineCount)
 

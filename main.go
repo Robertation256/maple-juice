@@ -15,27 +15,47 @@ import (
 
 
 func main() {
-	var localPort string
+	localPort := "8000"
+
+	homeDir, homeDirErr := os.UserHomeDir()
+	if homeDirErr != nil {
+		log.Fatal("Error getting user's home directory:", homeDirErr)
+	}
+
+	var isTestMode string
+	fmt.Println("test mode? [Y/n]")
+	fmt.Scanln(&isTestMode)
+	logFolder := homeDir + "/log"
+	if isTestMode == "Y" {
+		logFolder = homeDir + "/test_log"
+		fmt.Println("Running in test mode & using ~/test_log as log folder")
+	}
+
 	var ret string
 
-	ips := util.LoadIps()
+	ips := util.LoadIps(homeDir)
 
 	clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
 
 	defer util.CloseClients(clients)
 
-	grepService := util.NewGrepService("../log")
+	grepService := util.NewGrepService(logFolder)
 
 	testService := new(test.LogService)	// service used for test
-	testService.LogFileDir = "../test_log"
+	testService.LogFileDir = homeDir + "/test_log"
+	testService.LogFilename = grepService.LogFileName
 
 	rpc.Register(grepService)
 	rpc.Register(testService)
 	rpc.HandleHTTP()
 
-	// first entry is the address of the local machine
-	l, err := net.Listen("tcp", ips[0])
-	fmt.Printf("HTTP-RPC server started at%s\n", ips[0])
+	hostname, hostNameErr := os.Hostname()
+	if hostNameErr != nil {
+		log.Fatal("Failed to get hostname", hostNameErr)
+	}
+
+	l, err := net.Listen("tcp", hostname+":"+localPort)
+	fmt.Printf("HTTP-RPC server is listening on port %s\n", localPort)
 
 	if err != nil {
 		log.Fatal("Failed to start local server", err)
@@ -46,13 +66,20 @@ func main() {
 	for {
 		ret = ""
 		fmt.Println("\n\n----------------------\n")
+		
 		fmt.Println("Enter a grep command:")
 
 		in := bufio.NewReader(os.Stdin)
 		input, _ := in.ReadString('\n')
 
 		start := time.Now()
-
+		
+		_, parseErr := util.ParseUserInput(input)
+		if parseErr != nil {
+			fmt.Printf("Invalid input: %s. Please try again", parseErr)
+			continue
+		}
+		
 		ret = util.GrepAllMachines(ips, clients, input)
 
 		elasped := time.Now().Sub(start)
