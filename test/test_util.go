@@ -63,7 +63,7 @@ func writeToFile(filePath string, fileContent string) error {
 
 func localGrepMultipleFiles(input string, fileNames []string, homeDir string) (string, string) {
 
-	grepOptions := util.ParseUserInput(input)
+	grepOptions, _ := util.ParseUserInput(input)
 
 	testLogPath := fmt.Sprintf("%s/test_log_copy", homeDir)
 	cmdArgs := append(grepOptions, fileNames...)
@@ -192,4 +192,16 @@ func compareGrepResult(t *testing.T, localRes string, distributedRes string) str
 		fmt.Printf("Got correct total line count:%s\n", distributedTotal)
 	}
 	return distributedTotal
+}
+
+func compareArrays(a []string , b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, _ := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

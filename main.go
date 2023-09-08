@@ -65,13 +65,22 @@ func main() {
 	for {
 		ret = ""
 		fmt.Println("\n\n----------------------\n")
+		
 		fmt.Println("Enter a grep command:")
 		in := bufio.NewReader(os.Stdin)
 		input, _ := in.ReadString('\n')
+
 		start := time.Now()
+		
+		_, parseErr := util.ParseUserInput(input)
+		if parseErr != nil {
+			fmt.Printf("Invalid input: %s. Please try again", parseErr)
+			continue
+		}
+		
 		ret = util.GrepAllMachines(ips, clients, input)
 		elasped := time.Now().Sub(start)
-		fmt.Println(ret)
+		// fmt.Println(ret)
 		fmt.Printf("Elapsed time: %s", elasped.Round(time.Millisecond))
 	}
 }

@@ -44,6 +44,7 @@ func TestExtractLineCountCorrectFormat(t *testing.T) {
 	answerMap["some:2"] = 2
 	answerMap["another:123"] = 123
 	answerMap["vm3.log:89999"] = 89999
+	answerMap[" \n"] = 0
 
 
 	for arg, answer := range answerMap {
@@ -57,12 +58,46 @@ func TestExtractLineCountCorrectFormat(t *testing.T) {
 	}
 }
 
+
 func TestExtractLineCountIncorrectFormat(t *testing.T) {
 
 	args := []string{"some2", "some:another", "another:", "vm1.log:"}
 
 	for _, arg := range args {
 		_, err := util.ExtractLineCount(arg)
+		if err == nil {
+			t.Fatalf("Excepted error for incorrect input " + arg)
+		}
+	}
+
+}
+
+func TestParseInputCorrectFormat(t *testing.T) {
+
+	answerMap := make(map[string][]string)
+	answerMap["grep -c 22"] = []string{"-c", "22"}
+	answerMap["grep -c -E sth"] = []string{"-c", "-E", "sth"}
+	answerMap["grep -i -c -E aQ"] = []string{"-i", "-c", "-E", "aQ"}
+	answerMap[`grep -i -c -E "sth, another!"`] =  []string{"-i", "-c", "-E", "sth, another!"}
+
+
+	for arg, answer := range answerMap {
+		funcAnswer, err := util.ParseUserInput(arg)
+		if err != nil {
+			t.Fatal("Got error: ", err)
+		}
+		if !compareArrays(answer, funcAnswer) {
+			t.Fatalf("Incorrect result for %s, should be %s but got %s", arg, answer, funcAnswer)
+		}
+	}
+}
+
+func TestParseInputIncorrectFormat(t *testing.T) {
+
+	args := []string{"grep", "grep 111", "cd lol"}
+
+	for _, arg := range args {
+		_, err := util.ParseUserInput(arg)
 		if err == nil {
 			t.Fatalf("Excepted error for incorrect input " + arg)
 		}
@@ -121,6 +156,10 @@ func TestGrepFrequentPattern(t *testing.T) {
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
 	input := fmt.Sprintf("grep -c %s\n", pattern)
+	_, parseErr := util.ParseUserInput(input)
+	if parseErr != nil {
+		t.Fatal("Error parsing pattern", parseErr)
+	}
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -151,6 +190,10 @@ func TestGrepSomewhatFrequentPattern(t *testing.T) {
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
 	input := fmt.Sprintf("grep -c %s\n", pattern)
+	_, parseErr := util.ParseUserInput(input)
+	if parseErr != nil {
+		t.Fatal("Error parsing pattern", parseErr)
+	}
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -181,6 +224,10 @@ func TestPatternOnSomeMachines(t *testing.T) {
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
 	input := fmt.Sprintf("grep -c %s\n", pattern)
+	_, parseErr := util.ParseUserInput(input)
+	if parseErr != nil {
+		t.Fatal("Error parsing pattern", parseErr)
+	}
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -211,6 +258,10 @@ func TestPatternOnOneMachine(t *testing.T) {
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
 	input := fmt.Sprintf("grep -c %s\n", pattern)
+	_, parseErr := util.ParseUserInput(input)
+	if parseErr != nil {
+		t.Fatal("Error parsing pattern", parseErr)
+	}
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -241,6 +292,10 @@ func TestGrepAdditionalFlag(t *testing.T) {
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
 	input := fmt.Sprintf("grep -c -i %s\n", pattern)
+	_, parseErr := util.ParseUserInput(input)
+	if parseErr != nil {
+		t.Fatal("Error parsing pattern", parseErr)
+	}
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -275,6 +330,10 @@ func TestGrepRegEx(t *testing.T) {
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
 	input := fmt.Sprintf("grep -c -E %s\n", pattern)
+	_, parseErr := util.ParseUserInput(input)
+	if parseErr != nil {
+		t.Fatal("Error parsing pattern", parseErr)
+	}
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -309,6 +368,10 @@ func TestGrepPatternWithSpace(t *testing.T) {
 
 	// enclose pattern with double quotes, mimic user input
 	input := fmt.Sprintf("grep -c %s\n", `"1, 23"`)
+	_, parseErr := util.ParseUserInput(input)
+	if parseErr != nil {
+		t.Fatal("Error parsing pattern", parseErr)
+	}
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)

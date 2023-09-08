@@ -37,7 +37,7 @@ func NewGrepService(logFileDir string) *GrepService {
 }
 
 func (this *GrepService) GrepLocal(args *Args, reply *string) error {
-	grepOptions := ParseUserInput(args.Input)
+	grepOptions, _ := ParseUserInput(args.Input)
 	
 	*reply = ""
 	fileName := this.LogFileName

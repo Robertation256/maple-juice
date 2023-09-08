@@ -1,13 +1,16 @@
 package util
 
 import (
-	"log"
 	"strconv"
 	"strings"
 	"errors"
 )
 
 func ExtractLineCount(str string) (int32, error) {
+	str = strings.Trim(str, " \r\n")
+	if len(str) == 0 {
+		return 0, nil
+	}
 	values := strings.Split(str, ":")
 	if (len(values) < 2){
 		return -1, errors.New("Incorrect input format")
@@ -21,14 +24,14 @@ func ExtractLineCount(str string) (int32, error) {
 }
 
 
-func ParseUserInput(input string) []string {	// parse out the options and the pattern
+func ParseUserInput(input string) ([]string, error) {	// parse out the options and the pattern
 	containsRequiredFlag := false
 
 	ret := make([]string,0)
-	if(len(input) < 5 || input[:4] != "grep"){
-		log.Fatal("Invalid option")
+	if len(input) < 5 || input[:4] != "grep" {
+		return nil, errors.New("Invalid option")
 	}
-	for  i := 4 ; i<len(input)-1; {
+	for i := 4 ; i<len(input)-1; {
 		if input[i]=='-' {
 			if(input[i+1] == 'c'){
 				containsRequiredFlag = true
@@ -43,8 +46,8 @@ func ParseUserInput(input string) []string {	// parse out the options and the pa
 		}
 	}
 
-	if(!containsRequiredFlag){
-		log.Fatal("Grep command must carry -c option.")
+	if !containsRequiredFlag {
+		return nil, errors.New("Grep command must carry -c option.")
 	}
 
 	
@@ -57,5 +60,5 @@ func ParseUserInput(input string) []string {	// parse out the options and the pa
 		ret[len(ret)-1] = pattern[1:len(pattern)-1]	// strip enclosing quotes
 	}
 	
-	return ret
+	return ret, nil
 }
