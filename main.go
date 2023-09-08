@@ -40,12 +40,13 @@ func main() {
 	defer util.CloseClients(clients)
 
 	grepService := util.NewGrepService(logFolder)
-	logService := new(test.LogService)
-	logService.LogFileDir = homeDir + "/test_log"
-	logService.LogFilename = grepService.LogFileName
+
+	testService := new(test.LogService)	// service used for test
+	testService.LogFileDir = homeDir + "/test_log"
+	testService.LogFilename = grepService.LogFileName
 
 	rpc.Register(grepService)
-	rpc.Register(logService)
+	rpc.Register(testService)
 	rpc.HandleHTTP()
 
 	hostname, hostNameErr := os.Hostname()
@@ -67,6 +68,7 @@ func main() {
 		fmt.Println("\n\n----------------------\n")
 		
 		fmt.Println("Enter a grep command:")
+
 		in := bufio.NewReader(os.Stdin)
 		input, _ := in.ReadString('\n')
 
@@ -80,7 +82,9 @@ func main() {
 		}
 		
 		ret = util.GrepAllMachines(ips, clients, input)
+
 		elasped := time.Now().Sub(start)
+		
 		fmt.Println(ret)
 		fmt.Printf("Elapsed time: %s", elasped.Round(time.Millisecond))
 	}

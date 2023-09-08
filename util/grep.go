@@ -14,6 +14,7 @@ type GrepService struct {
 	LogFileName string
 }
 
+
 func NewGrepService(logFileDir string) *GrepService {
 	filePaths, err := os.ReadDir(logFileDir)
 	if err != nil {
@@ -36,6 +37,7 @@ func NewGrepService(logFileDir string) *GrepService {
 	return this
 }
 
+// execute grep command over local log file
 func (this *GrepService) GrepLocal(args *Args, reply *string) error {
 	grepOptions, _ := ParseUserInput(args.Input)
 	
@@ -71,7 +73,7 @@ func LoadIps(homeDir string) []string {
 	ips := strings.Split(string(s), ",")
 
 	if len(ips) == 0 {
-		log.Fatal("Remote server ip config is empty")
+		log.Fatal("Remote server address config is empty")
 	}
 
 	return ips
@@ -96,15 +98,16 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	calls := make([]*rpc.Call, len(ips))
 	args := Args{Input: input}
 	for index, ip := range ips {
-		// try start first time connection / reconnect for broken ones
+		// start connection if it is not previously established
 		if clients[index] == nil {
-			c, err := rpc.DialHTTP("tcp", ip)
+			c, err := rpc.DialHTTP("tcp", ip+":8000")
 			if err == nil {
 				clients[index] = c
 			}
 		}
 
 		if clients[index] != nil {
+			// perform async rpc call
 			call := clients[index].Go("GrepService.GrepLocal", args, &(grepResults[index]), nil)
 			calls[index] = call
 		}
@@ -116,13 +119,13 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 		for i, call := range calls {
 			if call != nil {
 				select {
-				case _, ok := <-call.Done:
-					if !ok {
-						log.Println("Channel closed for async rpc call")
-					}
-					calls[i] = nil
-				default:
-					complete = false
+					case _, ok := <-call.Done:	// check if channel has output ready
+						if !ok {
+							log.Println("Channel closed for async rpc call")
+						}
+						calls[i] = nil
+					default:
+						complete = false
 				}
 			}
 		}
@@ -130,6 +133,8 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 			break
 		}
 	}
+
+	// aggregate server results
 	var totalLineCount int64 = 0
 	ret := ""
 	// calculate total line count
