@@ -75,6 +75,7 @@ func main() {
 		start := time.Now()
 		
 		_, parseErr := util.ParseUserInput(input)
+		// if an error occured while parsing user input, prompt user to try again
 		if parseErr != nil {
 			fmt.Printf("Invalid input: %s. Please try again", parseErr)
 			continue
