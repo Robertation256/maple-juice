@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 )
 
@@ -20,11 +19,11 @@ var (
 
 type LogService struct {
 	LogFileDir string
+	LogFilename string
 }
 
 type Args struct {
 	FileContent string
-	FileName    string
 }
 
 type RandomFileArgs struct {
@@ -38,11 +37,12 @@ type RandomFileArgs struct {
 }
 
 func (service *LogService) GenerateLog(args *Args, reply *string) error {
-	filePath := fmt.Sprintf("./%s/%s", service.LogFileDir, args.FileName)
+	filePath := fmt.Sprintf("%s/%s", service.LogFileDir, service.LogFilename)
 	err := writeToFile(filePath, args.FileContent)
 	if err != nil {
 		return err
 	}
+	*reply += service.LogFilename
 	return nil
 }
 
@@ -100,7 +100,7 @@ func GenerateRandomFile(minLineNumber int, maxLineNumber int, minLineLength int,
 	return fileContent
 }
 
-func PrepareLogFiles(args RandomFileArgs, ips []string, clients []*rpc.Client, t *testing.T) []string {
+func PrepareLogFiles(args RandomFileArgs, ips []string, clients []*rpc.Client, t *testing.T, homeDir string) []string {
 
 	var localFileNames []string
 	oneMachineHasPattern := false
@@ -130,24 +130,23 @@ func PrepareLogFiles(args RandomFileArgs, ips []string, clients []*rpc.Client, t
 
 		fileContent := GenerateRandomFile(args.minLineNumber, args.maxLineNumber,
 			args.minLineLength, args.maxLineLength, args.pattern, args.patternProbability)
-		fileName := strings.Split(ip, ":")[1]
-		fileName += ".txt"
-		args := Args{FileContent: fileContent, FileName: fileName}
-		var result string
+		args := Args{FileContent: fileContent}
 
-		err := clients[index].Call("LogService.GenerateLog", args, &result)
+		var logFilename string
+		err := clients[index].Call("LogService.GenerateLog", args, &logFilename)
 		if err != nil {
 			t.Fatal("Generate log error:", err)
 		}
+		fmt.Println(logFilename)
 
 		// write a copy of the generated test log file to a local folder
-		localFilePath := fmt.Sprintf("./test_logs/%s", fileName)
+		localFilePath := fmt.Sprintf("%s/test_log_copy/%s", homeDir, logFilename)
 		writeErr := writeToFile(localFilePath, fileContent)
 		if writeErr != nil {
 			t.Fatal("Error writing log file to local folder", writeErr)
 		}
 
-		localFileNames = append(localFileNames, fileName)
+		localFileNames = append(localFileNames, logFilename)
 	}
 	return localFileNames
 }

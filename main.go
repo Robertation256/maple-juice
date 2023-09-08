@@ -16,28 +16,43 @@ import (
 
 func main() {
 	localPort := "8000"
+
+	homeDir, homeDirErr := os.UserHomeDir()
+	if homeDirErr != nil {
+		log.Fatal("Error getting user's home directory:", homeDirErr)
+	}
+
+	var isTestMode string
+	fmt.Println("test mode? [Y/n]")
+	fmt.Scanln(&isTestMode)
+	logFolder := homeDir + "/log"
+	if isTestMode == "Y" {
+		logFolder = homeDir + "/test_log"
+		fmt.Println("Running in test mode & using ~/test_log as log folder")
+	}
+
 	var ret string
 
-	ips := util.LoadIps()
+	ips := util.LoadIps(homeDir)
 
 	clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
 
 	defer util.CloseClients(clients)
 
-	grepService := util.NewGrepService("../log")
+	grepService := util.NewGrepService(logFolder)
 	logService := new(test.LogService)
-	logService.LogFileDir = "../test_log"
+	logService.LogFileDir = homeDir + "/test_log"
+	logService.LogFilename = grepService.LogFileName
 
 	rpc.Register(grepService)
 	rpc.Register(logService)
 	rpc.HandleHTTP()
 
-	// assume the first line in config is the local machine
 	hostname, hostNameErr := os.Hostname()
 	if hostNameErr != nil {
 		log.Fatal("Failed to get hostname", hostNameErr)
 	}
-	fmt.Println(hostname)
+
 	l, err := net.Listen("tcp", hostname+":"+localPort)
 	fmt.Printf("HTTP-RPC server is listening on port %s\n", localPort)
 
