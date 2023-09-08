@@ -33,10 +33,13 @@ func ParseUserInput(input string) ([]string, error) {	// parse out the options a
 	}
 	for i := 4 ; i<len(input)-1; {
 		if input[i]=='-' {
-			if(input[i+1] == 'c'){
+			if input[i+1] == 'c'{
 				containsRequiredFlag = true
 			}
-			ret = append(ret, "-"+ string(input[i+1]))
+			// ignore some flag that might break stuff
+			if input[i+1] != 'H' && input[i+1] != 'f' && input[i+1] != 'q' {
+				ret = append(ret, "-"+ string(input[i+1]))
+			}
 			i += 2
 		} else if input[i]!=' ' {
 			ret = append(ret, input[i:])
