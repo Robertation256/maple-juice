@@ -132,7 +132,11 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	ret := ""
 	for _, v := range grepResults {
 		ret += v
-		totalLineCount += int64(ExtractLineCount(v))
+		count, countErr := ExtractLineCount(v)
+		if countErr != nil {
+			log.Fatal("Error extracting number", countErr)
+		}
+		totalLineCount += int64(count)
 	}
 	ret += fmt.Sprintf("Total:%d", totalLineCount)
 

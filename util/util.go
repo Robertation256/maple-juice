@@ -4,19 +4,20 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"errors"
 )
 
-func ExtractLineCount(str string) int32 {
+func ExtractLineCount(str string) (int32, error) {
 	values := strings.Split(str, ":")
-	if(len(values) < 2){
-		return 0
+	if (len(values) < 2){
+		return -1, errors.New("Incorrect input format")
 	}
 	countVal := strings.Trim(values[1], " \r\n")
 	ret, err := strconv.Atoi(countVal)
-	if(err != nil){
-		log.Fatal(err)
+	if (err != nil){
+		return -1, err
 	}
-	return int32(ret);
+	return int32(ret), nil;
 }
 
 

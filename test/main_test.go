@@ -5,7 +5,6 @@ import (
 	"net/rpc"
 	"os"
 	"testing"
-
 	"cs425-mp1/util"
 
 )
@@ -20,6 +19,8 @@ var clients []*rpc.Client
 // This function runs before any test functions are executed.
 func TestMain(m *testing.M) {
 	// setup
+	fmt.Println("Setting up test cases...")
+
 	homeDir, homeDirErr = os.UserHomeDir()
 	if homeDirErr != nil {
 		fmt.Println("Error getting user's home directory:", homeDirErr)
@@ -32,9 +33,41 @@ func TestMain(m *testing.M) {
 	exitCode := m.Run()
 
 	// clean up
-	fmt.Println("Clean up")
+	fmt.Println("Cleaning up...")
 	util.CloseClients(clients)
 	os.Exit(exitCode)
+}
+
+func TestExtractLineCountCorrectFormat(t *testing.T) {
+
+	answerMap := make(map[string]int32)
+	answerMap["some:2"] = 2
+	answerMap["another:123"] = 123
+	answerMap["vm3.log:89999"] = 89999
+
+
+	for arg, answer := range answerMap {
+		funcAnswer, err := util.ExtractLineCount(arg)
+		if err != nil {
+			t.Fatal("Got error: ", err)
+		}
+		if funcAnswer != answer {
+			t.Fatalf("Incorrect result for %s, should be %d but got %d", arg, answer, funcAnswer)
+		}
+	}
+}
+
+func TestExtractLineCountIncorrectFormat(t *testing.T) {
+
+	args := []string{"some2", "some:another", "another:", "vm1.log:"}
+
+	for _, arg := range args {
+		_, err := util.ExtractLineCount(arg)
+		if err == nil {
+			t.Fatalf("Excepted error for incorrect input " + arg)
+		}
+	}
+
 }
 
 // Each machine contains a log file from 2-10 lines
@@ -51,11 +84,12 @@ func TestGrepRare(t *testing.T) {
 		pattern:            pattern,
 		patternProbability: 0.1,
 		machineProbability: 1,
+		lowerOnly: false,
 	}
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
-	input := fmt.Sprintf("grep -c %s", pattern)
+	input := fmt.Sprintf("grep -c %s\n", pattern)
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -81,11 +115,12 @@ func TestGrepFrequentPattern(t *testing.T) {
 		pattern:            pattern,
 		patternProbability: 0.8,
 		machineProbability: 1,
+		lowerOnly: false,
 	}
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
-	input := fmt.Sprintf("grep -c %s", pattern)
+	input := fmt.Sprintf("grep -c %s\n", pattern)
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -110,11 +145,12 @@ func TestGrepSomewhatFrequentPattern(t *testing.T) {
 		pattern:            pattern,
 		patternProbability: 0.5,
 		machineProbability: 1,
+		lowerOnly: false,
 	}
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
-	input := fmt.Sprintf("grep -c %s", pattern)
+	input := fmt.Sprintf("grep -c %s\n", pattern)
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -139,11 +175,12 @@ func TestPatternOnSomeMachines(t *testing.T) {
 		pattern:            pattern,
 		patternProbability: 0.5,
 		machineProbability: 0.7,
+		lowerOnly: false,
 	}
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
-	input := fmt.Sprintf("grep -c %s", pattern)
+	input := fmt.Sprintf("grep -c %s\n", pattern)
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -168,11 +205,12 @@ func TestPatternOnOneMachine(t *testing.T) {
 		pattern:            pattern,
 		patternProbability: 0.5,
 		machineProbability: -1, // a special case. only one machine has pattern
+		lowerOnly: false,
 	}
 
 	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
 
-	input := fmt.Sprintf("grep -c %s", pattern)
+	input := fmt.Sprintf("grep -c %s\n", pattern)
 	distributedRes := util.GrepAllMachines(ips, clients, input)
 
 	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
@@ -181,4 +219,106 @@ func TestPatternOnOneMachine(t *testing.T) {
 	}
 
 	compareGrepResult(t, localRes, distributedRes)
+}
+
+// Each machine contains a log file from 100-150 lines
+// the pattern is W, since the log files are only generated with lowercase letters
+// a total count of 0 will mean the -i flag is not applied
+func TestGrepAdditionalFlag(t *testing.T) {
+	pattern := "W"
+
+	randomFileArgs := RandomFileArgs{
+		minLineNumber:      100,
+		maxLineNumber:      150,
+		minLineLength:      60,
+		maxLineLength:      100,
+		pattern:            "", // don't force any pattern
+		patternProbability: 0,
+		machineProbability: 0, 
+		lowerOnly: true,
+	}
+
+	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
+
+	input := fmt.Sprintf("grep -c -i %s\n", pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, input)
+
+	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
+
+	if status != "ok" {
+		t.Fatal("Local grep error:", status)
+	}
+
+	totalCount := compareGrepResult(t, localRes, distributedRes)
+	if totalCount == "0" {
+		t.Fatal("Flag not applied")
+	}
+}
+
+// Each machine contains a log file from 100-150 lines
+// the pattern to seach for is one or more repetition of 123
+// and the pattern inserted in files is 123123
+func TestGrepRegEx(t *testing.T) {
+	pattern := "(123)+"
+
+	randomFileArgs := RandomFileArgs{
+		minLineNumber:      100,
+		maxLineNumber:      150,
+		minLineLength:      60,
+		maxLineLength:      100,
+		pattern:            "123123", // don't force any pattern
+		patternProbability: 0.8,
+		machineProbability: 1, 
+		lowerOnly: true,
+	}
+
+	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
+
+	input := fmt.Sprintf("grep -c -E %s\n", pattern)
+	distributedRes := util.GrepAllMachines(ips, clients, input)
+
+	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
+
+	if status != "ok" {
+		t.Fatal("Local grep error:", status)
+	}
+
+	totalCount := compareGrepResult(t, localRes, distributedRes)
+	if totalCount == "0" {
+		t.Fatal("Flag not applied")
+	}
+}
+
+// Each machine contains a log file from 100-150 lines
+// the pattern to seach for 1, 23, which contains space and must be enclosed with double quotes in the input
+func TestGrepPatternWithSpace(t *testing.T) {
+	pattern := "1, 23"
+
+	randomFileArgs := RandomFileArgs{
+		minLineNumber:      100,
+		maxLineNumber:      150,
+		minLineLength:      60,
+		maxLineLength:      100,
+		pattern:            pattern, // don't force any pattern
+		patternProbability: 0.7,
+		machineProbability: 1, 
+		lowerOnly: true,
+	}
+
+	localFileNames := PrepareLogFiles(randomFileArgs, ips, clients, t, homeDir)
+
+	// enclose pattern with double quotes, mimic user input
+	input := fmt.Sprintf("grep -c %s\n", `"1, 23"`)
+	distributedRes := util.GrepAllMachines(ips, clients, input)
+
+	localRes, status := localGrepMultipleFiles(input, localFileNames, homeDir)
+
+	if status != "ok" {
+		t.Fatal("Local grep error:", status)
+	}
+
+	totalCount := compareGrepResult(t, localRes, distributedRes)
+	if totalCount == "0" {
+		t.Fatal("Could not match space or pattern enclosed with double quotes")
+	}
 }

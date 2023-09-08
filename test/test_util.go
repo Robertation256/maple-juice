@@ -38,6 +38,7 @@ type RandomFileArgs struct {
 	pattern            string
 	patternProbability float64
 	machineProbability float64
+	lowerOnly bool
 }
 
 func (service *LogService) GenerateLog(args *Args, reply *string) error {
@@ -80,8 +81,11 @@ func localGrepMultipleFiles(input string, fileNames []string, homeDir string) (s
 	return out.String(), "ok"
 }
 
-func GenerateRandomString(length int) string {
-	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+func GenerateRandomString(length int, lowerOnly bool) string {
+	letterBytes := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	if lowerOnly {
+		letterBytes = "abcdefghijklmnopqrstuvwxyz"
+	}
 	b := make([]byte, length)
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
@@ -90,13 +94,13 @@ func GenerateRandomString(length int) string {
 }
 
 func GenerateRandomFile(minLineNumber int, maxLineNumber int, minLineLength int, maxLineLength int,
-	pattern string, patternProbability float64) string {
+	pattern string, patternProbability float64, lowerOnly bool) string {
 	fileContent := ""
 	lineNumbers := minLineNumber + rand.Intn(maxLineNumber-minLineNumber)
 
 	for i := 0; i < lineNumbers; i++ {
 		lineLength := minLineLength + rand.Intn(maxLineLength-minLineLength)
-		currentLine := GenerateRandomString(lineLength)
+		currentLine := GenerateRandomString(lineLength, lowerOnly)
 		if rand.Float64() < patternProbability {
 			insertPosition := rand.Intn(lineLength)
 			currentLine = currentLine[:insertPosition] + pattern + currentLine[insertPosition:]
@@ -136,7 +140,7 @@ func PrepareLogFiles(args RandomFileArgs, ips []string, clients []*rpc.Client, t
 		}
 
 		fileContent := GenerateRandomFile(args.minLineNumber, args.maxLineNumber,
-			args.minLineLength, args.maxLineLength, args.pattern, args.patternProbability)
+			args.minLineLength, args.maxLineLength, args.pattern, args.patternProbability, args.lowerOnly)
 		args := Args{FileContent: fileContent}
 
 		var logFilename string
@@ -157,7 +161,7 @@ func PrepareLogFiles(args RandomFileArgs, ips []string, clients []*rpc.Client, t
 	return localFileNames
 }
 
-func compareGrepResult(t *testing.T, localRes string, distributedRes string) {
+func compareGrepResult(t *testing.T, localRes string, distributedRes string) string {
 	splittedDistributedRes := strings.Split(distributedRes, "Total:")
 	if len(splittedDistributedRes) < 2 {
 		t.Fatal("Response doesn't include total line count")
@@ -174,7 +178,12 @@ func compareGrepResult(t *testing.T, localRes string, distributedRes string) {
 	distributedSplittedLines := strings.Split(distributedIndividual, "\n")
 	var correctCount int32 = 0
 	for _, line := range distributedSplittedLines {
-		correctCount += util.ExtractLineCount(line)
+		count, countErr := util.ExtractLineCount(line)
+		if countErr != nil {
+			t.Fatal("Error extracting line count", countErr)
+		} else {
+			correctCount += count
+		}
 	}
 	correctCountStr := strconv.FormatInt(int64(correctCount), 10)
 	if string(correctCountStr) != distributedTotal {
@@ -182,4 +191,5 @@ func compareGrepResult(t *testing.T, localRes string, distributedRes string) {
 	} else {
 		fmt.Printf("Got correct total line count:%s\n", distributedTotal)
 	}
+	return distributedTotal
 }
