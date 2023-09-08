@@ -14,6 +14,7 @@ type GrepService struct {
 	LogFileName string
 }
 
+
 func NewGrepService(logFileDir string) *GrepService {
 	filePaths, err := os.ReadDir(logFileDir)
 	if err != nil {
@@ -36,6 +37,7 @@ func NewGrepService(logFileDir string) *GrepService {
 	return this
 }
 
+// execute grep command over local log file
 func (this *GrepService) GrepLocal(args *Args, reply *string) error {
 	grepOptions, _ := ParseUserInput(args.Input)
 	
@@ -70,7 +72,7 @@ func LoadIps(homeDir string) []string {
 	ips := strings.Split(string(s), ",")
 
 	if len(ips) == 0 {
-		log.Fatal("Remote server ip config is empty")
+		log.Fatal("Remote server address config is empty")
 	}
 
 	return ips
@@ -84,6 +86,7 @@ func CloseClients(clients []*rpc.Client) {
 	}
 }
 
+// send grep command to all hosts in memeber list
 func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	grepResults := make([]string, len(ips))
 
@@ -94,7 +97,7 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 	calls := make([]*rpc.Call, len(ips))
 	args := Args{Input: input}
 	for index, ip := range ips {
-		// try start first time connection / reconnect for broken ones
+		// start connection if it is not previously established
 		if clients[index] == nil {
 			c, err := rpc.DialHTTP("tcp", ip)
 			if err == nil {
@@ -103,24 +106,25 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 		}
 
 		if clients[index] != nil {
+			// perform async rpc call
 			call := clients[index].Go("GrepService.GrepLocal", args, &(grepResults[index]), nil)
 			calls[index] = call
 		}
 	}
 
 	// iterate and look for completed rpc calls
-	for { // todo: add timeout in case some rpc takes too long to return
+	for {
 		complete := true
 		for i, call := range calls {
 			if call != nil {
 				select {
-				case _, ok := <-call.Done:
-					if !ok {
-						log.Println("Channel closed for async rpc call")
-					}
-					calls[i] = nil
-				default:
-					complete = false
+					case _, ok := <-call.Done:	// check if channel has output ready
+						if !ok {
+							log.Println("Channel closed for async rpc call")
+						}
+						calls[i] = nil
+					default:
+						complete = false
 				}
 			}
 		}
@@ -128,6 +132,8 @@ func GrepAllMachines(ips []string, clients []*rpc.Client, input string) string {
 			break
 		}
 	}
+
+	// aggregate server results
 	var totalLineCount int64 = 0
 	ret := ""
 	for _, v := range grepResults {

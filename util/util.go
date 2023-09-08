@@ -26,7 +26,6 @@ func ExtractLineCount(str string) (int32, error) {
 
 func ParseUserInput(input string) ([]string, error) {	// parse out the options and the pattern
 	containsRequiredFlag := false
-
 	ret := make([]string,0)
 	if len(input) < 5 || input[:4] != "grep" {
 		return nil, errors.New("Invalid option")
@@ -41,7 +40,7 @@ func ParseUserInput(input string) ([]string, error) {	// parse out the options a
 				ret = append(ret, "-"+ string(input[i+1]))
 			}
 			i += 2
-		} else if input[i]!=' ' {
+		} else if input[i]!=' ' {	// a pattern
 			ret = append(ret, input[i:])
 			break;
 		} else {
