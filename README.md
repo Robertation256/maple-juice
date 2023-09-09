@@ -5,7 +5,7 @@
 
    `sh setup.sh <VM_NUMBER>`
 
-   `<VM_NUMBER>` should be a unique two digit integer between 1-10 (01, 02, 03, ...10). It is used to identify which log file in all the assigned demo files should be stored on the current macine
+   `<VM_NUMBER>` should be an integer between 1-10 (1, 2, 3, ...10). It is used to identify which log file in all the assigned demo files should be stored on the current machine
 3. After running the setup script. Three folders should be created under the home directory (`~`): `test_log`, `test_log_copy`, and `log`. 
 
     -`log` contains a single log file extracted from all demo files. 

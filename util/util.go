@@ -28,7 +28,7 @@ func ParseUserInput(input string) ([]string, error) {	// parse out the options a
 	containsRequiredFlag := false
 	ret := make([]string,0)
 	if len(input) < 5 || input[:4] != "grep" {
-		return nil, errors.New("Invalid option")
+		return nil, errors.New("Must be a grep command")
 	}
 	for i := 4 ; i<len(input)-1; {
 		if input[i]=='-' {

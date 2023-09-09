@@ -75,8 +75,14 @@ func LoadIps(homeDir string) []string {
 	if len(ips) == 0 {
 		log.Fatal("Remote server address config is empty")
 	}
+	
+	ret := make([]string, len(ips))
 
-	return ips
+	for i:=0; i<len(ret); i++{
+		ret[i] = strings.Trim(ips[i], " \n\r")
+	}
+
+	return ret
 }
 
 func CloseClients(clients []*rpc.Client) {
