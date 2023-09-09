@@ -117,7 +117,7 @@ func PrepareLogFiles(args RandomFileArgs, ips []string, clients []*rpc.Client, t
 	for index, ip := range ips {
 		// try start first time connection / reconnect for broken ones
 		if clients[index] == nil {
-			c, err := rpc.DialHTTP("tcp", ip)
+			c, err := rpc.DialHTTP("tcp", ip+":8000")
 			if err == nil {
 				clients[index] = c
 			}
@@ -127,19 +127,22 @@ func PrepareLogFiles(args RandomFileArgs, ips []string, clients []*rpc.Client, t
 			continue
 		}
 
+		patternProbability := args.patternProbability
+
 		// check if pattern should appear on machine
-		if rand.Float64() >= args.machineProbability && args.machineProbability != -1 {
-			args.patternProbability = 0
+		randFloat := rand.Float64()
+		if randFloat >= args.machineProbability && args.machineProbability != -1 {
+			patternProbability = 0
 		}
 
 		if args.machineProbability == -1 && oneMachineHasPattern {
-			args.patternProbability = 0
+			patternProbability = 0
 		} else {
 			oneMachineHasPattern = true
 		}
 
 		fileContent := GenerateRandomFile(args.minLineNumber, args.maxLineNumber,
-			args.minLineLength, args.maxLineLength, args.pattern, args.patternProbability, args.lowerOnly)
+			args.minLineLength, args.maxLineLength, args.pattern, patternProbability, args.lowerOnly)
 		args := Args{FileContent: fileContent}
 		
 

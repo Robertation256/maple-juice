@@ -223,8 +223,8 @@ func TestPatternOnSomeMachines(t *testing.T) {
 		minLineLength:      5,
 		maxLineLength:      15,
 		pattern:            pattern,
-		patternProbability: 0.5,
-		machineProbability: 0.7,
+		patternProbability: 0.8,
+		machineProbability: 0.3,
 		lowerOnly: false,
 	}
 
