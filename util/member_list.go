@@ -2,7 +2,9 @@ package util
 
 import (
 	"sync"
-	// "time"
+	"time"
+	"bytes"
+	"binary"
 )
 
 const (
@@ -14,12 +16,13 @@ const (
 	FAILED uint8 = 2
 	LEFT uint8 = 3
 
-	PERIOD_MILLI int64 = 500
+	PERIOD_MILLI int64 = 500	//todo: revisit these two values
+	TIMEOUT_MILLI int64 = 1000 
 )
 
 
 type MemberListEntry struct {
-	ip [4]int8
+	ip [4]uint8
 	port uint16 
 	startUpTs int64  // we can use less bytes for this if we want tho
 
@@ -29,15 +32,41 @@ type MemberListEntry struct {
 	expirationTs int64	// hearbeat must be received before this ts
 }
 
+func (this *MemberListEntry) isFailed() bool {
+	return this.status == FAILED || time.Now().UnixMilli() >= this.expirationTs
+}
+
+func (this *MemberListEntry) resetTimer(){
+	this.expirationTs = time.Now().UnixMilli() + TIMEOUT_MILLI
+}
 
 // simple in-place merge. not thread-safe
-func (this *MemberListEntry) Merge(remote MemberListEntry, protocol int){
-	if remote.status > this.status {
-		this.status = remote.status 	// LEFT dominates FAILED dominates SUSPICIOUS
-		// todo: report status
-	} else {
+func (this *MemberListEntry) Merge(remote MemberListEntry, protocol uint8) *MemberListEntry {
+	if remote.status > this.status {	// LEFT dominates FAILED dominates SUS dominiates NORMAL
+		// ignore if SUS received under G
+		if protocol == G && remote.status == SUS {
+			return this 
+		}
 		
-	}
+		this.status = remote.status 	
+		if remote.status == SUS {
+			this.resetTimer()
+		}
+		reportStatusUpdate(*this)
+	} else if (
+		remote.seqNum > this.seqNum && 
+		// normal seq num inc
+		((remote.status == NORMAL && this.status == NORMAL ) || 
+		// a node revives
+		(protocol == GS && remote.status == NORMAL &&
+			this.status == SUS))
+	) {	
+	   this.status = NORMAL 
+	   this.seqNum = remote.seqNum
+	   this.resetTimer
+    }
+	
+	return this 
 }
 
 // compare entry node id
@@ -67,7 +96,6 @@ type EntryNode struct {
 	next *MemberListEntry
 }
 
-
 type MemberList struct {
 	protocol   uint8
 	protocolVersion uint		// used for syncing protocol used across machines
@@ -75,15 +103,48 @@ type MemberList struct {
 	lock sync.Mutex 			// write lock
 }
 
-// inplace merge
+// serialiation
+func (this *MemberList) WriteToBuffer(buf bytes.Buffer){
+	this.lock.Lock() 
+	buf.write(protocol)
+
+	var uint16Arr [2]byte 
+	var uint32Arr [4]byte
+	var uint64Arr [8]byte
+
+	binary.LittleEndian.PutUint32(uint32Arr, this.protocolVersion)
+	buf.write(uint32Arr)
+
+	ptr :=  this.entries
+	for ptr != nil {
+		entry := ptr.value 
+		buf.write(entry.ip)
+
+		binary.LittleEndian.PutUint16(uint16Arr, entry.port)
+		buf.write(uint16Arr)
+
+		binary.LittleEndian.PutUint64(uint64Arr, entry.startUpTs)
+		buf.write(uint64Arr)
+
+
+
+	}
+
+}
+
+// merge two membership lists sorted by node id
 func (this *MemberList) Merge(other MemberList){
 	this.lock.Lock()
 
 	if other.protocolVersion > this.protocolVersion {
+		if other.protocol == G && this.protocol == GS {
+			this.cleanUpSusEntries()
+		}
 		this.protocol = other.protocol
 		this.protocolVersion = other.protocolVersion
 	}
-	head := new(EntryNode)
+
+	head := new(EntryNode) // dummy linked-list head
 	curr := head 
 	localEntry := this.entries
 	remoteEntry := other.entries 
@@ -92,21 +153,38 @@ func (this *MemberList) Merge(other MemberList){
 		cmp := EntryCmp(localEntry.value, remoteEntry.value)
 		if cmp < 0 {
 			curr.next = localEntry
-		} else if cmp > 0 {
+			localEntry = localEntry.next 
+		} else if cmp > 0 { // new entry from remote
 			curr.next = remoteEntry
-			status := remoteEntry.value.status 
-			if  status != SUS || this.protocol == GS {
-				// log new join/failure/left/sus
-			}
+			reportStatusUpdate(remoteEntry.value)
+			remoteEntry = remoteEntry.next
 		} else {
+			curr.next = localEntry.value.Merge(remoteEntry.value, this.protocol)
+			localEntry = localEntry.next 
+			remoteEntry = remoteEntry.next
+		}
+		curr = curr.next 
+	}
 
+	if remoteEntry != nil {	// more new entries
+		curr.next = remoteEntry
+		for remoteEntry != nil {
+			reportStatusUpdate(remoteEntry.value)
+			remoteEntry = remoteEntry.next
 		}
 	}
 
-
-
-
-
-
+	if localEntry != nil {
+		curr.next = localEntry
+	}
 	this.lock.Unlock()
+}
+
+func (this *MemberList) cleanUpSusEntries(){
+	// todo: expire all sus entries when switching from GS to G
+}
+
+func reportStatusUpdate(e MemberListEntry){
+	// todo: if NORMAL report new join, 
+	// report the status as is for the rest
 }
