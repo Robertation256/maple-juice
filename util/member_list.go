@@ -1,190 +1,355 @@
 package util
 
 import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"log"
 	"sync"
 	"time"
-	"bytes"
-	"binary"
 )
 
 const (
-	G	uint8 = 1	// gossip protocol
-	GS	uint8 = 2	// gossip + suspicion protocol
+	NA uint8 = 0 // happens for new joiner
+	G  uint8 = 1 // gossip protocol
+	GS uint8 = 2 // gossip + suspicion protocol
 
 	NORMAL uint8 = 0
-	SUS uint8 = 1
+	SUS    uint8 = 1
 	FAILED uint8 = 2
-	LEFT uint8 = 3
+	LEFT   uint8 = 3
 
-	PERIOD_MILLI int64 = 500	//todo: revisit these two values
-	TIMEOUT_MILLI int64 = 1000 
+	PERIOD_MILLI  int64 = 500 //todo: revisit these two values
+	TIMEOUT_MILLI int64 = 3000
+
+	MAX_ENTRY_NUM int = 100 // max amount of entries per UDP packet
+	ENTRY_SIZE    int = 19
 )
 
-
-type MemberListEntry struct {
-	ip [4]uint8
-	port uint16 
-	startUpTs int64  // we can use less bytes for this if we want tho
-
-	seqNum uint32
-	status uint8	
-
-	expirationTs int64	// hearbeat must be received before this ts
-}
-
-func (this *MemberListEntry) isFailed() bool {
-	return this.status == FAILED || time.Now().UnixMilli() >= this.expirationTs
-}
-
-func (this *MemberListEntry) resetTimer(){
-	this.expirationTs = time.Now().UnixMilli() + TIMEOUT_MILLI
-}
-
-// simple in-place merge. not thread-safe
-func (this *MemberListEntry) Merge(remote MemberListEntry, protocol uint8) *MemberListEntry {
-	if remote.status > this.status {	// LEFT dominates FAILED dominates SUS dominiates NORMAL
-		// ignore if SUS received under G
-		if protocol == G && remote.status == SUS {
-			return this 
-		}
-		
-		this.status = remote.status 	
-		if remote.status == SUS {
-			this.resetTimer()
-		}
-		reportStatusUpdate(*this)
-	} else if (
-		remote.seqNum > this.seqNum && 
-		// normal seq num inc
-		((remote.status == NORMAL && this.status == NORMAL ) || 
-		// a node revives
-		(protocol == GS && remote.status == NORMAL &&
-			this.status == SUS))
-	) {	
-	   this.status = NORMAL 
-	   this.seqNum = remote.seqNum
-	   this.resetTimer
-    }
-	
-	return this 
-}
-
-// compare entry node id
-func EntryCmp(e1 MemberListEntry, e2 MemberListEntry) int {
-	for i:=0; i<4; i++ {
-		ipCmp := e1.ip[i] - e2.ip[1]
-		if ipCmp != 0 {
-			return int(ipCmp) 
-		}
-	}
-	portCmp := e1.port - e2.port  
-	if portCmp != 0 {
-		return int(portCmp)
-	}
-	tsCmp := e1.startUpTs - e2.startUpTs
-	if tsCmp > 0 {
-		return 1
-	} else if tsCmp < 0{
-		return -1
-	} 
-	return 0
-}
+// read write lock
+var memberListLock sync.Mutex
 
 // linked list node
 type EntryNode struct {
-	value MemberListEntry
-	next *MemberListEntry
+	Value *MemberListEntry
+	Next  *EntryNode
 }
 
 type MemberList struct {
-	protocol   uint8
-	protocolVersion uint		// used for syncing protocol used across machines
-	entries *EntryNode
-	lock sync.Mutex 			// write lock
+	Protocol        uint8
+	ProtocolVersion uint32 // used for syncing protocol used across machines
+	Entries         *EntryNode
+	SelfEntry       *MemberListEntry
 }
 
-// serialiation
-func (this *MemberList) WriteToBuffer(buf bytes.Buffer){
-	this.lock.Lock() 
-	buf.write(protocol)
-
-	var uint16Arr [2]byte 
-	var uint32Arr [4]byte
-	var uint64Arr [8]byte
-
-	binary.LittleEndian.PutUint32(uint32Arr, this.protocolVersion)
-	buf.write(uint32Arr)
-
-	ptr :=  this.entries
-	for ptr != nil {
-		entry := ptr.value 
-		buf.write(entry.ip)
-
-		binary.LittleEndian.PutUint16(uint16Arr, entry.port)
-		buf.write(uint16Arr)
-
-		binary.LittleEndian.PutUint64(uint64Arr, entry.startUpTs)
-		buf.write(uint64Arr)
-
-
-
+func NewMemberList(port uint16) *MemberList {
+	selfEntry := &MemberListEntry{
+		Ip:        getOutboundIp(),
+		Port:      port,
+		StartUpTs: time.Now().UnixMilli(),
+		SeqNum:    0,
+		Status:    NORMAL,
 	}
 
+	return &MemberList{
+		Protocol:        0,
+		ProtocolVersion: 0,
+		Entries:         &EntryNode{Value: selfEntry},
+		SelfEntry:       selfEntry,
+	}
+}
+
+func (this *MemberList) IncSelfSeqNum() uint32 {
+	memberListLock.Lock()
+	this.SelfEntry.SeqNum += 1
+	ret := this.SelfEntry.SeqNum
+	memberListLock.Unlock()
+	return ret
+}
+
+// insert a new entry, only used when introducer sees a new joiner
+func (this *MemberList) AddNewEntry(entry *MemberListEntry) error {
+	head := new(EntryNode)
+	memberListLock.Lock()
+	defer memberListLock.Unlock()
+
+	head.Next = this.Entries
+	curr := this.Entries
+	prev := head
+	for curr != nil {
+		cmp := EntryCmp(entry, curr.Value)
+		if cmp < 0 {
+			break
+		} else if cmp == 0 {
+			return errors.New("Attempted to add a duplicate entry")
+		}
+		prev = curr
+		curr = curr.Next
+	}
+
+	newNode := EntryNode{Value: entry, Next: curr}
+	prev.Next = &newNode
+	this.Entries = head.Next
+	return nil
+}
+
+// distribute membership list across multiple UDP packets
+// each with #entries <= MAX_ENTRY_NUM
+func (this *MemberList) ToPayloads() [][]byte {
+	var uint16Arr []byte = make([]byte, 2)
+	var uint32Arr []byte = make([]byte, 4)
+	var uint64Arr []byte = make([]byte, 8)
+	var count int = 0
+	ret := make([][]byte, 0)
+
+	memberListLock.Lock()
+
+	ptr := this.Entries
+	for ptr != nil {
+		count = 0
+		buf := bytes.NewBuffer(make([]byte, 0))
+		//write member list header
+		buf.WriteByte(this.Protocol)
+		binary.LittleEndian.PutUint32(uint32Arr, this.ProtocolVersion)
+		buf.Write(uint32Arr)
+
+		// entries
+		for ptr != nil && count < MAX_ENTRY_NUM {
+			entry := ptr.Value
+			buf.Write(entry.Ip[:])
+
+			binary.LittleEndian.PutUint16(uint16Arr, entry.Port)
+			buf.Write(uint16Arr)
+
+			binary.LittleEndian.PutUint64(uint64Arr, uint64(entry.StartUpTs))
+			buf.Write(uint64Arr)
+
+			binary.LittleEndian.PutUint32(uint32Arr, entry.SeqNum)
+			buf.Write(uint32Arr)
+
+			status := entry.Status
+			if entry == this.SelfEntry {
+				status = NORMAL
+			} else if entry.isFailed() { // do a lazy check here upon each serialization
+				entry.Status = FAILED
+				status = FAILED
+			}
+
+			buf.WriteByte(status)
+			count++
+			ptr = ptr.Next
+		}
+
+		ret = append(ret, buf.Bytes())
+	}
+	memberListLock.Unlock()
+	return ret
+}
+
+// deserialization
+// todo: handle buffer underflow
+func FromPayload(payload []byte, size int) *MemberList {
+	buf := bytes.NewBuffer(payload)
+	ret := new(MemberList)
+	head := new(EntryNode)
+	curr := head
+
+	ret.Protocol = buf.Next(1)[0]
+	ret.ProtocolVersion = binary.LittleEndian.Uint32(buf.Next(4))
+	size -= 5
+
+	var prevEntry *MemberListEntry = nil
+
+	for size >= ENTRY_SIZE {
+		var arr [4]byte
+		copy(arr[:], buf.Next(4))
+		var ip [4]uint8 = arr
+		var port uint16 = binary.LittleEndian.Uint16(buf.Next(2))
+		var startUpTs = int64(binary.LittleEndian.Uint64(buf.Next(8)))
+		var seqNum uint32 = binary.LittleEndian.Uint32(buf.Next(4))
+		var status uint8 = buf.Next(1)[0]
+
+		listEntry := MemberListEntry{
+			Ip:        ip,
+			Port:      port,
+			StartUpTs: startUpTs,
+			SeqNum:    seqNum,
+			Status:    status,
+		}
+
+		if prevEntry != nil && EntryCmp(prevEntry, &listEntry) >= 0 {
+			log.Print("Corrupted remote member list: node id not sorted")
+			return nil
+		}
+		prevEntry = &listEntry
+		curr.Next = &EntryNode{Value: &listEntry, Next: nil}
+		curr = curr.Next
+		size -= ENTRY_SIZE
+	}
+	ret.Entries = head.Next
+	return ret
+}
+
+func (this *MemberList) ToString() string {
+	memberListLock.Lock()
+	protocol := "Unknown"
+	if this.Protocol == G {
+		protocol = "Gossip"
+	} else if this.Protocol == GS {
+		protocol = "Gossip + Suspicion"
+	}
+	ret := fmt.Sprintf("Member list ------------\n"+
+		"protocol: %s\n"+
+		"protocolVersion: %d\n",
+		protocol, this.ProtocolVersion)
+
+	curr := this.Entries
+	for curr != nil {
+		if curr.Value != this.SelfEntry {
+			ret += "........................\n"
+			ret += curr.Value.toString()
+		}
+		curr = curr.Next
+	}
+	memberListLock.Unlock()
+	return ret
 }
 
 // merge two membership lists sorted by node id
-func (this *MemberList) Merge(other MemberList){
-	this.lock.Lock()
+func (this *MemberList) Merge(other MemberList) {
+	memberListLock.Lock()
 
-	if other.protocolVersion > this.protocolVersion {
-		if other.protocol == G && this.protocol == GS {
+	if other.ProtocolVersion > this.ProtocolVersion || this.Protocol == NA {
+		if other.Protocol == G && this.Protocol == GS {
 			this.cleanUpSusEntries()
 		}
-		this.protocol = other.protocol
-		this.protocolVersion = other.protocolVersion
+		this.Protocol = other.Protocol
+		this.ProtocolVersion = other.ProtocolVersion
 	}
 
 	head := new(EntryNode) // dummy linked-list head
-	curr := head 
-	localEntry := this.entries
-	remoteEntry := other.entries 
+	curr := head
+	localEntry := this.Entries
+	remoteEntry := other.Entries
 
 	for localEntry != nil && remoteEntry != nil {
-		cmp := EntryCmp(localEntry.value, remoteEntry.value)
+		cmp := EntryCmp(localEntry.Value, remoteEntry.Value)
 		if cmp < 0 {
-			curr.next = localEntry
-			localEntry = localEntry.next 
+			curr.Next = localEntry
+			localEntry = localEntry.Next
 		} else if cmp > 0 { // new entry from remote
-			curr.next = remoteEntry
-			reportStatusUpdate(remoteEntry.value)
-			remoteEntry = remoteEntry.next
+			remoteEntry.Value.resetTimer()
+			curr.Next = remoteEntry
+			reportStatusUpdate(remoteEntry.Value)
+			remoteEntry = remoteEntry.Next
 		} else {
-			curr.next = localEntry.value.Merge(remoteEntry.value, this.protocol)
-			localEntry = localEntry.next 
-			remoteEntry = remoteEntry.next
+			curr.Next = localEntry
+			if localEntry.Value != this.SelfEntry {
+				localEntry.Value.Merge(remoteEntry.Value, this.Protocol)
+			}
+			localEntry = localEntry.Next
+			remoteEntry = remoteEntry.Next
 		}
-		curr = curr.next 
+		curr = curr.Next
 	}
 
-	if remoteEntry != nil {	// more new entries
-		curr.next = remoteEntry
+	if remoteEntry != nil { // more new entries
+		curr.Next = remoteEntry
 		for remoteEntry != nil {
-			reportStatusUpdate(remoteEntry.value)
-			remoteEntry = remoteEntry.next
+			reportStatusUpdate(remoteEntry.Value)
+			remoteEntry = remoteEntry.Next
 		}
 	}
 
 	if localEntry != nil {
-		curr.next = localEntry
+		curr.Next = localEntry
 	}
-	this.lock.Unlock()
+	this.Entries = head.Next
+	memberListLock.Unlock()
 }
 
-func (this *MemberList) cleanUpSusEntries(){
+// get an array of host:port of alive members
+func (this *MemberList) AliveMembers() []string {
+	var ret []string
+	memberListLock.Lock()
+	ptr := this.Entries
+	for ptr != nil {
+		if ptr.Value != this.SelfEntry && ptr.Value.isAlive() {
+			ret = append(ret, ptr.Value.Addr())
+		}
+		ptr = ptr.Next
+	}
+	memberListLock.Unlock()
+	return ret
+}
+
+func (this *MemberList) UpdateProtocol(p uint8) {
+	if p != G && p != GS {
+		log.Println("Failed to update protocol: unknown protocol")
+		return
+	}
+	memberListLock.Lock()
+	this.Protocol = p
+	this.ProtocolVersion++
+	memberListLock.Unlock()
+}
+
+func (this *MemberList) cleanUpSusEntries() {
 	// todo: expire all sus entries when switching from GS to G
 }
 
-func reportStatusUpdate(e MemberListEntry){
-	// todo: if NORMAL report new join, 
+func (this *MemberList) cleanUpObseleteEntries() {
+	// todo: remove LEFT/FAILED entries after T-cleanup
+}
+
+func reportStatusUpdate(e *MemberListEntry) {
+	// todo: if NORMAL report new join,
 	// report the status as is for the rest
+
+	// change below to actual logging to file
+	status := "NORMAL"
+	if e.Status == FAILED {
+		status = "FAILED"
+	} else if e.Status == LEFT {
+		status = "LEFT"
+	} else if e.Status == SUS {
+		status = "SUS"
+	}
+	log.Printf("Entry update: %s - %s", status, e.Addr())
+}
+
+// a simple test of serdes
+// todo: move it to test cases
+func main() {
+	e1 := MemberListEntry{
+		Ip:        [4]uint8{6, 7, 8, 9},
+		Port:      8000,
+		StartUpTs: time.Now().UnixMilli(),
+		Status:    NORMAL,
+		SeqNum:    666,
+	}
+
+	e2 := MemberListEntry{
+		Ip:        [4]uint8{125, 179, 210, 107},
+		Port:      8001,
+		StartUpTs: time.Now().UnixMilli() - 100,
+		Status:    FAILED,
+		SeqNum:    777,
+	}
+	n1 := EntryNode{Value: &e1}
+	n2 := EntryNode{Value: &e2}
+	n1.Next = &n2
+	mbl := MemberList{
+		Protocol:        G,
+		ProtocolVersion: 321,
+		Entries:         &n1,
+	}
+
+	payload := mbl.ToPayloads()
+
+	deserialized := FromPayload(payload[0], len(payload[0]))
+
+	fmt.Print(deserialized.ToString())
+
 }
