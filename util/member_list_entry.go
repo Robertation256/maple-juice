@@ -35,6 +35,12 @@ func (this *MemberListEntry) isAlive() bool {
 		time.Now().UnixMilli() < this.ExpirationTs
 }
 
+// a failed/left entry that passed cleanup ts
+func (this *MemberListEntry) isObsolete() bool {
+	return (this.Status == FAILED || this.Status == LEFT) &&
+		this.ExpirationTs <= time.Now().UnixMilli()
+}
+
 func (this *MemberListEntry) Addr() string {
 	return fmt.Sprintf("%d.%d.%d.%d:%d",
 		this.Ip[0],this.Ip[1],this.Ip[2],this.Ip[3],this.Port)
@@ -42,6 +48,10 @@ func (this *MemberListEntry) Addr() string {
 
 func (this *MemberListEntry) resetTimer(){
 	this.ExpirationTs = time.Now().UnixMilli() + TIMEOUT_MILLI
+}
+
+func (this *MemberListEntry) setCleanupTimer(){
+	this.ExpirationTs = time.Now().UnixMilli() + CLEANUP_MILLI
 }
 
 func (this *MemberListEntry) toString() string {
@@ -77,15 +87,12 @@ func (this *MemberListEntry) toString() string {
 // simple in-place merge. not thread-safe
 func (this *MemberListEntry) Merge(remote *MemberListEntry, protocol uint8) *MemberListEntry {
 	
-	if remote.Status > this.Status {	// LEFT dominates FAILED dominates SUS dominiates NORMAL
-		// ignore if SUS received under G
-		if protocol == G && remote.Status == SUS {
-			return this 
-		}
-		
+	if remote.Status > this.Status {	// LEFT > FAILED > SUS > NORMAL		
 		this.Status = remote.Status 	
 		if remote.Status == SUS {
 			this.resetTimer()
+		} else if remote.Status != NORMAL {
+			this.setCleanupTimer()	// set up cleanup ts for failed/left entries
 		}
 		reportStatusUpdate(this)
 	} else if (
