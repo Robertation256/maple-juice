@@ -140,6 +140,7 @@ func (this *MemberList) ToPayloads() [][]byte {
 				} else if entry.isFailed() { // do a lazy flag check and write here
 					entry.Status = FAILED
 					status = FAILED
+					entry.setCleanupTimer()
 				}
 	
 				buf.WriteByte(status)
