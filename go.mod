@@ -1,3 +1,3 @@
-module cs425-mp1
+module cs425-mp2
 
-go 1.23
+go 1.12
