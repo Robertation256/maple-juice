@@ -30,7 +30,7 @@ func StartMembershipListServer(receivePort uint16, introducerAddr string, localL
 			log.Fatal("Member list server failed to boostrap")
 		}
 
-		localList.Merge(*boostrapMemberList)
+		localList.Merge(boostrapMemberList)
 	}
 
 
@@ -58,7 +58,7 @@ func startHeartbeatReciever(port uint16, localList *util.MemberList, conn *net.U
 		if err == nil && n > 0 {
 			remoteList := util.FromPayload(buf, n)
 			if remoteList != nil{
-				localList.Merge(*remoteList)
+				localList.Merge(remoteList)
 			}
 		}
 	}

@@ -22,6 +22,7 @@ const (
 
 	PERIOD_MILLI  int64 = 500 //todo: revisit these two values
 	TIMEOUT_MILLI int64 = 3000
+	CLEANUP_MILLI int64 = 300000 // time to wait before removing failed/left entries
 
 	MAX_ENTRY_NUM int = 100 // max amount of entries per UDP packet
 	ENTRY_SIZE    int = 19
@@ -96,12 +97,15 @@ func (this *MemberList) AddNewEntry(entry *MemberListEntry) error {
 
 // distribute membership list across multiple UDP packets
 // each with #entries <= MAX_ENTRY_NUM
+// meantime check for failed entries and clean up obsolete failed/left entries
 func (this *MemberList) ToPayloads() [][]byte {
 	var uint16Arr []byte = make([]byte, 2)
 	var uint32Arr []byte = make([]byte, 4)
 	var uint64Arr []byte = make([]byte, 8)
 	var count int = 0
 	ret := make([][]byte, 0)
+	head := new(EntryNode)
+	prev := head 
 
 	memberListLock.Lock()
 
@@ -117,32 +121,42 @@ func (this *MemberList) ToPayloads() [][]byte {
 		// entries
 		for ptr != nil && count < MAX_ENTRY_NUM {
 			entry := ptr.Value
-			buf.Write(entry.Ip[:])
 
-			binary.LittleEndian.PutUint16(uint16Arr, entry.Port)
-			buf.Write(uint16Arr)
+			if entry == this.SelfEntry || !entry.isObsolete() {
+				buf.Write(entry.Ip[:])
 
-			binary.LittleEndian.PutUint64(uint64Arr, uint64(entry.StartUpTs))
-			buf.Write(uint64Arr)
-
-			binary.LittleEndian.PutUint32(uint32Arr, entry.SeqNum)
-			buf.Write(uint32Arr)
-
-			status := entry.Status
-			if entry == this.SelfEntry {
-				status = NORMAL
-			} else if entry.isFailed() { // do a lazy check here upon each serialization
-				entry.Status = FAILED
-				status = FAILED
+				binary.LittleEndian.PutUint16(uint16Arr, entry.Port)
+				buf.Write(uint16Arr)
+	
+				binary.LittleEndian.PutUint64(uint64Arr, uint64(entry.StartUpTs))
+				buf.Write(uint64Arr)
+	
+				binary.LittleEndian.PutUint32(uint32Arr, entry.SeqNum)
+				buf.Write(uint32Arr)
+	
+				status := entry.Status
+				if entry == this.SelfEntry {
+					status = NORMAL
+				} else if entry.isFailed() { // do a lazy flag check and write here
+					entry.Status = FAILED
+					status = FAILED
+					entry.setCleanupTimer()
+				}
+	
+				buf.WriteByte(status)
+				count++
+				prev.Next = ptr 
+				prev = ptr 
 			}
-
-			buf.WriteByte(status)
-			count++
 			ptr = ptr.Next
 		}
 
-		ret = append(ret, buf.Bytes())
+		if count > 0 {
+			ret = append(ret, buf.Bytes())
+		}
 	}
+
+	this.Entries = head.Next
 	memberListLock.Unlock()
 	return ret
 }
@@ -206,7 +220,7 @@ func (this *MemberList) ToString() string {
 
 	curr := this.Entries
 	for curr != nil {
-		if curr.Value != this.SelfEntry {
+		if curr.Value != this.SelfEntry && !curr.Value.isObsolete(){
 			ret += "........................\n"
 			ret += curr.Value.toString()
 		}
@@ -217,16 +231,11 @@ func (this *MemberList) ToString() string {
 }
 
 // merge two membership lists sorted by node id
-func (this *MemberList) Merge(other MemberList) {
+func (this *MemberList) Merge(other *MemberList) {
 	memberListLock.Lock()
+	defer memberListLock.Unlock()
 
-	if other.ProtocolVersion > this.ProtocolVersion || this.Protocol == NA {
-		if other.Protocol == G && this.Protocol == GS {
-			this.cleanUpSusEntries()
-		}
-		this.Protocol = other.Protocol
-		this.ProtocolVersion = other.ProtocolVersion
-	}
+	this.mergeProtocol(other)
 
 	head := new(EntryNode) // dummy linked-list head
 	curr := head
@@ -239,9 +248,13 @@ func (this *MemberList) Merge(other MemberList) {
 			curr.Next = localEntry
 			localEntry = localEntry.Next
 		} else if cmp > 0 { // new entry from remote
-			remoteEntry.Value.resetTimer()
-			curr.Next = remoteEntry
+			if remoteEntry.Value.Status == SUS || remoteEntry.Value.Status == NORMAL {
+				remoteEntry.Value.resetTimer()
+			} else {
+				remoteEntry.Value.setCleanupTimer()
+			}
 			reportStatusUpdate(remoteEntry.Value)
+			curr.Next = remoteEntry
 			remoteEntry = remoteEntry.Next
 		} else {
 			curr.Next = localEntry
@@ -257,6 +270,11 @@ func (this *MemberList) Merge(other MemberList) {
 	if remoteEntry != nil { // more new entries
 		curr.Next = remoteEntry
 		for remoteEntry != nil {
+			if remoteEntry.Value.Status == SUS || remoteEntry.Value.Status == NORMAL {
+				remoteEntry.Value.resetTimer()
+			} else {
+				remoteEntry.Value.setCleanupTimer()
+			}
 			reportStatusUpdate(remoteEntry.Value)
 			remoteEntry = remoteEntry.Next
 		}
@@ -266,8 +284,26 @@ func (this *MemberList) Merge(other MemberList) {
 		curr.Next = localEntry
 	}
 	this.Entries = head.Next
-	memberListLock.Unlock()
 }
+
+// handle potential protocol change
+func (this *MemberList) mergeProtocol(other *MemberList){
+
+	// resolve protocol incompatibility by pruning sus entries
+	if this.ProtocolVersion > other.ProtocolVersion && other.Protocol == GS {
+		other.pruneSusEntries()	
+	} else if this.ProtocolVersion < other.ProtocolVersion && this.Protocol == GS {
+		this.pruneSusEntries()
+	}
+
+	if this.ProtocolVersion < other.ProtocolVersion {
+		this.Protocol = other.Protocol
+		this.ProtocolVersion = other.ProtocolVersion
+	}
+
+}
+
+
 
 // get an array of host:port of alive members
 func (this *MemberList) AliveMembers() []string {
@@ -295,12 +331,17 @@ func (this *MemberList) UpdateProtocol(p uint8) {
 	memberListLock.Unlock()
 }
 
-func (this *MemberList) cleanUpSusEntries() {
-	// todo: expire all sus entries when switching from GS to G
-}
-
-func (this *MemberList) cleanUpObseleteEntries() {
-	// todo: remove LEFT/FAILED entries after T-cleanup
+// mark all sus entries as failed when we switch from Gossip + Suspicion to Gossip
+func (this *MemberList) pruneSusEntries() {
+	memberListLock.Lock()
+	defer memberListLock.Unlock()
+	ptr := this.Entries
+	for ptr != nil {
+		if ptr.Value.Status == SUS {
+			ptr.Value.Status = FAILED
+		}
+		ptr = ptr.Next
+	}
 }
 
 func reportStatusUpdate(e *MemberListEntry) {
