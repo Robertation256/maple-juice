@@ -71,7 +71,7 @@ func main() {
 		"list_self":         "list self’s id",
 		"leave":             "voluntarily leave the group",
 		"enable_suspicion":  "change protocol to GS",
-		"disable_suspicion": "change protocal to G",
+		"disable_suspicion": "change protocol to G",
 	}
 
 	defer util.ProcessLogger.Close()
@@ -108,10 +108,20 @@ func main() {
 			return
 		case "enable_suspicion":
 			// switch to GS
-			localMembershipList.UpdateProtocol(util.GS)
+			if localMembershipList.Protocol == util.GS {
+				fmt.Println("Suspicion already enabled in current protocol. No changes were made\n")
+			} else {
+				localMembershipList.UpdateProtocol(util.GS)
+				fmt.Println("Switched protocol to GS\n")
+			}
 		case "disable_suspicion":
 			// switch to G
-			localMembershipList.UpdateProtocol(util.G)
+			if localMembershipList.Protocol == util.G {
+				fmt.Println("Suspicion already disabled in current protocol. No changes were made\n")
+			} else {
+				localMembershipList.UpdateProtocol(util.G)
+				fmt.Println("Switched protocol to G\n")
+			}
 		case "help":
 			for k, v := range validCommands {
 				fmt.Printf("%s: %s\n", k, v)

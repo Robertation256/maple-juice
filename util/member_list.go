@@ -367,10 +367,6 @@ func (this *MemberList) pruneSusEntries() {
 }
 
 func reportStatusUpdate(e *MemberListEntry) {
-	// todo: if NORMAL report new join,
-	// report the status as is for the rest
-
-	// change below to actual logging to file
 	id := fmt.Sprintf("%s-%d", e.Addr(), e.StartUpTs)
 	status := "JOINED"
 	if e.Status == FAILED {
