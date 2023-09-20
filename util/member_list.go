@@ -140,10 +140,27 @@ func (this *MemberList) ToPayloads() [][]byte {
 				} else if entry == this.SelfEntry {
 					// status of self is set to left
 					status = LEFT
-				} else if entry.Status != FAILED && entry.isFailed() { // do a lazy flag check and write here
-					entry.Status = FAILED
-					status = FAILED
-					entry.setCleanupTimer()
+					// } else if entry.Status != FAILED && entry.isFailed() { // do a lazy flag check and write here
+					// 	entry.Status = FAILED
+					// 	status = FAILED
+					// 	entry.setCleanupTimer()
+					// }
+				} else if entry.isFailed() { // do a lazy flag check and write here
+					if entry.Status == NORMAL {
+						if this.Protocol == G {
+							entry.Status = FAILED
+							status = FAILED
+							entry.setCleanupTimer()
+						} else if this.Protocol == GS {
+							entry.Status = SUS
+							status = SUS
+							entry.resetTimer()
+						}
+					} else if entry.Status == SUS && this.Protocol == GS {
+						entry.Status = FAILED
+						status = FAILED
+						entry.setCleanupTimer()
+					}
 				}
 
 				buf.WriteByte(status)
@@ -293,10 +310,14 @@ func (this *MemberList) Merge(other *MemberList) {
 func (this *MemberList) mergeProtocol(other *MemberList) {
 
 	// resolve protocol incompatibility by pruning sus entries
-	if this.ProtocolVersion > other.ProtocolVersion && other.Protocol == GS {
-		other.pruneSusEntries()
-	} else if this.ProtocolVersion < other.ProtocolVersion && this.Protocol == GS {
-		this.pruneSusEntries()
+	if this.ProtocolVersion > other.ProtocolVersion {
+		if this.Protocol != other.Protocol && other.Protocol == GS {
+			other.pruneSusEntries()
+		}
+	} else if this.ProtocolVersion < other.ProtocolVersion {
+		if this.Protocol != other.Protocol && this.Protocol == GS {
+			this.pruneSusEntries()
+		}
 	}
 
 	if this.ProtocolVersion < other.ProtocolVersion {
@@ -327,6 +348,9 @@ func (this *MemberList) UpdateProtocol(p uint8) {
 		return
 	}
 	memberListLock.Lock()
+	if this.Protocol == GS && p == G {
+		this.pruneSusEntries()
+	}
 	this.Protocol = p
 	this.ProtocolVersion++
 	memberListLock.Unlock()
