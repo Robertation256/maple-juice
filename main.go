@@ -74,6 +74,8 @@ func main() {
 		"disable_suspicion": "change protocal to G",
 	}
 
+	defer util.ProcessLogger.Close()
+
 	for {
 		util.Prompt(`Enter a command (Type "help" for a list of available commands)`, &userCmd,
 			func(in string) bool {
@@ -117,7 +119,5 @@ func main() {
 			fmt.Println()
 		}
 	}
-
-	util.ProcessLogger.Close()
 
 }
