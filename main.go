@@ -17,8 +17,16 @@ func main() {
 	var memberListServerPort string
 	var localMembershipList *util.MemberList
 	var userCmd string
+	var logFile string
 
 	var boostrapServerAddr string
+
+	// todo: fix name and path of log file
+	util.Prompt("Enter log filename",
+		&logFile,
+		func(in string) bool { return true },
+	)
+	util.CreateProcessLogger(logFile)
 
 	util.Prompt("Start as boostrap server? [Y/n]",
 		&isBootstrapServer,
@@ -109,4 +117,7 @@ func main() {
 			fmt.Println()
 		}
 	}
+
+	util.ProcessLogger.Close()
+
 }

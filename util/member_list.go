@@ -140,11 +140,6 @@ func (this *MemberList) ToPayloads() [][]byte {
 				} else if entry == this.SelfEntry {
 					// status of self is set to left
 					status = LEFT
-					// } else if entry.Status != FAILED && entry.isFailed() { // do a lazy flag check and write here
-					// 	entry.Status = FAILED
-					// 	status = FAILED
-					// 	entry.setCleanupTimer()
-					// }
 				} else if entry.isFailed() { // do a lazy flag check and write here
 					if entry.Status == NORMAL {
 						if this.Protocol == G {
@@ -156,10 +151,12 @@ func (this *MemberList) ToPayloads() [][]byte {
 							status = SUS
 							entry.resetTimer()
 						}
+						reportStatusUpdate(entry)
 					} else if entry.Status == SUS && this.Protocol == GS {
 						entry.Status = FAILED
 						status = FAILED
 						entry.setCleanupTimer()
+						reportStatusUpdate(entry)
 					}
 				}
 
@@ -374,15 +371,21 @@ func reportStatusUpdate(e *MemberListEntry) {
 	// report the status as is for the rest
 
 	// change below to actual logging to file
-	status := "NORMAL"
+	id := fmt.Sprintf("%s-%d", e.Addr(), e.StartUpTs)
+	status := "JOINED"
 	if e.Status == FAILED {
 		status = "FAILED"
+		ProcessLogger.LogFail(id)
 	} else if e.Status == LEFT {
 		status = "LEFT"
+		ProcessLogger.LogLeave(id)
 	} else if e.Status == SUS {
 		status = "SUS"
+		ProcessLogger.LogSUS(id)
+	} else {
+		ProcessLogger.LogJoin(id)
 	}
-	log.Printf("Entry update: %s - %s", status, e.Addr())
+	log.Printf("Entry update: %s - %s", status, id)
 }
 
 // a simple test of serdes
