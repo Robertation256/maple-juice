@@ -6,7 +6,6 @@ import (
 	"cs425-mp2/util"
 	"fmt"
 	"strconv"
-	"time"
 )
 
 func main() {
@@ -101,11 +100,16 @@ func main() {
 		case "leave":
 			// leave the group
 			localMembershipList.SelfEntry.Status = util.LEFT
+			// tell sender the status has been changed
+			routines.SelfStatusChangedToLeft = true
 			// wait until the left message is sent to other processes
-			time.Sleep(time.Duration(util.PERIOD_MILLI) * time.Microsecond)
-			// terminate main function, which will terminate the program
-			// without waiting for other rountines to finish
-			return
+			for {
+				if routines.LeftMessageSent {
+					// terminate main function, which will terminate the program
+					// without waiting for other rountines to finish
+					return
+				}
+			}
 		case "enable_suspicion":
 			// switch to GS
 			if localMembershipList.Protocol == util.GS {

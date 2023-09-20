@@ -14,6 +14,9 @@ const (
 	MAX_BOOSTRAP_RETY int = 5
 )
 
+var SelfStatusChangedToLeft = false
+var LeftMessageSent = false
+
 func StartMembershipListServer(receivePort uint16, introducerAddr string, localList *util.MemberList) {
 
 	localAddr, err := net.ResolveUDPAddr("udp4", localList.SelfEntry.Addr())
@@ -93,6 +96,10 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 					log.Fatalf("Failed to send  member list %d/%d to %s  %s", i+1, len(payloads), ip, err)
 				}
 			}
+		}
+
+		if SelfStatusChangedToLeft {
+			LeftMessageSent = true
 		}
 
 	}
