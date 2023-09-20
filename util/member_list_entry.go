@@ -24,8 +24,10 @@ func (this *MemberListEntry) isFailed() bool {
 	// } else if this.Status != LEFT && time.Now().UnixMilli() >= this.ExpirationTs {
 	// 	log.Printf("%s failed from expired timer", this.addr())
 	// }
+
+	// ExpirationTs == 0 means it's self entry
 	return this.Status == FAILED ||
-		(this.Status != LEFT && time.Now().UnixMilli() >= this.ExpirationTs)
+		(this.Status != LEFT && time.Now().UnixMilli() >= this.ExpirationTs && this.ExpirationTs != 0)
 }
 
 func (this *MemberListEntry) isAlive() bool {
