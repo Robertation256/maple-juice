@@ -240,7 +240,7 @@ func (this *MemberList) ToString() string {
 
 	curr := this.Entries
 	for curr != nil {
-		if curr.Value != this.SelfEntry && !curr.Value.isObsolete() {
+		if !curr.Value.isObsolete() {
 			ret += "........................\n"
 			ret += curr.Value.ToString()
 		}

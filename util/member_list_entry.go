@@ -56,9 +56,7 @@ func (this *MemberListEntry) setCleanupTimer() {
 }
 
 func (this *MemberListEntry) ToString() string {
-	format := "ip: %d.%d.%d.%d\n" +
-		"port: %d\n" +
-		"startupTs: %d\n" +
+	format := "id: %d.%d.%d.%d:%d-%d\n" +
 		"seqNum: %d\n" +
 		"status: %s\n" +
 		"expirationTs: %d\n"
