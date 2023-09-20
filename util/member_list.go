@@ -22,7 +22,7 @@ const (
 
 	PERIOD_MILLI  int64 = 500 //todo: revisit these two values
 	TIMEOUT_MILLI int64 = 3000
-	CLEANUP_MILLI int64 = 300000 // time to wait before removing failed/left entries
+	CLEANUP_MILLI int64 = 30000 // time to wait before removing failed/left entries
 
 	MAX_ENTRY_NUM int = 100 // max amount of entries per UDP packet
 	ENTRY_SIZE    int = 19
@@ -140,7 +140,7 @@ func (this *MemberList) ToPayloads() [][]byte {
 				} else if entry == this.SelfEntry {
 					// status of self is set to left
 					status = LEFT
-				} else if entry.isFailed() { // do a lazy flag check and write here
+				} else if entry.Status != FAILED && entry.isFailed() { // do a lazy flag check and write here
 					entry.Status = FAILED
 					status = FAILED
 					entry.setCleanupTimer()
