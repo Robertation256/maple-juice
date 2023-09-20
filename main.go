@@ -5,33 +5,24 @@ import (
 	"cs425-mp2/routines"
 	"cs425-mp2/util"
 	"fmt"
-
-	// "fmt"
-	// "log"
-	// "net"
-	// "net/http"
-	// "net/rpc"
-	// "os"
 	"strconv"
-	// "time"
+	"time"
 )
 
-
-
-func main(){
-	var isBootstrapServer string 
+func main() {
+	var isBootstrapServer string
 	var boostrapServicePort string
 	var boostrapProtocol string
 	var protocol uint8
 	var memberListServerPort string
 	var localMembershipList *util.MemberList
-	var userCmd string 
+	var userCmd string
 
-	var boostrapServerAddr string  
+	var boostrapServerAddr string
 
 	util.Prompt("Start as boostrap server? [Y/n]",
 		&isBootstrapServer,
-		func(in string) bool {return in == "Y" || in == "n"},
+		func(in string) bool { return in == "Y" || in == "n" },
 	)
 
 	if isBootstrapServer == "Y" {
@@ -40,11 +31,11 @@ func main(){
 			util.IsValidPort)
 		util.Prompt("Please enter protocol [G/GS]",
 			&boostrapProtocol,
-			func(in string) bool {return in == "G" || in == "GS"})
+			func(in string) bool { return in == "G" || in == "GS" })
 		if boostrapProtocol == "G" {
-			protocol = util.G 
+			protocol = util.G
 		} else {
-			protocol = util.GS 
+			protocol = util.GS
 		}
 	} else {
 		util.Prompt("Please enter boostrap service address (ip:port)",
@@ -67,86 +58,55 @@ func main(){
 		go routines.StartMembershipListServer(port, boostrapServerAddr, localMembershipList)
 	}
 
+	validCommands := map[string]string{
+		"list_mem":          "list the membership list",
+		"list_self":         "list self’s id",
+		"leave":             "voluntarily leave the group",
+		"enable_suspicion":  "change protocol to GS",
+		"disable_suspicion": "change protocal to G",
+	}
+
 	for {
-		util.Prompt("Type print to print current membership list", &userCmd,
-		func(in string) bool {return in == "print"})
-		fmt.Println(localMembershipList.ToString())
+		util.Prompt(`Enter a command (Type "help" for a list of available commands)`, &userCmd,
+			func(in string) bool {
+				if in == "help" {
+					return true
+				}
+				for k, _ := range validCommands {
+					if k == in {
+						return true
+					}
+				}
+				return false
+			},
+		)
+
+		switch userCmd {
+		case "list_mem":
+			// print membership list
+			fmt.Println(localMembershipList.ToString())
+		case "list_self":
+			// print self's id
+			fmt.Println(localMembershipList.SelfEntry.ToString())
+		case "leave":
+			// leave the group
+			localMembershipList.SelfEntry.Status = util.LEFT
+			// wait until the left message is sent to other processes
+			time.Sleep(time.Duration(util.PERIOD_MILLI) * time.Microsecond)
+			// terminate main function, which will terminate the program
+			// without waiting for other rountines to finish
+			return
+		case "enable_suspicion":
+			// switch to GS
+			localMembershipList.UpdateProtocol(util.GS)
+		case "disable_suspicion":
+			// switch to G
+			localMembershipList.UpdateProtocol(util.G)
+		case "help":
+			for k, v := range validCommands {
+				fmt.Printf("%s: %s\n", k, v)
+			}
+			fmt.Println()
+		}
 	}
 }
-
-
-// func main() {
-// 	localPort := "8000"
-
-// 	homeDir, homeDirErr := os.UserHomeDir()
-// 	if homeDirErr != nil {
-// 		log.Fatal("Error getting user's home directory:", homeDirErr)
-// 	}
-
-// 	var isTestMode string
-// 	fmt.Println("test mode? [Y/n]")
-// 	fmt.Scanln(&isTestMode)
-// 	logFolder := homeDir + "/log"
-// 	if isTestMode == "Y" {
-// 		logFolder = homeDir + "/test_log"
-// 		fmt.Println("Running in test mode & using ~/test_log as log folder")
-// 	}
-
-// 	var ret string
-
-// 	ips := util.LoadIps(homeDir)
-
-// 	clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
-
-// 	defer util.CloseClients(clients)
-
-// 	grepService := util.NewGrepService(logFolder)
-
-// 	testService := new(test.LogService)	// service used for test
-// 	testService.LogFileDir = homeDir + "/test_log"
-// 	testService.LogFilename = grepService.LogFileName
-
-// 	rpc.Register(grepService)
-// 	rpc.Register(testService)
-// 	rpc.HandleHTTP()
-
-// 	hostname, hostNameErr := os.Hostname()
-// 	if hostNameErr != nil {
-// 		log.Fatal("Failed to get hostname", hostNameErr)
-// 	}
-
-// 	l, err := net.Listen("tcp", hostname+":"+localPort)
-// 	fmt.Printf("HTTP-RPC server is listening on port %s\n", localPort)
-
-// 	if err != nil {
-// 		log.Fatal("Failed to start local server", err)
-// 	}
-
-// 	go http.Serve(l, nil)
-
-// 	for {
-// 		ret = ""
-// 		fmt.Println("\n\n----------------------\n")
-		
-// 		fmt.Println("Enter a grep command:")
-
-// 		in := bufio.NewReader(os.Stdin)
-// 		input, _ := in.ReadString('\n')
-
-// 		start := time.Now()
-		
-// 		_, parseErr := util.ParseUserInput(input)
-// 		// if an error occured while parsing user input, prompt user to try again
-// 		if parseErr != nil {
-// 			fmt.Printf("Invalid input: %s. Please try again", parseErr)
-// 			continue
-// 		}
-		
-// 		ret = util.GrepAllMachines(ips, clients, input)
-
-// 		elasped := time.Now().Sub(start)
-		
-// 		fmt.Println(ret)
-// 		fmt.Printf("Elapsed time: %s", elasped.Round(time.Millisecond))
-// 	}
-// }

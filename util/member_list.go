@@ -105,7 +105,7 @@ func (this *MemberList) ToPayloads() [][]byte {
 	var count int = 0
 	ret := make([][]byte, 0)
 	head := new(EntryNode)
-	prev := head 
+	prev := head
 
 	memberListLock.Lock()
 
@@ -127,26 +127,29 @@ func (this *MemberList) ToPayloads() [][]byte {
 
 				binary.LittleEndian.PutUint16(uint16Arr, entry.Port)
 				buf.Write(uint16Arr)
-	
+
 				binary.LittleEndian.PutUint64(uint64Arr, uint64(entry.StartUpTs))
 				buf.Write(uint64Arr)
-	
+
 				binary.LittleEndian.PutUint32(uint32Arr, entry.SeqNum)
 				buf.Write(uint32Arr)
-	
+
 				status := entry.Status
-				if entry == this.SelfEntry {
+				if entry == this.SelfEntry && entry.Status != LEFT {
 					status = NORMAL
+				} else if entry == this.SelfEntry {
+					// status of self is set to left
+					status = LEFT
 				} else if entry.isFailed() { // do a lazy flag check and write here
 					entry.Status = FAILED
 					status = FAILED
 					entry.setCleanupTimer()
 				}
-	
+
 				buf.WriteByte(status)
 				count++
-				prev.Next = ptr 
-				prev = ptr 
+				prev.Next = ptr
+				prev = ptr
 			}
 			ptr = ptr.Next
 		}
@@ -220,9 +223,9 @@ func (this *MemberList) ToString() string {
 
 	curr := this.Entries
 	for curr != nil {
-		if curr.Value != this.SelfEntry && !curr.Value.isObsolete(){
+		if curr.Value != this.SelfEntry && !curr.Value.isObsolete() {
 			ret += "........................\n"
-			ret += curr.Value.toString()
+			ret += curr.Value.ToString()
 		}
 		curr = curr.Next
 	}
@@ -287,11 +290,11 @@ func (this *MemberList) Merge(other *MemberList) {
 }
 
 // handle potential protocol change
-func (this *MemberList) mergeProtocol(other *MemberList){
+func (this *MemberList) mergeProtocol(other *MemberList) {
 
 	// resolve protocol incompatibility by pruning sus entries
 	if this.ProtocolVersion > other.ProtocolVersion && other.Protocol == GS {
-		other.pruneSusEntries()	
+		other.pruneSusEntries()
 	} else if this.ProtocolVersion < other.ProtocolVersion && this.Protocol == GS {
 		this.pruneSusEntries()
 	}
@@ -302,8 +305,6 @@ func (this *MemberList) mergeProtocol(other *MemberList){
 	}
 
 }
-
-
 
 // get an array of host:port of alive members
 func (this *MemberList) AliveMembers() []string {
@@ -362,35 +363,35 @@ func reportStatusUpdate(e *MemberListEntry) {
 
 // a simple test of serdes
 // todo: move it to test cases
-func main() {
-	e1 := MemberListEntry{
-		Ip:        [4]uint8{6, 7, 8, 9},
-		Port:      8000,
-		StartUpTs: time.Now().UnixMilli(),
-		Status:    NORMAL,
-		SeqNum:    666,
-	}
+// func main() {
+// 	e1 := MemberListEntry{
+// 		Ip:        [4]uint8{6, 7, 8, 9},
+// 		Port:      8000,
+// 		StartUpTs: time.Now().UnixMilli(),
+// 		Status:    NORMAL,
+// 		SeqNum:    666,
+// 	}
 
-	e2 := MemberListEntry{
-		Ip:        [4]uint8{125, 179, 210, 107},
-		Port:      8001,
-		StartUpTs: time.Now().UnixMilli() - 100,
-		Status:    FAILED,
-		SeqNum:    777,
-	}
-	n1 := EntryNode{Value: &e1}
-	n2 := EntryNode{Value: &e2}
-	n1.Next = &n2
-	mbl := MemberList{
-		Protocol:        G,
-		ProtocolVersion: 321,
-		Entries:         &n1,
-	}
+// 	e2 := MemberListEntry{
+// 		Ip:        [4]uint8{125, 179, 210, 107},
+// 		Port:      8001,
+// 		StartUpTs: time.Now().UnixMilli() - 100,
+// 		Status:    FAILED,
+// 		SeqNum:    777,
+// 	}
+// 	n1 := EntryNode{Value: &e1}
+// 	n2 := EntryNode{Value: &e2}
+// 	n1.Next = &n2
+// 	mbl := MemberList{
+// 		Protocol:        G,
+// 		ProtocolVersion: 321,
+// 		Entries:         &n1,
+// 	}
 
-	payload := mbl.ToPayloads()
+// 	payload := mbl.ToPayloads()
 
-	deserialized := FromPayload(payload[0], len(payload[0]))
+// 	deserialized := FromPayload(payload[0], len(payload[0]))
 
-	fmt.Print(deserialized.ToString())
+// 	fmt.Print(deserialized.ToString())
 
-}
+// }
