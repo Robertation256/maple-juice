@@ -16,6 +16,7 @@ const (
 
 var SelfStatusChangedToLeft = false
 var LeftMessageSent = false
+var ReceiverDropRate float64 = 0
 
 func StartMembershipListServer(receivePort uint16, introducerAddr string, localList *util.MemberList) {
 
@@ -56,7 +57,12 @@ func startHeartbeatReciever(port uint16, localList *util.MemberList, conn *net.U
 
 	for {
 		n, _, err := conn.ReadFromUDP(buf)
-		// todo: add artificial packet drop
+		// artificial packet drop
+		if ReceiverDropRate != 0 {
+			if rand.Float64() <= ReceiverDropRate {
+				continue
+			}
+		}
 		if err == nil && n > 0 {
 			remoteList := util.FromPayload(buf, n)
 			if remoteList != nil {

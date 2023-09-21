@@ -36,6 +36,11 @@ func IsValidPort(in string) bool {
 	return err == nil && n >= 0 && n <= 65535
 }
 
+func IsValidDropRate(in string) bool {
+	n, err := strconv.ParseFloat(in, 64)
+	return err == nil && n >= 0 && n <= 1
+}
+
 func IsValidIp(in string) bool {
 	elems := strings.Split(in, ".")
 	if len(elems) != 4 {
