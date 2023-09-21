@@ -367,21 +367,22 @@ func (this *MemberList) pruneSusEntries() {
 }
 
 func reportStatusUpdate(e *MemberListEntry) {
+	currentTime := time.Now().UnixMilli()
 	id := fmt.Sprintf("%s-%d", e.Addr(), e.StartUpTs)
 	status := "JOINED"
 	if e.Status == FAILED {
 		status = "FAILED"
-		ProcessLogger.LogFail(id)
+		ProcessLogger.LogFail(currentTime, id)
 	} else if e.Status == LEFT {
 		status = "LEFT"
-		ProcessLogger.LogLeave(id)
+		ProcessLogger.LogLeave(currentTime, id)
 	} else if e.Status == SUS {
 		status = "SUS"
-		ProcessLogger.LogSUS(id)
+		ProcessLogger.LogSUS(currentTime, id)
 	} else {
-		ProcessLogger.LogJoin(id)
+		ProcessLogger.LogJoin(currentTime, id)
 	}
-	log.Printf("Entry update: %s - %s", status, id)
+	log.Printf("(%d) Entry update: %s - %s", time.Now().UnixMilli(), status, id)
 }
 
 // a simple test of serdes

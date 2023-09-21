@@ -70,6 +70,7 @@ func main() {
 		"leave":             "voluntarily leave the group",
 		"enable_suspicion":  "change protocol to GS",
 		"disable_suspicion": "change protocol to G",
+		"droprate":          "add an artificial drop rate",
 	}
 
 	defer util.ProcessLogger.Close()
@@ -98,7 +99,6 @@ func main() {
 			fmt.Println(localMembershipList.SelfEntry.ToString())
 		case "leave":
 			// leave the group
-			localMembershipList.SelfEntry.Status = util.LEFT
 			// tell sender the status has been changed
 			routines.SelfStatusChangedToLeft = true
 			// wait until the left message is sent to other processes
@@ -125,6 +125,10 @@ func main() {
 				localMembershipList.UpdateProtocol(util.G)
 				fmt.Println("Switched protocol to G\n")
 			}
+		case "droprate":
+			var dropRate string
+			util.Prompt(`Enter a drop rate (float between 0 and 1)`, &dropRate, util.IsValidDropRate)
+			routines.ReceiverDropRate, _ = strconv.ParseFloat(dropRate, 64)
 		case "help":
 			for k, v := range validCommands {
 				fmt.Printf("%s: %s\n", k, v)

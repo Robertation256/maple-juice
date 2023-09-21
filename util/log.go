@@ -12,6 +12,7 @@ var LoggerErr error
 
 type LogEntry struct {
 	Type    string
+	Time    int64
 	Message string
 }
 
@@ -32,7 +33,7 @@ func NewLogger(logFilePath string, bufferSize int) (*Logger, error) {
 	logger := &Logger{
 		logFile: logFile,
 		// create a new logger with two flags and no prefix
-		log:     log.New(logFile, "", log.Ldate|log.Ltime),
+		log:     log.New(logFile, "", log.Lmicroseconds|log.Ltime),
 		logChan: make(chan LogEntry, bufferSize),
 	}
 
@@ -42,33 +43,37 @@ func NewLogger(logFilePath string, bufferSize int) (*Logger, error) {
 	return logger, nil
 }
 
-func (l *Logger) LogJoin(message string) {
+func (l *Logger) LogJoin(time int64, message string) {
 	entry := LogEntry{
 		Type:    "JOIN",
+		Time:    time,
 		Message: message,
 	}
 	l.logChan <- entry
 }
 
-func (l *Logger) LogLeave(message string) {
+func (l *Logger) LogLeave(time int64, message string) {
 	entry := LogEntry{
 		Type:    "LEFT",
+		Time:    time,
 		Message: message,
 	}
 	l.logChan <- entry
 }
 
-func (l *Logger) LogFail(message string) {
+func (l *Logger) LogFail(time int64, message string) {
 	entry := LogEntry{
 		Type:    "FAIL",
+		Time:    time,
 		Message: message,
 	}
 	l.logChan <- entry
 }
 
-func (l *Logger) LogSUS(message string) {
+func (l *Logger) LogSUS(time int64, message string) {
 	entry := LogEntry{
 		Type:    "SUS",
+		Time:    time,
 		Message: message,
 	}
 	l.logChan <- entry
@@ -85,7 +90,7 @@ func (l *Logger) processLogs() {
 	defer l.wg.Done()
 
 	for entry := range l.logChan {
-		logLine := fmt.Sprintf("[%s] %s ", entry.Type, entry.Message)
+		logLine := fmt.Sprintf("(%d) [%s] %s ", entry.Time, entry.Type, entry.Message)
 		l.log.Println(logLine)
 	}
 }
