@@ -6,17 +6,16 @@ import (
 	"time"
 )
 
-
 type MemberListEntry struct {
-	Ip [4]uint8
-	Port uint16 
-	StartUpTs int64  // we can use less bytes for this if we want tho
+	Ip        [4]uint8
+	Port      uint16
+	StartUpTs int64 // we can use less bytes for this if we want tho
 
 	SeqNum uint32
-	Status uint8	
+	Status uint8
 
 	// fields below are never serialized and sent out
-	ExpirationTs int64	// hearbeat must be received before this ts
+	ExpirationTs int64 // hearbeat must be received before this ts
 }
 
 func (this *MemberListEntry) isFailed() bool {
@@ -25,12 +24,14 @@ func (this *MemberListEntry) isFailed() bool {
 	// } else if this.Status != LEFT && time.Now().UnixMilli() >= this.ExpirationTs {
 	// 	log.Printf("%s failed from expired timer", this.addr())
 	// }
-	return this.Status == FAILED || 
-		(this.Status != LEFT && time.Now().UnixMilli() >= this.ExpirationTs)
+
+	// ExpirationTs == 0 means it's self entry
+	return this.Status == FAILED ||
+		(this.Status != LEFT && time.Now().UnixMilli() >= this.ExpirationTs && this.ExpirationTs != 0)
 }
 
 func (this *MemberListEntry) isAlive() bool {
-	return this.Status != LEFT && 
+	return this.Status != LEFT &&
 		this.Status != FAILED &&
 		time.Now().UnixMilli() < this.ExpirationTs
 }
@@ -43,31 +44,29 @@ func (this *MemberListEntry) isObsolete() bool {
 
 func (this *MemberListEntry) Addr() string {
 	return fmt.Sprintf("%d.%d.%d.%d:%d",
-		this.Ip[0],this.Ip[1],this.Ip[2],this.Ip[3],this.Port)
+		this.Ip[0], this.Ip[1], this.Ip[2], this.Ip[3], this.Port)
 }
 
-func (this *MemberListEntry) resetTimer(){
+func (this *MemberListEntry) resetTimer() {
 	this.ExpirationTs = time.Now().UnixMilli() + TIMEOUT_MILLI
 }
 
-func (this *MemberListEntry) setCleanupTimer(){
+func (this *MemberListEntry) setCleanupTimer() {
 	this.ExpirationTs = time.Now().UnixMilli() + CLEANUP_MILLI
 }
 
-func (this *MemberListEntry) toString() string {
-	format := "ip: %d.%d.%d.%d\n" +
-		"port: %d\n" +
-		"startupTs: %d\n" +
+func (this *MemberListEntry) ToString() string {
+	format := "id: %d.%d.%d.%d:%d-%d\n" +
 		"seqNum: %d\n" +
 		"status: %s\n" +
 		"expirationTs: %d\n"
-		
+
 	status := "Unknown"
-	if this.isFailed(){	 // in case the flag is not set by a merge yet
+	if this.isFailed() { // in case the flag is not set by a merge yet
 		status = "Failed"
 	} else {
 		switch this.Status {
-		case NORMAL: 
+		case NORMAL:
 			status = "Normal"
 		case SUS:
 			status = "Suspicious"
@@ -76,57 +75,56 @@ func (this *MemberListEntry) toString() string {
 		}
 	}
 	return fmt.Sprintf(format,
-		 this.Ip[0],this.Ip[1],this.Ip[2],this.Ip[3],
-		 this.Port,
-		 this.StartUpTs,
-		 this.SeqNum,
-		 status,
-		 this.ExpirationTs)
+		this.Ip[0], this.Ip[1], this.Ip[2], this.Ip[3],
+		this.Port,
+		this.StartUpTs,
+		this.SeqNum,
+		status,
+		this.ExpirationTs)
 }
 
 // simple in-place merge. not thread-safe
 func (this *MemberListEntry) Merge(remote *MemberListEntry, protocol uint8) *MemberListEntry {
-	
-	if remote.Status > this.Status {	// LEFT > FAILED > SUS > NORMAL		
-		this.Status = remote.Status 	
+
+	if remote.Status > this.Status { // LEFT > FAILED > SUS > NORMAL
+		this.Status = remote.Status
 		if remote.Status == SUS {
 			this.resetTimer()
 		} else if remote.Status != NORMAL {
-			this.setCleanupTimer()	// set up cleanup ts for failed/left entries
+			this.setCleanupTimer() // set up cleanup ts for failed/left entries
 		}
 		reportStatusUpdate(this)
-	} else if (
-		remote.SeqNum > this.SeqNum && 
+	} else if remote.SeqNum > this.SeqNum &&
 		// normal seq num inc
-		((remote.Status == NORMAL && this.Status == NORMAL ) || 
-		// a node revives
-		(protocol == GS && remote.Status == NORMAL &&
-			this.Status == SUS))) {	
-	   this.Status = NORMAL 
-	   this.SeqNum = remote.SeqNum
-	   this.resetTimer()
-    }
-	
-	return this 
+		((remote.Status == NORMAL && this.Status == NORMAL) ||
+			// a node revives
+			(protocol == GS && remote.Status == NORMAL &&
+				this.Status == SUS)) {
+		this.Status = NORMAL
+		this.SeqNum = remote.SeqNum
+		this.resetTimer()
+	}
+
+	return this
 }
 
 // compare entry node id
 func EntryCmp(e1 *MemberListEntry, e2 *MemberListEntry) int {
-	for i:=0; i<4; i++ {
+	for i := 0; i < 4; i++ {
 		ipCmp := int(e1.Ip[i]) - int(e2.Ip[i])
 		if ipCmp != 0 {
 			return ipCmp
 		}
 	}
-	portCmp := int(e1.Port) - int(e2.Port)  
+	portCmp := int(e1.Port) - int(e2.Port)
 	if portCmp != 0 {
 		return portCmp
 	}
 	tsCmp := e1.StartUpTs - e2.StartUpTs
 	if tsCmp > 0 {
 		return 1
-	} else if tsCmp < 0{
+	} else if tsCmp < 0 {
 		return -1
-	} 
+	}
 	return 0
 }

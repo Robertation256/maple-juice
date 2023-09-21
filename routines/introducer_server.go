@@ -3,13 +3,13 @@ package routines
 import (
 	"cs425-mp2/util"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"net"
 	"time"
 )
 
-
-func StartIntroducer(port string, protocol uint8, localList *util.MemberList){
+func StartIntroducer(port string, protocol uint8, localList *util.MemberList) {
 	localAddr, err := net.ResolveUDPAddr("udp4", ":"+port)
 
 	if err != nil {
@@ -27,7 +27,6 @@ func StartIntroducer(port string, protocol uint8, localList *util.MemberList){
 		log.Fatal("Failed to start introducer server", err)
 	}
 
-
 	defer conn.Close()
 	buf := make([]byte, 20)
 
@@ -36,18 +35,20 @@ func StartIntroducer(port string, protocol uint8, localList *util.MemberList){
 		for i := range buf {
 			buf[i] = 0
 		}
-		
+
 		// send new joiner local member list
 		n, addr, err := conn.ReadFromUDP(buf)
 		if err == nil && n > 0 && string(buf[:4]) == "JOIN" {
 			startUpTs := int64(binary.LittleEndian.Uint64(buf[4:12]))
-			log.Printf("%s-%d joined\n", addr.AddrPort().String(), startUpTs)
+			log.Printf("Entry update: %s - %s-%d\n", "JOINED", addr.AddrPort().String(), startUpTs)
+			newProcessId := fmt.Sprintf("%s-%d", addr.AddrPort().String(), startUpTs)
+			util.ProcessLogger.LogJoin(newProcessId)
 			err = localList.AddNewEntry(&util.MemberListEntry{
-				Ip: addr.AddrPort().Addr().As4(),
-				Port: addr.AddrPort().Port(),
-				StartUpTs: startUpTs,
-				SeqNum: 0,
-				Status: util.NORMAL,
+				Ip:           addr.AddrPort().Addr().As4(),
+				Port:         addr.AddrPort().Port(),
+				StartUpTs:    startUpTs,
+				SeqNum:       0,
+				Status:       util.NORMAL,
 				ExpirationTs: time.Now().UnixMilli() + util.TIMEOUT_MILLI,
 			})
 
@@ -65,6 +66,5 @@ func StartIntroducer(port string, protocol uint8, localList *util.MemberList){
 			}
 		}
 	}
-	
 
 }

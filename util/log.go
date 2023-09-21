@@ -7,6 +7,9 @@ import (
 	"sync"
 )
 
+var ProcessLogger *Logger
+var LoggerErr error
+
 type LogEntry struct {
 	Type    string
 	Message string
@@ -21,7 +24,7 @@ type Logger struct {
 
 func NewLogger(logFilePath string, bufferSize int) (*Logger, error) {
 	// create if file does not exist, append otherwise
-	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := os.Create(logFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +52,7 @@ func (l *Logger) LogJoin(message string) {
 
 func (l *Logger) LogLeave(message string) {
 	entry := LogEntry{
-		Type:    "LEAVE",
+		Type:    "LEFT",
 		Message: message,
 	}
 	l.logChan <- entry
@@ -58,6 +61,14 @@ func (l *Logger) LogLeave(message string) {
 func (l *Logger) LogFail(message string) {
 	entry := LogEntry{
 		Type:    "FAIL",
+		Message: message,
+	}
+	l.logChan <- entry
+}
+
+func (l *Logger) LogSUS(message string) {
+	entry := LogEntry{
+		Type:    "SUS",
 		Message: message,
 	}
 	l.logChan <- entry
@@ -76,6 +87,13 @@ func (l *Logger) processLogs() {
 	for entry := range l.logChan {
 		logLine := fmt.Sprintf("[%s] %s ", entry.Type, entry.Message)
 		l.log.Println(logLine)
+	}
+}
+
+func CreateProcessLogger(logName string) {
+	ProcessLogger, LoggerErr = NewLogger(logName, 100)
+	if LoggerErr != nil {
+		fmt.Printf("Error creating logger: %v\n", LoggerErr)
 	}
 }
 

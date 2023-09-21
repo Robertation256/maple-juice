@@ -10,12 +10,14 @@ import (
 )
 
 const (
-	CONTACT_NUM int = 3		// #alive members to call per period
+	CONTACT_NUM       int = 3 // #alive members to call per period
 	MAX_BOOSTRAP_RETY int = 5
 )
 
+var SelfStatusChangedToLeft = false
+var LeftMessageSent = false
 
-func StartMembershipListServer(receivePort uint16, introducerAddr string, localList *util.MemberList){
+func StartMembershipListServer(receivePort uint16, introducerAddr string, localList *util.MemberList) {
 
 	localAddr, err := net.ResolveUDPAddr("udp4", localList.SelfEntry.Addr())
 	if err != nil {
@@ -33,76 +35,83 @@ func StartMembershipListServer(receivePort uint16, introducerAddr string, localL
 		localList.Merge(boostrapMemberList)
 	}
 
-
 	if err != nil {
 		log.Fatal("Failed to start udp server", err)
 	}
-	
+
 	defer conn.Close()
 
 	go startHeartbeatReciever(receivePort, localList, conn)
 
 	go startHeartbeatSender(localList, conn)
 
-	for {}
+	for {
+	}
 
 }
 
+func startHeartbeatReciever(port uint16, localList *util.MemberList, conn *net.UDPConn) {
 
-func startHeartbeatReciever(port uint16, localList *util.MemberList, conn *net.UDPConn){
-
-	buf := make([]byte, util.MAX_ENTRY_NUM*util.ENTRY_SIZE + 5)
+	buf := make([]byte, util.MAX_ENTRY_NUM*util.ENTRY_SIZE+5)
 
 	for {
 		n, _, err := conn.ReadFromUDP(buf)
+		// todo: add artificial packet drop
 		if err == nil && n > 0 {
 			remoteList := util.FromPayload(buf, n)
-			if remoteList != nil{
+			if remoteList != nil {
 				localList.Merge(remoteList)
 			}
 		}
 	}
 }
 
-func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn){
+func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 
 	for {
-		time.Sleep(time.Duration(util.PERIOD_MILLI)*time.Microsecond)
+		time.Sleep(time.Duration(util.PERIOD_MILLI) * time.Microsecond)
 		localList.IncSelfSeqNum()
+
+		leftStatus := SelfStatusChangedToLeft
+		if leftStatus {
+			localList.SelfEntry.Status = util.LEFT
+		}
 
 		payloads := localList.ToPayloads()
 		aliveMembers := localList.AliveMembers()
 
 		if len(aliveMembers) > CONTACT_NUM {
 			rand.NewSource(time.Now().UnixNano())
-			rand.Shuffle(len(aliveMembers),func(i, j int) {
-				aliveMembers[i], aliveMembers[j] = aliveMembers[j], aliveMembers[i] })
+			rand.Shuffle(len(aliveMembers), func(i, j int) {
+				aliveMembers[i], aliveMembers[j] = aliveMembers[j], aliveMembers[i]
+			})
 			aliveMembers = aliveMembers[:CONTACT_NUM]
 		}
-		
+
 		for _, ip := range aliveMembers {
 			remoteAddr, err := net.ResolveUDPAddr("udp4", ip)
 			if err != nil {
 				log.Printf("Error resolving remote address %s\n", ip)
 				continue
 			}
-			// todo: add artificial packet drop
+
 			for i, payload := range payloads {
 				_, err := conn.WriteToUDP(payload, remoteAddr)
-				if (err != nil){
+				if err != nil {
 					log.Fatalf("Failed to send  member list %d/%d to %s  %s", i+1, len(payloads), ip, err)
 				}
 			}
-        }
-		
+		}
+
+		if leftStatus {
+			LeftMessageSent = true
+		}
+
 	}
 
 }
 
-
-
 func getBootstrapMemberList(introducerAddr string, startUpTs int64, conn *net.UDPConn) *util.MemberList {
-
 
 	addr, err := net.ResolveUDPAddr("udp4", introducerAddr)
 
@@ -110,22 +119,20 @@ func getBootstrapMemberList(introducerAddr string, startUpTs int64, conn *net.UD
 		log.Fatal("Failed to resolve boostrap server address", err)
 	}
 
-	buf := make([]byte, util.MAX_ENTRY_NUM*util.ENTRY_SIZE + 5)
+	buf := make([]byte, util.MAX_ENTRY_NUM*util.ENTRY_SIZE+5)
 	tsBuf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(tsBuf, uint64(startUpTs))
 
-
-	for i :=0 ; i < MAX_BOOSTRAP_RETY; i++ {
+	for i := 0; i < MAX_BOOSTRAP_RETY; i++ {
 		// send join request and advertise startup ts
-		conn.WriteToUDP(append([]byte("JOIN"),tsBuf...), addr)
-		
-		
+		conn.WriteToUDP(append([]byte("JOIN"), tsBuf...), addr)
+
 		n, _, err := conn.ReadFromUDP(buf)
-		if (n > 0 && err == nil){
+		if n > 0 && err == nil {
 			return util.FromPayload(buf, n)
 		}
 
 		log.Printf("Error retrieving bootstrap member list, attempt %d/%d", i+1, MAX_BOOSTRAP_RETY)
 	}
-	return nil  
+	return nil
 }
