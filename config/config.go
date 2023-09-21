@@ -71,9 +71,11 @@ func (this *Config) ToString() string {
 	return fmt.Sprintf(
 		"LOG_SERVER_HOSTNAMES: %s\n" +
 		"LOG_SERVER_PORT: %d\n" +
-		"LOG_FILE_PATH: %s\n",
+		"LOG_FILE_PATH: %s\n" +
+		"LOG_SERVER_ID: %s\n",
 		strings.Join(this.LogServerHostnames, ","),
 		this.LogServerPort,
 		this.LogFilePath,
+		this.LogServerId,
 	)
 }
