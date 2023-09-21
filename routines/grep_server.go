@@ -74,9 +74,17 @@ func (this *GrepService) CollectLogs() string {
 				clients[index] = c
 			}
 		}
+		
 		if clients[index] != nil {
 			// perform async rpc call
 			call := clients[index].Go("GrepService.FetchLog", new(Args), &(logs[index]), nil)
+			if call.Error != nil {		// best effort redial
+				c, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d",hostname, this.Port))
+				if err == nil {
+					clients[index] = c
+					call = clients[index].Go("GrepService.FetchLog", new(Args), &(logs[index]), nil)
+				}
+			}
 			calls[index] = call
 		}
 	}
