@@ -99,7 +99,6 @@ func main() {
 			fmt.Println(localMembershipList.SelfEntry.ToString())
 		case "leave":
 			// leave the group
-			localMembershipList.SelfEntry.Status = util.LEFT
 			// tell sender the status has been changed
 			routines.SelfStatusChangedToLeft = true
 			// wait until the left message is sent to other processes
