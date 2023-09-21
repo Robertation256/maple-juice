@@ -20,11 +20,11 @@ func main() {
 	var boostrapServerAddr string
 
 	// todo: fix name and path of log file
-	util.Prompt("Enter log filename",
+	util.Prompt("Enter log filename (without filename extension)",
 		&logFile,
 		func(in string) bool { return true },
 	)
-	util.CreateProcessLogger(logFile)
+	util.CreateProcessLogger(logFile + ".log")
 
 	util.Prompt("Start as boostrap server? [Y/n]",
 		&isBootstrapServer,

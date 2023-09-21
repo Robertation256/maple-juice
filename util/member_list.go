@@ -21,8 +21,8 @@ const (
 	LEFT   uint8 = 3
 
 	PERIOD_MILLI  int64 = 500 //todo: revisit these two values
-	TIMEOUT_MILLI int64 = 3000
-	CLEANUP_MILLI int64 = 30000 // time to wait before removing failed/left entries
+	TIMEOUT_MILLI int64 = 2500
+	CLEANUP_MILLI int64 = 3000 // time to wait before removing failed/left entries
 
 	MAX_ENTRY_NUM int = 100 // max amount of entries per UDP packet
 	ENTRY_SIZE    int = 19
