@@ -57,6 +57,8 @@ func main() {
 	port := uint16(p)
 	localMembershipList = util.NewMemberList(port)
 
+	fmt.Printf("local membership service started at: %s\n", localMembershipList.SelfEntry.Addr())
+
 	if isBootstrapServer == "Y" {
 		go routines.StartIntroducer(boostrapServicePort, protocol, localMembershipList)
 		go routines.StartMembershipListServer(port, "", localMembershipList)
@@ -81,7 +83,7 @@ func main() {
 				if in == "help" {
 					return true
 				}
-				for k, _ := range validCommands {
+				for k := range validCommands {
 					if k == in {
 						return true
 					}
@@ -112,18 +114,18 @@ func main() {
 		case "enable_suspicion":
 			// switch to GS
 			if localMembershipList.Protocol == util.GS {
-				fmt.Println("Suspicion already enabled in current protocol. No changes were made\n")
+				fmt.Println("Suspicion already enabled in current protocol. No changes were made")
 			} else {
 				localMembershipList.UpdateProtocol(util.GS)
-				fmt.Println("Switched protocol to GS\n")
+				fmt.Println("Switched protocol to GS")
 			}
 		case "disable_suspicion":
 			// switch to G
 			if localMembershipList.Protocol == util.G {
-				fmt.Println("Suspicion already disabled in current protocol. No changes were made\n")
+				fmt.Println("Suspicion already disabled in current protocol. No changes were made")
 			} else {
 				localMembershipList.UpdateProtocol(util.G)
-				fmt.Println("Switched protocol to G\n")
+				fmt.Println("Switched protocol to G")
 			}
 		case "droprate":
 			var dropRate string
