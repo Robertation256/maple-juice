@@ -21,7 +21,7 @@ const (
 	LEFT   uint8 = 3
 
 	PERIOD_MILLI  int64 = 500 //todo: revisit these two values
-	TIMEOUT_MILLI int64 = 3000
+	TIMEOUT_MILLI int64 = 2500
 	CLEANUP_MILLI int64 = 30000 // time to wait before removing failed/left entries
 
 	MAX_ENTRY_NUM int = 100 // max amount of entries per UDP packet
@@ -267,12 +267,12 @@ func (this *MemberList) Merge(other *MemberList) {
 		} else if cmp > 0 { // new entry from remote
 			if remoteEntry.Value.Status == SUS || remoteEntry.Value.Status == NORMAL {
 				remoteEntry.Value.resetTimer()
+				reportStatusUpdate(remoteEntry.Value)
+				curr.Next = remoteEntry
+				remoteEntry = remoteEntry.Next
 			} else {
-				remoteEntry.Value.setCleanupTimer()
+				remoteEntry = remoteEntry.Next
 			}
-			reportStatusUpdate(remoteEntry.Value)
-			curr.Next = remoteEntry
-			remoteEntry = remoteEntry.Next
 		} else {
 			curr.Next = localEntry
 			if localEntry.Value != this.SelfEntry {
