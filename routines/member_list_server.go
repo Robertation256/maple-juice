@@ -72,6 +72,11 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 		time.Sleep(time.Duration(util.PERIOD_MILLI) * time.Microsecond)
 		localList.IncSelfSeqNum()
 
+		leftStatus := SelfStatusChangedToLeft
+		if leftStatus {
+			localList.SelfEntry.Status = util.LEFT
+		}
+
 		payloads := localList.ToPayloads()
 		aliveMembers := localList.AliveMembers()
 
@@ -98,7 +103,7 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 			}
 		}
 
-		if SelfStatusChangedToLeft {
+		if leftStatus {
 			LeftMessageSent = true
 		}
 
