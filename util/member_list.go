@@ -140,7 +140,7 @@ func (this *MemberList) ToPayloads() [][]byte {
 				} else if entry == this.SelfEntry {
 					// status of self is set to left
 					status = LEFT
-				} else if entry.isFailed() { // do a lazy flag check and write here
+				} else if entry.isFailed() && entry.status != util.FAILED { // do a lazy flag check and write here
 					if entry.Status == NORMAL {
 						if this.Protocol == G {
 							entry.Status = FAILED
