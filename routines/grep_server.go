@@ -1,54 +1,54 @@
 package routines
 
 import (
-	"log"
-	"fmt"
-	"os"
-	"cs425-mp2/util"
-	"net/rpc"
-	"net"
-	"net/http"
+	// "log"
+	// "fmt"
+	// "os"
+	// "cs425-mp2/util"
+	// "net/rpc"
+	// "net"
+	// "net/http"
 )
 
 
 func StartLogServer(){
-	localPort := "8000"
+	// localPort := "8000"
 
-	homeDir, homeDirErr := os.UserHomeDir()
-	if homeDirErr != nil {
-		log.Fatal("Error getting user's home directory:", homeDirErr)
-	}
+	// homeDir, homeDirErr := os.UserHomeDir()
+	// if homeDirErr != nil {
+	// 	log.Fatal("Error getting user's home directory:", homeDirErr)
+	// }
 
-	logFolder := homeDir + "/log"
-
-
-	var ret string
-
-	ips := util.LoadIps(homeDir)
-
-	clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
-
-	defer util.CloseClients(clients)
-
-	grepService := util.NewGrepService(logFolder)
+	// logFolder := homeDir + "/log"
 
 
-	rpc.Register(grepService)
-	rpc.HandleHTTP()
+	// var ret string
 
-	hostname, hostNameErr := os.Hostname()
-	if hostNameErr != nil {
-		log.Fatal("Failed to get hostname", hostNameErr)
-	}
+	// ips := util.LoadIps(homeDir)
 
-	l, err := net.Listen("tcp", hostname+":"+localPort)
-	fmt.Printf("HTTP-RPC server is listening on port %s\n", localPort)
+	// clients := make([]*rpc.Client, len(ips)) // stores clients with established connections
 
-	if err != nil {
-		log.Fatal("Failed to start local server", err)
-	}
+	// defer util.CloseClients(clients)
 
-	go http.Serve(l, nil)
+	// grepService := util.NewGrepService(logFolder)
+
+
+	// rpc.Register(grepService)
+	// rpc.HandleHTTP()
+
+	// hostname, hostNameErr := os.Hostname()
+	// if hostNameErr != nil {
+	// 	log.Fatal("Failed to get hostname", hostNameErr)
+	// }
+
+	// l, err := net.Listen("tcp", hostname+":"+localPort)
+	// fmt.Printf("HTTP-RPC server is listening on port %s\n", localPort)
+
+	// if err != nil {
+	// 	log.Fatal("Failed to start local server", err)
+	// }
+
+	// go http.Serve(l, nil)
 
 	// for {
 	// 	ret = ""
