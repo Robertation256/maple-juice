@@ -23,8 +23,8 @@ func main() {
 	routines.InitSignals()
 
 	logConfig := config.NewConfig()
-	grepService := routines.NewGrepService(logConfig)
 	util.CreateProcessLogger(logConfig.LogFilePath)
+	grepService := routines.NewGrepService(logConfig)
 	go grepService.Start()
 
 	util.Prompt("Start as boostrap server? [Y/n]",
