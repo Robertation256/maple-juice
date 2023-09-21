@@ -3,9 +3,11 @@ package main
 import (
 	"cs425-mp2/routines"
 	"cs425-mp2/util"
+	"cs425-mp2/config"
 	"fmt"
 	"strconv"
 )
+
 
 func main() {
 	var isBootstrapServer string
@@ -15,16 +17,15 @@ func main() {
 	var memberListServerPort string
 	var localMembershipList *util.MemberList
 	var userCmd string
-	var logFile string
-
 	var boostrapServerAddr string
 
-	// todo: fix name and path of log file
-	util.Prompt("Enter log filename",
-		&logFile,
-		func(in string) bool { return true },
-	)
-	util.CreateProcessLogger(logFile)
+
+	routines.InitSignals()
+
+	logConfig := config.NewConfig()
+	grepService := routines.NewGrepService(logConfig)
+	util.CreateProcessLogger(logConfig.LogFilePath)
+	go grepService.Start()
 
 	util.Prompt("Start as boostrap server? [Y/n]",
 		&isBootstrapServer,
@@ -73,6 +74,7 @@ func main() {
 		"enable_suspicion":  "change protocol to GS",
 		"disable_suspicion": "change protocol to G",
 		"droprate":          "add an artificial drop rate",
+		"log":		 		 "print logs from remote servers",
 	}
 
 	defer util.ProcessLogger.Close()
@@ -100,17 +102,9 @@ func main() {
 			// print self's id
 			fmt.Println(localMembershipList.SelfEntry.ToString())
 		case "leave":
-			// leave the group
-			// tell sender the status has been changed
-			routines.SelfStatusChangedToLeft = true
-			// wait until the left message is sent to other processes
-			for {
-				if routines.LeftMessageSent {
-					// terminate main function, which will terminate the program
-					// without waiting for other rountines to finish
-					return
-				}
-			}
+			routines.SignalTermination()
+			routines.HEARTBEAT_SENDER_TERM.Wait()
+			return
 		case "enable_suspicion":
 			// switch to GS
 			if localMembershipList.Protocol == util.GS {
@@ -131,6 +125,8 @@ func main() {
 			var dropRate string
 			util.Prompt(`Enter a drop rate (float between 0 and 1)`, &dropRate, util.IsValidDropRate)
 			routines.ReceiverDropRate, _ = strconv.ParseFloat(dropRate, 64)
+		case "log":
+			fmt.Println(grepService.CollectLogs())
 		case "help":
 			for k, v := range validCommands {
 				fmt.Printf("%s: %s\n", k, v)

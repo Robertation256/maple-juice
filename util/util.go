@@ -19,7 +19,7 @@ func Prompt(title string, ret *string, isValidInput func(string) bool) {
 			fmt.Println()
 			return
 		}
-		fmt.Println("Invalid input, please try again.\n")
+		fmt.Println("Invalid input, please try again.")
 	}
 }
 
