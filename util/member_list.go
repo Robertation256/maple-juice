@@ -264,15 +264,15 @@ func (this *MemberList) Merge(other *MemberList) {
 		if cmp < 0 {
 			curr.Next = localEntry
 			localEntry = localEntry.Next
+			curr = curr.Next
 		} else if cmp > 0 { // new entry from remote
 			if remoteEntry.Value.Status == SUS || remoteEntry.Value.Status == NORMAL {
 				remoteEntry.Value.resetTimer()
 				reportStatusUpdate(remoteEntry.Value)
 				curr.Next = remoteEntry
-				remoteEntry = remoteEntry.Next
-			} else {
-				remoteEntry = remoteEntry.Next
+				curr = curr.Next
 			}
+			remoteEntry = remoteEntry.Next
 		} else {
 			curr.Next = localEntry
 			if localEntry.Value != this.SelfEntry {
@@ -280,8 +280,8 @@ func (this *MemberList) Merge(other *MemberList) {
 			}
 			localEntry = localEntry.Next
 			remoteEntry = remoteEntry.Next
-		}
-		curr = curr.Next
+			curr = curr.Next
+		}	
 	}
 
 	if remoteEntry != nil { // more new entries

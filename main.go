@@ -3,9 +3,11 @@ package main
 import (
 	"cs425-mp2/routines"
 	"cs425-mp2/util"
+	"cs425-mp2/config"
 	"fmt"
 	"strconv"
 )
+
 
 func main() {
 	var isBootstrapServer string
@@ -15,16 +17,15 @@ func main() {
 	var memberListServerPort string
 	var localMembershipList *util.MemberList
 	var userCmd string
-	var logFile string
-
 	var boostrapServerAddr string
 
-	// todo: fix name and path of log file
-	util.Prompt("Enter log filename (without filename extension)",
-		&logFile,
-		func(in string) bool { return true },
-	)
-	util.CreateProcessLogger(logFile + ".log")
+
+	routines.InitSignals()
+
+	logConfig := config.NewConfig()
+	util.CreateProcessLogger(logConfig.LogFilePath)
+	grepService := routines.NewGrepService(logConfig)
+	go grepService.Start()
 
 	util.Prompt("Start as boostrap server? [Y/n]",
 		&isBootstrapServer,
@@ -32,7 +33,7 @@ func main() {
 	)
 
 	if isBootstrapServer == "Y" {
-		util.Prompt("Please enter boostrap service port",
+		util.Prompt("Please enter introducer service port",
 			&boostrapServicePort,
 			util.IsValidPort)
 		util.Prompt("Please enter protocol [G/GS]",
@@ -44,7 +45,7 @@ func main() {
 			protocol = util.GS
 		}
 	} else {
-		util.Prompt("Please enter boostrap service address (ip:port)",
+		util.Prompt("Please enter introducer service address (ip:port)",
 			&boostrapServerAddr,
 			util.IsValidAddress)
 	}
@@ -57,14 +58,19 @@ func main() {
 	port := uint16(p)
 	localMembershipList = util.NewMemberList(port)
 
-	fmt.Printf("local membership service started at: %s\n", localMembershipList.SelfEntry.Addr())
-
 	if isBootstrapServer == "Y" {
+		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%s\n", localMembershipList.SelfEntry.Ip[0], 
+		localMembershipList.SelfEntry.Ip[1], 
+		localMembershipList.SelfEntry.Ip[2], 
+		localMembershipList.SelfEntry.Ip[3],
+		boostrapServicePort)
 		go routines.StartIntroducer(boostrapServicePort, protocol, localMembershipList)
 		go routines.StartMembershipListServer(port, "", localMembershipList)
 	} else {
 		go routines.StartMembershipListServer(port, boostrapServerAddr, localMembershipList)
 	}
+
+	fmt.Printf("Local membership service started at: %s\n\n", localMembershipList.SelfEntry.Addr())
 
 	validCommands := map[string]string{
 		"list_mem":          "list the membership list",
@@ -73,6 +79,7 @@ func main() {
 		"enable_suspicion":  "change protocol to GS",
 		"disable_suspicion": "change protocol to G",
 		"droprate":          "add an artificial drop rate",
+		"log":		 		 "print logs from remote servers",
 	}
 
 	defer util.ProcessLogger.Close()
@@ -100,17 +107,9 @@ func main() {
 			// print self's id
 			fmt.Println(localMembershipList.SelfEntry.ToString())
 		case "leave":
-			// leave the group
-			// tell sender the status has been changed
-			routines.SelfStatusChangedToLeft = true
-			// wait until the left message is sent to other processes
-			for {
-				if routines.LeftMessageSent {
-					// terminate main function, which will terminate the program
-					// without waiting for other rountines to finish
-					return
-				}
-			}
+			routines.SignalTermination()
+			routines.HEARTBEAT_SENDER_TERM.Wait()
+			return
 		case "enable_suspicion":
 			// switch to GS
 			if localMembershipList.Protocol == util.GS {
@@ -131,6 +130,8 @@ func main() {
 			var dropRate string
 			util.Prompt(`Enter a drop rate (float between 0 and 1)`, &dropRate, util.IsValidDropRate)
 			routines.ReceiverDropRate, _ = strconv.ParseFloat(dropRate, 64)
+		case "log":
+			fmt.Println(grepService.CollectLogs())
 		case "help":
 			for k, v := range validCommands {
 				fmt.Printf("%s: %s\n", k, v)
