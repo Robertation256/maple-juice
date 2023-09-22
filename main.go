@@ -33,7 +33,7 @@ func main() {
 	)
 
 	if isBootstrapServer == "Y" {
-		util.Prompt("Please enter boostrap service port",
+		util.Prompt("Please enter introducer service port",
 			&boostrapServicePort,
 			util.IsValidPort)
 		util.Prompt("Please enter protocol [G/GS]",
@@ -45,7 +45,7 @@ func main() {
 			protocol = util.GS
 		}
 	} else {
-		util.Prompt("Please enter boostrap service address (ip:port)",
+		util.Prompt("Please enter introducer service address (ip:port)",
 			&boostrapServerAddr,
 			util.IsValidAddress)
 	}
@@ -58,14 +58,19 @@ func main() {
 	port := uint16(p)
 	localMembershipList = util.NewMemberList(port)
 
-	fmt.Printf("local membership service started at: %s\n", localMembershipList.SelfEntry.Addr())
-
 	if isBootstrapServer == "Y" {
+		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%s\n", localMembershipList.SelfEntry.Ip[0], 
+		localMembershipList.SelfEntry.Ip[1], 
+		localMembershipList.SelfEntry.Ip[2], 
+		localMembershipList.SelfEntry.Ip[3],
+		boostrapServicePort)
 		go routines.StartIntroducer(boostrapServicePort, protocol, localMembershipList)
 		go routines.StartMembershipListServer(port, "", localMembershipList)
 	} else {
 		go routines.StartMembershipListServer(port, boostrapServerAddr, localMembershipList)
 	}
+
+	fmt.Printf("Local membership service started at: %s\n\n", localMembershipList.SelfEntry.Addr())
 
 	validCommands := map[string]string{
 		"list_mem":          "list the membership list",

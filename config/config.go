@@ -61,7 +61,7 @@ func NewConfig() *Config {
 			config.LogServerHostnames = ret
 		}
 	}
-	log.Printf("Config loaded ------------------\n%s", config.ToString())
+	log.Printf("Config loaded ------------------\n%s------------------\n", config.ToString())
 
 	return config
 }
