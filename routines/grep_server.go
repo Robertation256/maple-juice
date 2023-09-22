@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 
@@ -69,19 +70,15 @@ func (this *GrepService) CollectLogs() string {
 	for index, hostname := range hostnames {
 		// start connection if it is not previously established
 		if clients[index] == nil {
-			c, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d",hostname, this.Port))
-			if err == nil {
-				clients[index] = c
-			}
+			clients[index] = dial(hostname, this.Port)
 		}
 		
 		if clients[index] != nil {
 			// perform async rpc call
 			call := clients[index].Go("GrepService.FetchLog", new(Args), &(logs[index]), nil)
-			if call.Error != nil {		// best effort redial
-				c, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d",hostname, this.Port))
-				if err == nil {
-					clients[index] = c
+			if call.Error != nil {		
+				clients[index] = dial(hostname, this.Port) // best effort re-dial
+				if clients[index] != nil {
 					call = clients[index].Go("GrepService.FetchLog", new(Args), &(logs[index]), nil)
 				}
 			}
@@ -118,6 +115,25 @@ func (this *GrepService) CollectLogs() string {
 	}
 	
 	return ret
+}
+
+func dial(hostname string, port int) *rpc.Client{
+	var err error
+	var c *rpc.Client
+	clientChan := make(chan *rpc.Client, 1)
+	go func(){
+		c, err = rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d",hostname, port))
+		clientChan <- c
+	}()
+
+	select {
+	case client := <- clientChan:
+		if err == nil {
+			return client 
+		}
+	case <-time.After(2 * time.Second):
+		return nil
+	}
 }
 
 func (this *GrepService) FetchLog(args *Args, reply *string) error {
