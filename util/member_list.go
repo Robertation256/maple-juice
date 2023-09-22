@@ -283,16 +283,14 @@ func (this *MemberList) Merge(other *MemberList) {
 			curr = curr.Next
 		}	
 	}
-
+	
 	if remoteEntry != nil { // more new entries
-		curr.Next = remoteEntry
 		for remoteEntry != nil {
 			if remoteEntry.Value.Status == SUS || remoteEntry.Value.Status == NORMAL {
 				remoteEntry.Value.resetTimer()
-			} else {
-				remoteEntry.Value.setCleanupTimer()
-			}
-			reportStatusUpdate(remoteEntry.Value)
+				reportStatusUpdate(remoteEntry.Value)
+				curr.Next = remoteEntry
+			} 
 			remoteEntry = remoteEntry.Next
 		}
 	}
