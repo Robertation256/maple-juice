@@ -59,15 +59,25 @@ func main() {
 	localMembershipList = util.NewMemberList(port)
 
 	if isBootstrapServer == "Y" {
+		go routines.StartIntroducer(boostrapServicePort, protocol, localMembershipList)
+		go routines.StartMembershipListServer(port, "", localMembershipList)
+		// wait for introducer to start
+		routines.AddServerToWait()
+	} else {
+		go routines.StartMembershipListServer(port, boostrapServerAddr, localMembershipList)
+	}
+	// wait for membership list server to start
+	routines.AddServerToWait()
+	// don't allow commands until all servers properly started
+	fmt.Println("Starting servers...\n")
+	routines.SERVER_STARTED.Wait()
+
+	if isBootstrapServer == "Y" {
 		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%s\n", localMembershipList.SelfEntry.Ip[0], 
 		localMembershipList.SelfEntry.Ip[1], 
 		localMembershipList.SelfEntry.Ip[2], 
 		localMembershipList.SelfEntry.Ip[3],
 		boostrapServicePort)
-		go routines.StartIntroducer(boostrapServicePort, protocol, localMembershipList)
-		go routines.StartMembershipListServer(port, "", localMembershipList)
-	} else {
-		go routines.StartMembershipListServer(port, boostrapServerAddr, localMembershipList)
 	}
 
 	fmt.Printf("Local membership service started at: %s\n\n", localMembershipList.SelfEntry.Addr())

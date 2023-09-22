@@ -30,6 +30,8 @@ func StartIntroducer(port string, protocol uint8, localList *util.MemberList) {
 	defer conn.Close()
 	buf := make([]byte, 20)
 
+	SERVER_STARTED.Done()
+
 	for {
 
 		for i := range buf {

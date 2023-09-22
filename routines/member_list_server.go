@@ -46,6 +46,8 @@ func StartMembershipListServer(receivePort uint16, introducerAddr string, localL
 
 	go startHeartbeatSender(localList, conn)
 
+	SERVER_STARTED.Done()
+
 	for {
 	}
 
@@ -78,8 +80,8 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 		time.Sleep(time.Duration(util.PERIOD_MILLI) * time.Microsecond)
 		localList.IncSelfSeqNum()
 
-		
-		if NeedTermination {
+		needTerminationCopy := NeedTermination
+		if needTerminationCopy {
 			localList.SelfEntry.Status = util.LEFT
 		}
 
@@ -109,7 +111,10 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 			}
 		}
 
-		if NeedTermination {
+
+		// use copy to prevent the case where NeedTerminate changes to
+		// true after sending membership lists
+		if needTerminationCopy {
 			conn.Close()
 			HEARTBEAT_SENDER_TERM.Done()
 			return
@@ -135,7 +140,7 @@ func getBootstrapMemberList(introducerAddr string, startUpTs int64, conn *net.UD
 		// send join request and advertise startup ts
 		conn.WriteToUDP(append([]byte("JOIN"), tsBuf...), addr)
 		// timeout if nothing is received after 2 seconds
-		timeout := time.After(2 * time.Second)
+		timeout := time.After(3 * time.Second)
 		readRes := make(chan int)
 		go func() {
 			n, _, err := conn.ReadFromUDP(buf)
