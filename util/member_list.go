@@ -20,12 +20,12 @@ const (
 	FAILED uint8 = 2
 	LEFT   uint8 = 3
 
-	PERIOD_MILLI  int64 = 500 //todo: revisit these two values
+	PERIOD_MILLI  int64 = 500 
 	TIMEOUT_MILLI int64 = 2500
-	CLEANUP_MILLI int64 = 30000 // time to wait before removing failed/left entries
+	CLEANUP_MILLI int64 = 5000 // time to wait before removing failed/left entries
 
 	MAX_ENTRY_NUM int = 100 // max amount of entries per UDP packet
-	ENTRY_SIZE    int = 19
+	ENTRY_SIZE    int = 19	// size of a single serialized entry struct
 )
 
 // read write lock
