@@ -239,6 +239,9 @@ func (this *MemberList) ToString() string {
 	for curr != nil {
 		if !curr.Value.isObsolete() {
 			ret += "........................\n"
+			if curr.Value == this.SelfEntry {
+				ret += "[Local Machine]\n"
+			}
 			ret += curr.Value.ToString()
 		}
 		curr = curr.Next
