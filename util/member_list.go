@@ -290,6 +290,7 @@ func (this *MemberList) Merge(other *MemberList) {
 				remoteEntry.Value.resetTimer()
 				reportStatusUpdate(remoteEntry.Value)
 				curr.Next = remoteEntry
+				curr = curr.Next
 			} 
 			remoteEntry = remoteEntry.Next
 		}
