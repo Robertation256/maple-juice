@@ -30,7 +30,7 @@ func StartMembershipListServer(receivePort uint16, introducerAddr string, localL
 	if introducerAddr != "" {
 		boostrapMemberList := getBootstrapMemberList(introducerAddr, localList.Entries.Value.StartUpTs, conn)
 		if boostrapMemberList == nil {
-			log.Fatal("Member list server failed to boostrap")
+			log.Fatal("Member list server failed to boostrap. Please check introducer address")
 		}
 
 		localList.Merge(boostrapMemberList)
@@ -45,6 +45,8 @@ func StartMembershipListServer(receivePort uint16, introducerAddr string, localL
 	go startHeartbeatReciever(receivePort, localList, conn)
 
 	go startHeartbeatSender(localList, conn)
+
+	SERVER_STARTED.Done()
 
 	for {
 	}
@@ -78,8 +80,8 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 		time.Sleep(time.Duration(util.PERIOD_MILLI) * time.Microsecond)
 		localList.IncSelfSeqNum()
 
-		
-		if NeedTermination {
+		needTerminationCopy := NeedTermination
+		if needTerminationCopy {
 			localList.SelfEntry.Status = util.LEFT
 		}
 
@@ -109,7 +111,10 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 			}
 		}
 
-		if NeedTermination {
+
+		// use copy to prevent the case where NeedTerminate changes to
+		// true after sending membership lists
+		if needTerminationCopy {
 			conn.Close()
 			HEARTBEAT_SENDER_TERM.Done()
 			return
@@ -131,15 +136,25 @@ func getBootstrapMemberList(introducerAddr string, startUpTs int64, conn *net.UD
 	binary.LittleEndian.PutUint64(tsBuf, uint64(startUpTs))
 
 	for i := 0; i < MAX_BOOSTRAP_RETY; i++ {
+
 		// send join request and advertise startup ts
 		conn.WriteToUDP(append([]byte("JOIN"), tsBuf...), addr)
-
-		n, _, err := conn.ReadFromUDP(buf)
-		if n > 0 && err == nil {
+		// timeout if nothing is received after 2 seconds
+		timeout := time.After(3 * time.Second)
+		readRes := make(chan int)
+		go func() {
+			n, _, err := conn.ReadFromUDP(buf)
+			if n > 0 && err == nil {
+				readRes <- n
+			}
+		}()
+		select {
+		case <- timeout:
+			log.Printf("Error retrieving bootstrap member list, attempt %d/%d", i+1, MAX_BOOSTRAP_RETY)
+		case n:= <- readRes:
 			return util.FromPayload(buf, n)
 		}
 
-		log.Printf("Error retrieving bootstrap member list, attempt %d/%d", i+1, MAX_BOOSTRAP_RETY)
 	}
 	return nil
 }
