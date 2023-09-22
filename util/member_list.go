@@ -307,8 +307,6 @@ func (this *MemberList) Merge(other *MemberList) {
 
 // handle potential protocol change
 func (this *MemberList) mergeProtocol(other *MemberList) {
-	memberListLock.Lock()
-	defer memberListLock.Unlock()
 
 	// resolve protocol incompatibility by pruning sus entries
 	if this.ProtocolVersion > other.ProtocolVersion {
