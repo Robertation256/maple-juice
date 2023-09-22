@@ -134,6 +134,7 @@ func dial(hostname string, port int) *rpc.Client{
 	case <-time.After(2 * time.Second):
 		return nil
 	}
+	return nil 
 }
 
 func (this *GrepService) FetchLog(args *Args, reply *string) error {
