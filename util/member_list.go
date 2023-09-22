@@ -239,6 +239,9 @@ func (this *MemberList) ToString() string {
 	for curr != nil {
 		if !curr.Value.isObsolete() {
 			ret += "........................\n"
+			if curr.Value == this.SelfEntry {
+				ret += "[Local Machine]\n"
+			}
 			ret += curr.Value.ToString()
 		}
 		curr = curr.Next
@@ -290,6 +293,7 @@ func (this *MemberList) Merge(other *MemberList) {
 				remoteEntry.Value.resetTimer()
 				reportStatusUpdate(remoteEntry.Value)
 				curr.Next = remoteEntry
+				curr = curr.Next
 			} 
 			remoteEntry = remoteEntry.Next
 		}
@@ -303,6 +307,8 @@ func (this *MemberList) Merge(other *MemberList) {
 
 // handle potential protocol change
 func (this *MemberList) mergeProtocol(other *MemberList) {
+	memberListLock.Lock()
+	defer memberListLock.Unlock()
 
 	// resolve protocol incompatibility by pruning sus entries
 	if this.ProtocolVersion > other.ProtocolVersion {
@@ -338,23 +344,21 @@ func (this *MemberList) AliveMembers() []string {
 }
 
 func (this *MemberList) UpdateProtocol(p uint8) {
+	memberListLock.Lock()
+	defer memberListLock.Unlock()
 	if p != G && p != GS {
 		log.Println("Failed to update protocol: unknown protocol")
 		return
 	}
-	memberListLock.Lock()
 	if this.Protocol == GS && p == G {
 		this.pruneSusEntries()
 	}
 	this.Protocol = p
 	this.ProtocolVersion++
-	memberListLock.Unlock()
 }
 
 // mark all sus entries as failed when we switch from Gossip + Suspicion to Gossip
 func (this *MemberList) pruneSusEntries() {
-	memberListLock.Lock()
-	defer memberListLock.Unlock()
 	ptr := this.Entries
 	for ptr != nil {
 		if ptr.Value.Status == SUS {
