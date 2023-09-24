@@ -14,8 +14,7 @@ const (
 	MAX_BOOSTRAP_RETY int = 5
 )
 
-var SelfStatusChangedToLeft = false
-var LeftMessageSent = false
+
 var ReceiverDropRate float64 = 0
 
 func StartMembershipListServer(receivePort uint16, introducerAddr string, localList *util.MemberList) {
@@ -27,17 +26,18 @@ func StartMembershipListServer(receivePort uint16, introducerAddr string, localL
 
 	conn, err := net.ListenUDP("udp4", localAddr)
 
+	if err != nil {
+		log.Fatal("Failed to start udp server", err)
+	}
+
+	// bootstrap if not introducer
 	if introducerAddr != "" {
 		boostrapMemberList := getBootstrapMemberList(introducerAddr, localList.Entries.Value.StartUpTs, conn)
 		if boostrapMemberList == nil {
-			log.Fatal("Member list server failed to boostrap. Please check introducer address")
+			log.Fatal("Membership list server failed to boostrap. Please check introducer address")
 		}
 
 		localList.Merge(boostrapMemberList)
-	}
-
-	if err != nil {
-		log.Fatal("Failed to start udp server", err)
 	}
 
 	defer conn.Close()
@@ -80,14 +80,16 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 		time.Sleep(time.Duration(util.PERIOD_MILLI) * time.Microsecond)
 		localList.IncSelfSeqNum()
 
-		needTerminationCopy := NeedTermination
-		if needTerminationCopy {
+		// read the system termination flag
+		needTermination := NeedTermination
+		if needTermination {
 			localList.SelfEntry.Status = util.LEFT
 		}
 
 		payloads := localList.ToPayloads()
 		aliveMembers := localList.AliveMembers()
 
+		// randomly choose members to contact
 		if len(aliveMembers) > CONTACT_NUM {
 			rand.NewSource(time.Now().UnixNano())
 			rand.Shuffle(len(aliveMembers), func(i, j int) {
@@ -106,15 +108,12 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 			for i, payload := range payloads {
 				_, err := conn.WriteToUDP(payload, remoteAddr)
 				if err != nil {
-					log.Fatalf("Failed to send  member list %d/%d to %s  %s", i+1, len(payloads), ip, err)
+					log.Printf("Failed to send  member list %d/%d to %s  %s", i+1, len(payloads), ip, err)
 				}
 			}
 		}
 
-
-		// use copy to prevent the case where NeedTerminate changes to
-		// true after sending membership lists
-		if needTerminationCopy {
+		if needTermination {
 			conn.Close()
 			HEARTBEAT_SENDER_TERM.Done()
 			return
@@ -137,9 +136,9 @@ func getBootstrapMemberList(introducerAddr string, startUpTs int64, conn *net.UD
 
 	for i := 0; i < MAX_BOOSTRAP_RETY; i++ {
 
-		// send join request and advertise startup ts
+		// send join request and advertise startup ts as part of node id
 		conn.WriteToUDP(append([]byte("JOIN"), tsBuf...), addr)
-		// timeout if nothing is received after 2 seconds
+		// timeout if nothing is received after 3 seconds
 		timeout := time.After(3 * time.Second)
 		readRes := make(chan int)
 		go func() {

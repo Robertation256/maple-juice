@@ -22,11 +22,13 @@ func main() {
 
 	routines.InitSignals()
 
+	// distributed log print service for debugging
 	logConfig := config.NewConfig()
 	util.CreateProcessLogger(logConfig.LogFilePath)
 	grepService := routines.NewGrepService(logConfig)
 	go grepService.Start()
 
+	
 	util.Prompt("Start as boostrap server? [Y/n]",
 		&isBootstrapServer,
 		func(in string) bool { return in == "Y" || in == "n" },
@@ -87,12 +89,13 @@ func main() {
 
 	validCommands := map[string]string{
 		"list_mem":          "list the membership list",
-		"list_self":         "list self’s id",
+		"list_self":         "list local machine info",
 		"leave":             "voluntarily leave the group",
 		"enable_suspicion":  "change protocol to GS",
 		"disable_suspicion": "change protocol to G",
 		"droprate":          "add an artificial drop rate",
 		"log":		 		 "print logs from remote servers",
+		"help":				 "command manual",
 	}
 
 	defer util.ProcessLogger.Close()
@@ -100,9 +103,6 @@ func main() {
 	for {
 		util.Prompt(`Enter a command (Type "help" for a list of available commands)`, &userCmd,
 			func(in string) bool {
-				if in == "help" {
-					return true
-				}
 				for k := range validCommands {
 					if k == in {
 						return true
@@ -117,9 +117,10 @@ func main() {
 			// print membership list
 			fmt.Println(localMembershipList.ToString())
 		case "list_self":
-			// print self's id
+			// print local machine info
 			fmt.Println(localMembershipList.SelfEntry.ToString())
 		case "leave":
+			// voluntary leave
 			routines.SignalTermination()
 			routines.HEARTBEAT_SENDER_TERM.Wait()
 			return

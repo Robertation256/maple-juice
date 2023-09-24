@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	NA uint8 = 0 // happens for new joiner
+	NA uint8 = 0 // happens for new joiner, just comply with existing protocol in the cluster
 	G  uint8 = 1 // gossip protocol
 	GS uint8 = 2 // gossip + suspicion protocol
 
@@ -20,11 +20,11 @@ const (
 	FAILED uint8 = 2
 	LEFT   uint8 = 3
 
-	PERIOD_MILLI  int64 = 500 
-	TIMEOUT_MILLI int64 = 2500
+	PERIOD_MILLI  int64 = 1000 
+	TIMEOUT_MILLI int64 = 4000
 	CLEANUP_MILLI int64 = 5000 // time to wait before removing failed/left entries
 
-	MAX_ENTRY_NUM int = 100 // max amount of entries per UDP packet
+	MAX_ENTRY_NUM int = 100 // max number of entries per UDP packet
 	ENTRY_SIZE    int = 19	// size of a single serialized entry struct
 )
 
@@ -39,9 +39,9 @@ type EntryNode struct {
 
 type MemberList struct {
 	Protocol        uint8
-	ProtocolVersion uint32 // used for syncing protocol used across machines
+	ProtocolVersion uint32 	// used for syncing protocol used across machines
 	Entries         *EntryNode
-	SelfEntry       *MemberListEntry
+	SelfEntry       *MemberListEntry	// points to entry of local machine
 }
 
 func NewMemberList(port uint16) *MemberList {
@@ -54,7 +54,7 @@ func NewMemberList(port uint16) *MemberList {
 	}
 
 	return &MemberList{
-		Protocol:        0,
+		Protocol:        NA,
 		ProtocolVersion: 0,
 		Entries:         &EntryNode{Value: selfEntry},
 		SelfEntry:       selfEntry,
@@ -71,7 +71,7 @@ func (this *MemberList) IncSelfSeqNum() uint32 {
 
 // insert a new entry, only used when introducer sees a new joiner
 func (this *MemberList) AddNewEntry(entry *MemberListEntry) error {
-	head := new(EntryNode)
+	head := new(EntryNode)		//dummy linked-list head
 	memberListLock.Lock()
 	defer memberListLock.Unlock()
 
@@ -137,10 +137,9 @@ func (this *MemberList) ToPayloads() [][]byte {
 				status := entry.Status
 				if entry == this.SelfEntry && entry.Status != LEFT {
 					status = NORMAL
-				} else if entry == this.SelfEntry {
-					// status of self is set to left
+				} else if entry == this.SelfEntry { // status of self can only be NORMAL/LEFT
 					status = LEFT
-				} else if entry.isFailed() && entry.Status != FAILED { // do a lazy flag check and write here
+				} else if entry.isFailed() && entry.Status != FAILED { // Detected failure for the first time
 					if entry.Status == NORMAL {
 						if this.Protocol == G {
 							entry.Status = FAILED
@@ -179,7 +178,6 @@ func (this *MemberList) ToPayloads() [][]byte {
 }
 
 // deserialization
-// todo: handle buffer underflow
 func FromPayload(payload []byte, size int) *MemberList {
 	buf := bytes.NewBuffer(payload)
 	ret := new(MemberList)
@@ -385,37 +383,3 @@ func reportStatusUpdate(e *MemberListEntry) {
 	log.Printf("(%d) Entry update: %s - %s", time.Now().UnixMilli(), status, id)
 }
 
-// a simple test of serdes
-// todo: move it to test cases
-// func main() {
-// 	e1 := MemberListEntry{
-// 		Ip:        [4]uint8{6, 7, 8, 9},
-// 		Port:      8000,
-// 		StartUpTs: time.Now().UnixMilli(),
-// 		Status:    NORMAL,
-// 		SeqNum:    666,
-// 	}
-
-// 	e2 := MemberListEntry{
-// 		Ip:        [4]uint8{125, 179, 210, 107},
-// 		Port:      8001,
-// 		StartUpTs: time.Now().UnixMilli() - 100,
-// 		Status:    FAILED,
-// 		SeqNum:    777,
-// 	}
-// 	n1 := EntryNode{Value: &e1}
-// 	n2 := EntryNode{Value: &e2}
-// 	n1.Next = &n2
-// 	mbl := MemberList{
-// 		Protocol:        G,
-// 		ProtocolVersion: 321,
-// 		Entries:         &n1,
-// 	}
-
-// 	payload := mbl.ToPayloads()
-
-// 	deserialized := FromPayload(payload[0], len(payload[0]))
-
-// 	fmt.Print(deserialized.ToString())
-
-// }

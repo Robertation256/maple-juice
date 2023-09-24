@@ -8,7 +8,7 @@
 
    **Please make sure there isn't a folder named `log` under your home directory.**
 
-4. Run the porgram with `go run main.go`
+4. Run the program with `go run main.go`
 5. The program will ask you whether it should be started as a bootstrap server. 
     
    **Starting the program as a bootstrap server means the current vm will also act as an introducer.**
