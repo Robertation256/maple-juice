@@ -9,7 +9,7 @@ import (
 )
 
 type Config struct {
-	// log and grep configs
+	// log and grep configs, not intended for membership list service
 	LogServerId string
 	LogServerPort int 	
 	LogServerHostnames []string

@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 )
-
+// Logger for logging membership list updates to local file
 var ProcessLogger *Logger
 var LoggerErr error
 
@@ -24,7 +24,6 @@ type Logger struct {
 }
 
 func NewLogger(logFilePath string, bufferSize int) (*Logger, error) {
-	// create if file does not exist, append otherwise
 	logFile, err := os.Create(logFilePath)
 	if err != nil {
 		return nil, err
@@ -102,33 +101,3 @@ func CreateProcessLogger(logName string) {
 	}
 }
 
-// simple test
-// uncomment this and change package from log to main to test
-
-// func main() {
-// 	logger, err := NewLogger("example.log", 100)
-// 	if err != nil {
-// 		fmt.Printf("Error creating logger: %v\n", err)
-// 		return
-// 	}
-
-// 	// simulate multiple concurrent logging requests
-// 	for i := 1; i <= 10; i++ {
-// 		go func(index int) {
-// 			message := fmt.Sprintf("node %d", index)
-// 			logger.LogJoin(message)
-// 			if index == 5 {
-// 				time.Sleep(6 * time.Second)
-// 				logger.LogLeave("node 5")
-// 			}
-// 		}(i)
-// 	}
-
-// 	time.Sleep(3 * time.Second)
-
-// 	logger.LogFail("node 3")
-
-// 	fmt.Scanln()
-// 	// logger will be closed (no more logs recorded) when user hit enter
-// 	logger.Close()
-// }

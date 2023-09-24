@@ -38,7 +38,7 @@ func StartIntroducer(port string, protocol uint8, localList *util.MemberList) {
 			buf[i] = 0
 		}
 
-		// send new joiner local member list
+		// send new joiner the initial membership list
 		n, addr, err := conn.ReadFromUDP(buf)
 		if err == nil && n > 0 && string(buf[:4]) == "JOIN" {
 			startUpTs := int64(binary.LittleEndian.Uint64(buf[4:12]))
@@ -48,7 +48,7 @@ func StartIntroducer(port string, protocol uint8, localList *util.MemberList) {
 
 			newProcessId := fmt.Sprintf("%s-%d", addr.AddrPort().String(), startUpTs)
 			util.ProcessLogger.LogJoin(logTime, newProcessId)
-
+			
 			err = localList.AddNewEntry(&util.MemberListEntry{
 				Ip:           addr.AddrPort().Addr().As4(),
 				Port:         addr.AddrPort().Port(),

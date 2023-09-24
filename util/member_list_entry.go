@@ -2,14 +2,14 @@ package util
 
 import (
 	"fmt"
-	// "log"
 	"time"
 )
 
 type MemberListEntry struct {
+	// first three fields compose the node id
 	Ip        [4]uint8
 	Port      uint16
-	StartUpTs int64 // we can use less bytes for this if we want tho
+	StartUpTs int64 
 
 	SeqNum uint32
 	Status uint8
@@ -19,12 +19,6 @@ type MemberListEntry struct {
 }
 
 func (this *MemberListEntry) isFailed() bool {
-	// if this.Status == FAILED {
-	// 	log.Printf("%s failed from failed flag", this.addr())
-	// } else if this.Status != LEFT && time.Now().UnixMilli() >= this.ExpirationTs {
-	// 	log.Printf("%s failed from expired timer", this.addr())
-	// }
-
 	// ExpirationTs == 0 means it's self entry
 	return this.Status == FAILED ||
 		(this.Status != LEFT && time.Now().UnixMilli() >= this.ExpirationTs && this.ExpirationTs != 0)
@@ -83,7 +77,7 @@ func (this *MemberListEntry) ToString() string {
 		this.ExpirationTs)
 }
 
-// simple in-place merge. not thread-safe
+// merge two entry with the same node id
 func (this *MemberListEntry) Merge(remote *MemberListEntry, protocol uint8) *MemberListEntry {
 
 	if remote.Status > this.Status { // LEFT > FAILED > SUS > NORMAL
