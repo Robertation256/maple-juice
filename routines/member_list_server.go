@@ -14,7 +14,6 @@ const (
 	MAX_BOOSTRAP_RETY int = 5
 )
 
-
 var ReceiverDropRate float64 = 0
 
 func StartMembershipListServer(receivePort uint16, introducerAddr string, localList *util.MemberList) {
@@ -77,7 +76,7 @@ func startHeartbeatReciever(port uint16, localList *util.MemberList, conn *net.U
 func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 
 	for {
-		time.Sleep(time.Duration(util.PERIOD_MILLI) * time.Microsecond)
+		time.Sleep(time.Duration(util.PERIOD_MILLI) * time.Millisecond)
 		localList.IncSelfSeqNum()
 
 		// read the system termination flag
@@ -148,9 +147,9 @@ func getBootstrapMemberList(introducerAddr string, startUpTs int64, conn *net.UD
 			}
 		}()
 		select {
-		case <- timeout:
+		case <-timeout:
 			log.Printf("Error retrieving bootstrap member list, attempt %d/%d", i+1, MAX_BOOSTRAP_RETY)
-		case n:= <- readRes:
+		case n := <-readRes:
 			return util.FromPayload(buf, n)
 		}
 
