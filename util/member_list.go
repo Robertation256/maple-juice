@@ -20,12 +20,12 @@ const (
 	FAILED uint8 = 2
 	LEFT   uint8 = 3
 
-	PERIOD_MILLI  int64 = 1000 
-	TIMEOUT_MILLI int64 = 4000
+	PERIOD_MILLI  int64 = 300
+	TIMEOUT_MILLI int64 = 1800
 	CLEANUP_MILLI int64 = 5000 // time to wait before removing failed/left entries
 
 	MAX_ENTRY_NUM int = 100 // max number of entries per UDP packet
-	ENTRY_SIZE    int = 19	// size of a single serialized entry struct
+	ENTRY_SIZE    int = 19  // size of a single serialized entry struct
 )
 
 // read write lock
@@ -39,9 +39,9 @@ type EntryNode struct {
 
 type MemberList struct {
 	Protocol        uint8
-	ProtocolVersion uint32 	// used for syncing protocol used across machines
+	ProtocolVersion uint32 // used for syncing protocol used across machines
 	Entries         *EntryNode
-	SelfEntry       *MemberListEntry	// points to entry of local machine
+	SelfEntry       *MemberListEntry // points to entry of local machine
 }
 
 func NewMemberList(port uint16) *MemberList {
@@ -71,7 +71,7 @@ func (this *MemberList) IncSelfSeqNum() uint32 {
 
 // insert a new entry, only used when introducer sees a new joiner
 func (this *MemberList) AddNewEntry(entry *MemberListEntry) error {
-	head := new(EntryNode)		//dummy linked-list head
+	head := new(EntryNode) //dummy linked-list head
 	memberListLock.Lock()
 	defer memberListLock.Unlock()
 
@@ -282,9 +282,9 @@ func (this *MemberList) Merge(other *MemberList) {
 			localEntry = localEntry.Next
 			remoteEntry = remoteEntry.Next
 			curr = curr.Next
-		}	
+		}
 	}
-	
+
 	if remoteEntry != nil { // more new entries
 		for remoteEntry != nil {
 			if remoteEntry.Value.Status == SUS || remoteEntry.Value.Status == NORMAL {
@@ -292,7 +292,7 @@ func (this *MemberList) Merge(other *MemberList) {
 				reportStatusUpdate(remoteEntry.Value)
 				curr.Next = remoteEntry
 				curr = curr.Next
-			} 
+			}
 			remoteEntry = remoteEntry.Next
 		}
 	}
@@ -382,4 +382,3 @@ func reportStatusUpdate(e *MemberListEntry) {
 	}
 	log.Printf("(%d) Entry update: %s - %s", time.Now().UnixMilli(), status, id)
 }
-
