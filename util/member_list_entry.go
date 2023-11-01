@@ -41,6 +41,11 @@ func (this *MemberListEntry) Addr() string {
 		this.Ip[0], this.Ip[1], this.Ip[2], this.Ip[3], this.Port)
 }
 
+func (this *MemberListEntry) NodeId() string {
+	return fmt.Sprintf("%d.%d.%d.%d:%d-%d",
+		this.Ip[0], this.Ip[1], this.Ip[2], this.Ip[3], this.Port, this.StartUpTs)
+}
+
 func (this *MemberListEntry) resetTimer() {
 	this.ExpirationTs = time.Now().UnixMilli() + TIMEOUT_MILLI
 }

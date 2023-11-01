@@ -15,9 +15,12 @@ const (
 )
 
 var ReceiverDropRate float64 = 0
+var SelfNodeId string = ""
+var LocalMembershipList *util.MemberList
 
 func StartMembershipListServer(receivePort uint16, introducerAddr string, localList *util.MemberList) {
-
+	SelfNodeId = localList.GetSelfNodeId()
+	LocalMembershipList = localList
 	localAddr, err := net.ResolveUDPAddr("udp4", localList.SelfEntry.Addr())
 	if err != nil {
 		log.Fatal("Error resolving udp address", err)

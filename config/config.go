@@ -14,6 +14,8 @@ type Config struct {
 	LogServerPort int 	
 	LogServerHostnames []string
 	LogFilePath string
+	LeaderElectionServerPort int
+	LeaderElectionQuorumSize int
 }
 
 
@@ -45,6 +47,18 @@ func NewConfig() *Config {
 				log.Fatal("Error loading log server port")
 			}
 			config.LogServerPort = port
+		case "LEADER_ELECTION_SERVER_PORT":
+			port, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading leader election server port")
+			}
+			config.LeaderElectionServerPort = port
+		case "LEADER_ELECTION_QUORUM_SIZE":
+			size, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading leader election quorum size")
+			}
+			config.LeaderElectionQuorumSize = size
 		case "LOG_FILE_NAME":
 			config.LogFilePath = homeDir+"/"+kv[1]
 		case "LOG_SERVER_ID":
