@@ -2,15 +2,24 @@ package routines
 
 import (
 	"cs425-mp2/util"
+	"cs425-mp2/config"
 	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 	"time"
 )
 
-func StartIntroducer(port string, protocol uint8, localList *util.MemberList) {
+func StartIntroducer() {
+	port := strconv.Itoa(config.IntroducerPort)
 	localAddr, err := net.ResolveUDPAddr("udp4", ":"+port)
+	protocol := util.NA
+	if config.MembershipProtocol == "G" {
+		protocol = util.G
+	} else if config.MembershipProtocol == "GS" {
+		protocol = util.GS
+	}
 
 	if err != nil {
 		log.Fatal("Error resolving introducer address", err)
@@ -20,7 +29,7 @@ func StartIntroducer(port string, protocol uint8, localList *util.MemberList) {
 		log.Fatal("Failed to start boostrap server: unknown protocol")
 	}
 
-	localList.UpdateProtocol(protocol)
+	LocalMembershipList.UpdateProtocol(protocol)
 
 	conn, err := net.ListenUDP("udp4", localAddr)
 	if err != nil {
@@ -49,7 +58,7 @@ func StartIntroducer(port string, protocol uint8, localList *util.MemberList) {
 			newProcessId := fmt.Sprintf("%s-%d", addr.AddrPort().String(), startUpTs)
 			util.ProcessLogger.LogJoin(logTime, newProcessId)
 			
-			err = localList.AddNewEntry(&util.MemberListEntry{
+			err = LocalMembershipList.AddNewEntry(&util.MemberListEntry{
 				Ip:           addr.AddrPort().Addr().As4(),
 				Port:         addr.AddrPort().Port(),
 				StartUpTs:    startUpTs,
@@ -63,7 +72,7 @@ func StartIntroducer(port string, protocol uint8, localList *util.MemberList) {
 				continue
 			}
 
-			payloads := localList.ToPayloads()
+			payloads := LocalMembershipList.ToPayloads()
 			for i, payload := range payloads {
 				_, err = conn.WriteToUDP(payload, addr)
 				if err != nil {

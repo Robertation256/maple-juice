@@ -29,6 +29,7 @@ var endCurrentRound bool = false
 var candidateId string = SelfNodeId
 var quorumSize int = 100
 var electionMessageChan chan *ElectionMessage = make(chan *ElectionMessage)
+var leaderElectionPort string
 
 
 type ElectionMessage struct {
@@ -56,7 +57,8 @@ func FromPayload(payload []byte, size int) *ElectionMessage{
 	return ret
 }	
 
-func StartLeaderElectionServer(addr string, legalQuorumSize int){
+func StartLeaderElectionServer(port string, legalQuorumSize int){
+	leaderElectionPort = port
 	quorumSize = legalQuorumSize
 	localAddr, err := net.ResolveUDPAddr("udp4", addr)
 	if err != nil {
@@ -250,14 +252,15 @@ func multicast(conn *net.UDPConn, payload []byte){
 	aliveMembers := LocalMembershipList.AliveMembers()
 
 	for _, ip := range aliveMembers {
-		remoteAddr, err := net.ResolveUDPAddr("udp4", ip)
+		addr := ip + ":" + leaderElectionPort
+		remoteAddr, err := net.ResolveUDPAddr("udp4", addr)
 		if err != nil {
-			log.Printf("Error resolving remote address %s\n", ip)
+			log.Printf("Error resolving remote address %s\n", addr)
 			continue
 		}
 		_, err = conn.WriteToUDP(payload, remoteAddr)
 		if err != nil {
-			log.Printf("Failed to send udp packet to %s %s", ip, err)
+			log.Printf("Failed to send udp packet to %s %s", addr, err)
 		}
 		
 	}

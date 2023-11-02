@@ -40,7 +40,7 @@ type GrepService struct {
 }
 
 
-func NewGrepService(config *config.Config) *GrepService {
+func NewGrepService() *GrepService {
 	_, err := os.ReadFile(config.LogFilePath)
 	if err != nil {
 		log.Fatal("Error locating log file: ", err)

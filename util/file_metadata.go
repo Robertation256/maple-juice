@@ -2,7 +2,6 @@ package util
 
 import (
 	"log"
-	"sync"
 	"slices"
 )
 
@@ -11,11 +10,8 @@ const (
 )
 
 
-// read write lock
-var fileIndexLock sync.Mutex
-var FileIndex = make(map[string]FileIndexEntry)
-
-type FileIndexEntry struct {
+// entries maintained at the metadata server
+type FileMetadataEntry struct {
 	FileName string
 	Master string		// nodeId
 	Servants  []string  // nodeIds
@@ -23,7 +19,7 @@ type FileIndexEntry struct {
 
 
 
-func(this *FileIndexEntry) AddServers(newNodes []string){
+func(this *FileMetadataEntry) AddServers(newNodes []string){
 	if !this.NeedRepair(){
 		log.Print("File cluster already satisfies legal size.")
 	}
@@ -51,15 +47,15 @@ func(this *FileIndexEntry) AddServers(newNodes []string){
 }
 
 // replica num is lower than legal size
-func(this *FileIndexEntry) NeedRepair() bool {
+func(this *FileMetadataEntry) NeedRepair() bool {
 	return this.ReplicaNum() < MIN_REPLICA_NUM
 }
 
-func(this *FileIndexEntry) IsStable() bool {
+func(this *FileMetadataEntry) IsStable() bool {
 	return this.ReplicaNum() >= MIN_REPLICA_NUM
 }
 
-func(this *FileIndexEntry) ReplicaNum() int {
+func(this *FileMetadataEntry) ReplicaNum() int {
 	num := 0
 	if len(this.Master) >  0 {
 		num += 1
@@ -68,6 +64,6 @@ func(this *FileIndexEntry) ReplicaNum() int {
 	return num
 }
 
-func(this *FileIndexEntry) HasMaster() bool {
+func(this *FileMetadataEntry) HasMaster() bool {
 	return len(this.Master) >  0
 }

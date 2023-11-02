@@ -332,14 +332,14 @@ func (this *MemberList) mergeProtocol(other *MemberList) {
 
 }
 
-// get an array of host:port of alive members
+// get an array of IPs of alive members
 func (this *MemberList) AliveMembers() []string {
 	var ret []string
 	memberListLock.Lock()
 	ptr := this.Entries
 	for ptr != nil {
 		if ptr.Value != this.SelfEntry && ptr.Value.isAlive() {
-			ret = append(ret, ptr.Value.Addr())
+			ret = append(ret, ptr.Value.IpString())
 		}
 		ptr = ptr.Next
 	}

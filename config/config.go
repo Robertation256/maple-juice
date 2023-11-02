@@ -8,19 +8,36 @@ import (
 	"strings"
 )
 
-type Config struct {
-	// log and grep configs, not intended for membership list service
-	LogServerId string
-	LogServerPort int 	
-	LogServerHostnames []string
-	LogFilePath string
-	LeaderElectionServerPort int
-	LeaderElectionQuorumSize int
-}
 
 
-func NewConfig() *Config {
-	config := new(Config)
+
+// membership service config
+var MembershipServicePort int
+var MembershipProtocol string  		// G/GS
+var IsIntroducer bool = false
+var IntroducerIp string
+var IntroducerPort int
+
+// leader election config
+var	LeaderElectionServerPort int
+var	LeaderElectionQuorumSize int
+
+
+// file metadata server config
+var	FileMetadataServerPort int 
+
+// file server config
+var	FileServerPort int
+
+// distributed logging and grep configs
+var	LogServerId string
+var	LogServerPort int 	
+var	LogServerHostnames []string
+var	LogFilePath string
+
+
+
+func InitConfig() {
 
 	homeDir, homeDirErr := os.UserHomeDir()
 	if homeDirErr != nil {
@@ -41,28 +58,72 @@ func NewConfig() *Config {
 			continue
 		}
 		switch kv[0] {
-		case "LOG_SERVER_PORT":
+		case "MEMBERSHIP_SERVICE_PORT":
 			port, err := strconv.Atoi(kv[1])
 			if err != nil {
-				log.Fatal("Error loading log server port")
+				log.Fatal("Error loading membership service port")
 			}
-			config.LogServerPort = port
+			MembershipServicePort = port
+		case "MEMBERSHIP_PROTOCOL":
+			if kv[1] != "G" && kv[1]!= "GS"{
+				log.Fatalf("Invalid membership protocol %s", kv[1])
+			}
+			MembershipProtocol = kv[1]
+		case "IS_INTRODUCER":
+			if kv[1] == "TRUE"{
+				IsIntroducer = true
+			}
+		case "INTRODUCER_IP":
+			if len(kv[1]) > 0{
+				IntroducerIp = kv[1]
+			} else {
+				log.Fatalf("Invalid introducer ip %s", kv[1])
+			}
+		case "INTRODUCER_PORT":
+			port, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading introducer port")
+			}
+			IntroducerPort = port
+
 		case "LEADER_ELECTION_SERVER_PORT":
 			port, err := strconv.Atoi(kv[1])
 			if err != nil {
 				log.Fatal("Error loading leader election server port")
 			}
-			config.LeaderElectionServerPort = port
+			LeaderElectionServerPort = port
 		case "LEADER_ELECTION_QUORUM_SIZE":
 			size, err := strconv.Atoi(kv[1])
 			if err != nil {
 				log.Fatal("Error loading leader election quorum size")
 			}
-			config.LeaderElectionQuorumSize = size
+			LeaderElectionQuorumSize = size
+
+
+		case "FILE_METADATA_SERVER_PORT":
+			port, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading file metadata server port")
+			}
+			FileMetadataServerPort = port
+		case "FILE_SERVER_PORT":
+			port, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading file server port")
+			}
+			FileServerPort = port
+
+
+		case "LOG_SERVER_PORT":
+			port, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading log server port")
+			}
+			LogServerPort = port
 		case "LOG_FILE_NAME":
-			config.LogFilePath = homeDir+"/"+kv[1]
+			LogFilePath = homeDir+"/"+kv[1]
 		case "LOG_SERVER_ID":
-			config.LogServerId = kv[1]
+			LogServerId = kv[1]
 		case "LOG_SERVER_HOSTNAMES":
 			hostnames := strings.Split(string(kv[1]), ",")
 			if len(hostnames) == 0 {
@@ -72,24 +133,25 @@ func NewConfig() *Config {
 			for i:=0; i<len(ret); i++{
 				ret[i] = strings.Trim(hostnames[i], " \n\r")
 			}
-			config.LogServerHostnames = ret
+			LogServerHostnames = ret
 		}
 	}
-	log.Printf("Config loaded ------------------\n%s------------------\n", config.ToString())
-
-	return config
+	PrintConfig()
 }
 
 
-func (this *Config) ToString() string {
-	return fmt.Sprintf(
+func PrintConfig() {
+
+	configStr := fmt.Sprintf(
 		"LOG_SERVER_HOSTNAMES: %s\n" +
 		"LOG_SERVER_PORT: %d\n" +
 		"LOG_FILE_PATH: %s\n" +
 		"LOG_SERVER_ID: %s\n",
-		strings.Join(this.LogServerHostnames, ","),
-		this.LogServerPort,
-		this.LogFilePath,
-		this.LogServerId,
+		strings.Join(LogServerHostnames, ","),
+		LogServerPort,
+		LogFilePath,
+		LogServerId,
 	)
+
+	log.Printf("Config loaded ------------------\n%s------------------\n", configStr)
 }
