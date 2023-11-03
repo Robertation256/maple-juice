@@ -292,6 +292,6 @@ func NodeIdToAddr(nodeId string) string {
 	if len(splitted) != 2{
 		log.Printf("Error parsing node id (%s) to udp address", nodeId)
 	}
-	return splitted[0]
+	return splitted[0] + ":" + leaderElectionPort
 }
 
