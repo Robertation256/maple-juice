@@ -83,7 +83,6 @@ func StartLeaderElectionServer(){
 			n, _, err := conn.ReadFromUDP(buf)
 			if n > 0 && err == nil {
 				msg := FromPayload(buf[:n], n)
-				log.Printf("UDP election msg type: %d, nodeId %s", msg.MessageType, msg.NodeId)
 				electionMessageChan <- msg
 			}
 		}
@@ -117,12 +116,14 @@ func StartLeaderElectionServer(){
 
 // start whatever service needed to be hosted by a leader
 func startLeaderHostedService(){
-	FILE_METADATA_SERVER_SIGTERM.Add(1)
-	go NewFileMetadataService().StartMetadataServer()
+	// FILE_METADATA_SERVER_SIGTERM.Add(1)
+	// go NewFileMetadataService().StartMetadataServer()
+	log.Print("Leader service started")
+	
 }
 
 func termLeaderHostedService(){
-	FILE_METADATA_SERVER_SIGTERM.Done()
+	// FILE_METADATA_SERVER_SIGTERM.Done()
 }
 
 
@@ -139,8 +140,6 @@ func runElection(conn *net.UDPConn){
 		RoundId: localRoundId,
 		NodeId: SelfNodeId,
 	}
-
-	log.Print("Multicasting election request for round %d", localRoundId)
 	multicast(conn, msg.ToPayload())
 
 	go waitAndVote(conn, localRoundId)
@@ -172,12 +171,12 @@ func handleElectionMsg(conn *net.UDPConn, msg *ElectionMessage){
 	}
 
 	if msg.MessageType == ELECTION_REQUEST {
-		log.Printf("Received election request from node %s", msg.NodeId)
+		log.Printf("Received election request from node %s for round %d", msg.NodeId, msg.RoundId)
 		if msg.NodeId < candidateId {
 			candidateId = msg.NodeId
 		}
 	} else if msg.MessageType == VOTE {
-		log.Printf("Received vote from node %s", msg.NodeId)
+		log.Printf("Received vote from node %s for round %d", msg.NodeId, msg.RoundId)
 		_, exists := voterSet[msg.NodeId]
 		if !exists {
 			voterSet[msg.NodeId] = true
@@ -271,7 +270,6 @@ func unicast(conn *net.UDPConn, addr string, payload []byte){
 
 func multicast(conn *net.UDPConn, payload []byte){
 	aliveMembers := LocalMembershipList.AliveMembers()
-	log.Printf("Multicasting to %d members", len(aliveMembers))
 
 	for _, ip := range aliveMembers {
 		addr := ip + ":" + leaderElectionPort
