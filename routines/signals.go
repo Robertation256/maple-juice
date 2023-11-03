@@ -7,6 +7,7 @@ var NeedTermination bool
 var SERVER_STARTED sync.WaitGroup
 var SIGTERM sync.WaitGroup     // main termination
 var HEARTBEAT_SENDER_TERM sync.WaitGroup // hearbeat sender termination
+var FILE_METADATA_SERVER_SIGTERM sync.WaitGroup
 
 
 func InitSignals() {

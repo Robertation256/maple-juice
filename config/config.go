@@ -28,6 +28,7 @@ var	FileMetadataServerPort int
 
 // file server config
 var	FileServerPort int
+var ReplicationFactor int
 
 // distributed logging and grep configs
 var	LogServerId string
@@ -112,6 +113,12 @@ func InitConfig() {
 				log.Fatal("Error loading file server port")
 			}
 			FileServerPort = port
+		case "REPLICATION_FACTOR":
+			factor, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading file server port")
+			}
+			ReplicationFactor = factor
 
 
 		case "LOG_SERVER_PORT":

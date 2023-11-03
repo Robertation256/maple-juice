@@ -88,12 +88,33 @@ func StartLeaderElectionServer(port string, legalQuorumSize int){
 			runElection(conn)
 		}
 
+		wasLeader := false
+
+		if LeaderId == SelfNodeId {
+			startLeaderHostedService()
+			wasLeader = true
+		}
+
 		go monitorLeaderFailure()
 		go monitorNewElectionRound(conn)
 
 		for len(LeaderId) > 0 {
 		}
+
+		if wasLeader {
+			termLeaderHostedService()
+		}
 	}
+}
+
+// start whatever service needed to be hosted by a leader
+func startLeaderHostedService(){
+	FILE_METADATA_SERVER_SIGTERM.Add(1)
+	go NewFileMetadataService().StartMetadataServer()
+}
+
+func termLeaderHostedService(){
+	FILE_METADATA_SERVER_SIGTERM.Done()
 }
 
 
@@ -182,7 +203,7 @@ func waitAndVote(conn *net.UDPConn, votingRoundId uint32){
 			RoundId: votingRoundId,
 			NodeId: SelfNodeId,
 		}
-		unicast(conn, nodeIdToAddr(candidateId), msg.ToPayload())
+		unicast(conn, NodeIdToAddr(candidateId), msg.ToPayload())
 	}
 }
 
@@ -211,7 +232,7 @@ func monitorNewElectionRound(conn *net.UDPConn){
 					RoundId: localRoundId,
 					NodeId: SelfNodeId,
 				}
-				unicast(conn, nodeIdToAddr(msg.NodeId), outMsg.ToPayload())
+				unicast(conn, NodeIdToAddr(msg.NodeId), outMsg.ToPayload())
 			// some node requested new election
 			} else if msg.RoundId > localRoundId {
 				LeaderId = ""
@@ -221,18 +242,6 @@ func monitorNewElectionRound(conn *net.UDPConn){
 		default:
 		}
 	}
-}
-
-func buildFileIndex(){
-
-}
-
-func repairFileServerCluster(fileName string){
-
-}
-
-func IsSelfLeader() bool {
-	return LeaderId == SelfNodeId
 }
 
 
@@ -266,7 +275,7 @@ func multicast(conn *net.UDPConn, payload []byte){
 	}
 }
 
-func nodeIdToAddr(nodeId string) string {
+func NodeIdToAddr(nodeId string) string {
 	splitted := strings.Split(nodeId, "-")
 	if len(splitted) != 2{
 		log.Printf("Error parsing node id (%s) to udp address", nodeId)

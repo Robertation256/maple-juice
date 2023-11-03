@@ -1,69 +1,183 @@
 package util
 
 import (
+	"errors"
 	"log"
-	"slices"
 )
 
 const (
 	MIN_REPLICA_NUM int = 4
 )
 
+// metadata reported by each file server and collected by the metadata server
+type FileServerMetadataReport struct {
+	NodeId      string
+	FileEntries []FileInfo
+}
 
-// entries maintained at the metadata server
-type FileMetadataEntry struct {
+type FileInfo struct {
+	NodeId   string
 	FileName string
-	Master string		// nodeId
-	Servants  []string  // nodeIds
+	IsMaster bool
+	InRepair bool // in the process of replicating from another replica
+	Version  int
+}
+
+// replica cluster info for a file
+type ClusterInfo struct {
+	FileName string
+	Master   *FileInfo
+	Servants []*FileInfo
+}
+
+func NewReplicaInfo(fileName string) *ClusterInfo {
+	ret := ClusterInfo{
+		FileName: fileName,
+		Servants: make([]*FileInfo, 0),
+	}
+	return &ret
 }
 
 
 
-func(this *FileMetadataEntry) AddServers(newNodes []string){
-	if !this.NeedRepair(){
-		log.Print("File cluster already satisfies legal size.")
-	}
-
-	if this.ReplicaNum() == 0{
-		log.Fatal("Ghost file index entry")
-	}
-
-	if !this.HasMaster(){
-		// pick the smallest nodeId as new master 
-		this.Master = this.Servants[0]
-		this.Servants = this.Servants[1:]
-	}
-
-	
-	for _, newNode := range newNodes {
-		// todo: issue replications to new nodes
-
-		this.Servants = append(this.Servants, newNode)
-		slices.Sort(this.Servants)
-	}
-	
-
-
+// return type for DFS client metadata query
+type FileDistributionInfo struct {
+	FileName string
+	Master   FileInfo
+	Servants []FileInfo
 }
 
-// replica num is lower than legal size
-func(this *FileMetadataEntry) NeedRepair() bool {
-	return this.ReplicaNum() < MIN_REPLICA_NUM
-}
+// compile reports into map of nodeId -> fileName -> FileInfo and a map of fileName -> replicaInfo
+func CompileReports(reports *[]FileServerMetadataReport) (*map[string]map[string]*FileInfo, *map[string]*ClusterInfo) {
+	nodeIdToFiles := make(map[string]map[string]*FileInfo)
+	fileNameToCluster := make(map[string]*ClusterInfo)
 
-func(this *FileMetadataEntry) IsStable() bool {
-	return this.ReplicaNum() >= MIN_REPLICA_NUM
-}
+	for _, report := range *reports {
+		nodeId := report.NodeId
+		_, ok := nodeIdToFiles[nodeId]
 
-func(this *FileMetadataEntry) ReplicaNum() int {
-	num := 0
-	if len(this.Master) >  0 {
-		num += 1
+		if !ok {
+			nodeIdToFiles[nodeId] = make(map[string]*FileInfo)
+		}
+
+		for _, fileInfo := range report.FileEntries {
+			fileName := fileInfo.FileName
+			nodeIdToFiles[nodeId][fileName] = &fileInfo
+
+			_, ok = fileNameToCluster[fileName]
+			if !ok {
+				fileNameToCluster[fileName] = NewReplicaInfo(fileName)
+			}
+			entry := fileNameToCluster[fileName]
+			if fileInfo.IsMaster {
+				if fileNameToCluster[fileName].Master != nil {
+					log.Printf("Detected multiple masters for file %s", fileName)
+				}
+				entry.Master = &fileInfo
+			} else {
+				servants := entry.Servants
+				servants = append(servants, &fileInfo)
+				entry.Servants = servants
+			}
+			fileNameToCluster[fileName] = entry
+		}
 	}
-	num += len(this.Servants)
-	return num
+
+	return &nodeIdToFiles, &fileNameToCluster
 }
 
-func(this *FileMetadataEntry) HasMaster() bool {
-	return len(this.Master) >  0
+// try to choose servant with the largest version id as next master
+// remove it from servant list
+func (this *ClusterInfo) InstateNewMaster() error {
+	var newMaster *FileInfo
+	ti := 0
+	for idx, servant := range this.Servants {
+		if servant.InRepair {
+			continue
+		}
+
+		if newMaster == nil || (*newMaster).Version < (*servant).Version {
+			newMaster = servant
+			ti = idx
+		}
+	}
+
+	// found a new master, remove it from servants
+	if newMaster != nil {
+		servants := this.Servants
+		this.Servants = append(servants[:ti], servants[ti+1:]...)
+		return nil
+	}
+
+	// this only happens when master dies and no servants have completed replication
+	return errors.New("Fatal: untable to establish new master for file " + this.FileName)
+}
+
+
+// pull in new servants to reach replication factor
+func (cluster *ClusterInfo) RecruitServants(nodeIdToFiles *map[string]map[string]*FileInfo, replicationFactor int) {
+	recruitNum := replicationFactor - cluster.ClusterSize()
+	if recruitNum <= 0{
+		return
+	}
+
+	for nodeId, fmap := range *nodeIdToFiles {
+		_, exists := fmap[cluster.FileName]
+		if !exists {
+			newFileInfo := FileInfo{
+				NodeId: nodeId,
+				FileName: cluster.FileName,
+				IsMaster: false,
+				InRepair: true, 
+				Version: 0,
+
+			}
+			cluster.Servants = append(cluster.Servants, &newFileInfo)
+			if cluster.ClusterSize() >= replicationFactor{
+				break
+			}
+		}
+	}
+
+	if cluster.ClusterSize() >= replicationFactor {
+		log.Printf("[Warn] unable to fulfill replication factor for file %s, current cluster size is %d", cluster.FileName, cluster.ClusterSize())
+	}
+}
+
+
+func (this *ClusterInfo) ClusterSize() int {
+	size := 0
+	if this.Master != nil {
+		size += 1
+	}
+	return size + len(this.Servants)
+}
+
+
+func (this *ClusterInfo) Flatten() *[]*FileInfo {
+	ret := make([]*FileInfo, 0)
+	if this.Master != nil {
+		ret = append(ret, this.Master)
+	}
+	ret = append(ret, this.Servants...)
+	return &ret
+}
+
+
+
+func Convert(fileToCluster *map[string]*ClusterInfo) *map[string]map[string]*FileInfo{
+	ret := make(map[string]map[string]*FileInfo)
+
+	for fileName, cluster := range *fileToCluster{
+		for _, fileInfo := range *cluster.Flatten(){
+			nodeId := fileInfo.NodeId
+			_, exists := ret[nodeId]
+			if !exists {
+				ret[nodeId] = make(map[string]*FileInfo)
+			}
+			ret[nodeId][fileName] = fileInfo
+		}
+	}
+
+	return &ret
 }
