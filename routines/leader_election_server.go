@@ -79,10 +79,12 @@ func StartLeaderElectionServer(){
 	// start receiving election messages
 	buf := make([]byte, READ_BUFFER_SIZE)
 	go func() {
-		n, _, err := conn.ReadFromUDP(buf)
-		if n > 0 && err == nil {
-			msg := FromPayload(buf[:n], n)
-			electionMessageChan <- msg
+		for {
+			n, _, err := conn.ReadFromUDP(buf)
+			if n > 0 && err == nil {
+				msg := FromPayload(buf[:n], n)
+				electionMessageChan <- msg
+			}
 		}
 	}()
 
