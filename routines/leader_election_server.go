@@ -14,7 +14,7 @@ import (
 
 
 const (
-	ELECTION_TIMEOUT_MILLI uint = 10000 
+	ELECTION_TIMEOUT_MILLI uint = 20000 
 	VOTE_TIMEOUT_MILLI uint = 3000
 	READ_BUFFER_SIZE int = 100
 
@@ -202,7 +202,7 @@ func waitAndVote(conn *net.UDPConn, votingRoundId uint32){
 		log.Printf("Abstained vote for round %d ", votingRoundId)
 		return
 	}
-
+	log.Printf("Casted vote for %s at round %d ", candidateId, votingRoundId)
 	msg := ElectionMessage{
 		MessageType: VOTE,
 		RoundId: votingRoundId,
