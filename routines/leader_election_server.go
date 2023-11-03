@@ -83,6 +83,7 @@ func StartLeaderElectionServer(){
 			n, _, err := conn.ReadFromUDP(buf)
 			if n > 0 && err == nil {
 				msg := FromPayload(buf[:n], n)
+				log.Printf("UDP election msg type: %d, nodeId %s", msg.MessageType, msg.NodeId)
 				electionMessageChan <- msg
 			}
 		}
