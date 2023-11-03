@@ -43,20 +43,21 @@ func (rpcServer *FileMetadataService) StartMetadataServer() {
 		log.Fatal("Failed to start file metadata server", err)
 	}
 
-	rpcServer.adjustCluster(collectMetadata())
+	// rpcServer.adjustCluster(collectMetadata())
 
-	go func() {
-		// todo: low-priority but needs graceful termination
-		for {
-			timer := time.After(time.Duration(RECONCILIATION_PERIOD_MILLIS) * time.Millisecond)
-			select {
-			case <-timer:
-				rpcServer.adjustCluster(collectMetadata())
-			}
-		}
-	}()
+	// go func() {
+	// 	// todo: low-priority but needs graceful termination
+	// 	for {
+	// 		timer := time.After(time.Duration(RECONCILIATION_PERIOD_MILLIS) * time.Millisecond)
+	// 		select {
+	// 		case <-timer:
+	// 			rpcServer.adjustCluster(collectMetadata())
+	// 		}
+	// 	}
+	// }()
 
 	go http.Serve(l, nil)
+	log.Print("File metadata server started")
 
 	FILE_METADATA_SERVER_SIGTERM.Wait()
 }
@@ -200,7 +201,7 @@ func informMetadata(nodeId string, fileMap map[string]*util.FileInfo){
 
 	call := client.Go("FileServer.UpdateMetadata", &data, &retFlag, nil)
 	if call.Error != nil {
-		log.Print("Encountered error while informing node %s", nodeId, call.Error)
+		log.Printf("Encountered error while informing node %s", nodeId)
 		return
 	}
 
@@ -212,9 +213,9 @@ func informMetadata(nodeId string, fileMap map[string]*util.FileInfo){
 			log.Println("File Metadata Server: Channel closed for async rpc call")
 		} else {
 			if retFlag == "ACK" {
-				log.Println("File Metadata Server: successfully informed node %s", nodeId)
+				log.Printf("File Metadata Server: successfully informed node %s", nodeId)
 			} else {
-				log.Println("File Metadata Server: node %s failed to process metadata update", nodeId)
+				log.Printf("File Metadata Server: node %s failed to process metadata update", nodeId)
 			}
 		}
 		

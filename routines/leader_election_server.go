@@ -116,14 +116,12 @@ func StartLeaderElectionServer(){
 
 // start whatever service needed to be hosted by a leader
 func startLeaderHostedService(){
-	// FILE_METADATA_SERVER_SIGTERM.Add(1)
-	// go NewFileMetadataService().StartMetadataServer()
-	log.Print("Leader service started")
-	
+	FILE_METADATA_SERVER_SIGTERM.Add(1)
+	go NewFileMetadataService().StartMetadataServer()
 }
 
 func termLeaderHostedService(){
-	// FILE_METADATA_SERVER_SIGTERM.Done()
+	FILE_METADATA_SERVER_SIGTERM.Done()
 }
 
 
