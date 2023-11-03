@@ -287,8 +287,9 @@ func multicast(conn *net.UDPConn, payload []byte){
 	}
 }
 
+
 func NodeIdToAddr(nodeId string) string {
-	splitted := strings.Split(nodeId, "-")
+	splitted := strings.Split(nodeId, ":")
 	if len(splitted) != 2{
 		log.Printf("Error parsing node id (%s) to udp address", nodeId)
 	}
