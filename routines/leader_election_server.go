@@ -176,9 +176,9 @@ func handleElectionMsg(conn *net.UDPConn, msg *ElectionMessage){
 			candidateId = msg.NodeId
 		}
 	} else if msg.MessageType == VOTE {
+		log.Printf("Received vote from node %s", msg.NodeId)
 		_, exists := voterSet[msg.NodeId]
 		if !exists {
-			log.Printf("Received vote from node %s", msg.NodeId)
 			voterSet[msg.NodeId] = true
 		}
 		if len(voterSet) >= quorumSize {
