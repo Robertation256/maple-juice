@@ -3,6 +3,7 @@ package routines
 import (
 	"cs425-mp2/config"
 	"cs425-mp2/util"
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -63,15 +64,19 @@ func (rpcServer *FileMetadataService) StartMetadataServer() {
 }
 
 // query replica distribution about a file, for DFS client
-func (rpcServer *FileMetadataService) GetFileClusterInfo(fileName string)(*util.FileDistributionInfo, error){
+func (rpcServer *FileMetadataService) GetFileClusterInfo(fileName  *string, reply *util.FileDistributionInfo) error{
+	if fileName == nil {
+		return errors.New("Empty file name")
+	}
 	rpcServer.metadataLock.RLock()
-	clusterInfo := rpcServer.metadata[fileName]
+	clusterInfo := rpcServer.metadata[*fileName]
 	rpcServer.metadataLock.RUnlock()
 
 	if clusterInfo == nil {
-		return &util.FileDistributionInfo{
+		reply = &util.FileDistributionInfo{
 			Exists: false,
-		}, nil
+		}
+		return nil
 	}
 	
 	servants := make([]util.FileInfo, len(clusterInfo.Servants))
@@ -79,12 +84,13 @@ func (rpcServer *FileMetadataService) GetFileClusterInfo(fileName string)(*util.
 		servants = append(servants, *servant)
 	}
 	
-	return &util.FileDistributionInfo{
+	reply = &util.FileDistributionInfo{
 		FileName: clusterInfo.FileName,
 		Exists: true,
 		Master: *clusterInfo.Master,
 		Servants: servants,
-	}, nil
+	}
+	return nil
 } 
 
 
