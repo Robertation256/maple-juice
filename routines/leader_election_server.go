@@ -136,6 +136,8 @@ func runElection(conn *net.UDPConn){
 		RoundId: localRoundId,
 		NodeId: SelfNodeId,
 	}
+
+	log.Print("Multicasting election request for round %d", localRoundId)
 	multicast(conn, msg.ToPayload())
 
 	go waitAndVote(conn, localRoundId)
@@ -265,6 +267,7 @@ func unicast(conn *net.UDPConn, addr string, payload []byte){
 
 func multicast(conn *net.UDPConn, payload []byte){
 	aliveMembers := LocalMembershipList.AliveMembers()
+	log.Printf("Multicasting to %d members", len(aliveMembers))
 
 	for _, ip := range aliveMembers {
 		addr := ip + ":" + leaderElectionPort
@@ -277,7 +280,6 @@ func multicast(conn *net.UDPConn, payload []byte){
 		if err != nil {
 			log.Printf("Failed to send udp packet to %s %s", addr, err)
 		}
-		
 	}
 }
 
