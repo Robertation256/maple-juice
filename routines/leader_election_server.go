@@ -165,11 +165,13 @@ func handleElectionMsg(conn *net.UDPConn, msg *ElectionMessage){
 	}
 
 	if msg.MessageType == ELECTION_REQUEST {
+		log.Printf("Received election request from node %s", msg.NodeId)
 		if msg.NodeId < candidateId {
 			candidateId = msg.NodeId
 		}
 	} else if msg.MessageType == VOTE {
 		if !voterSet[msg.NodeId] {
+			log.Printf("Received vote from node %s", msg.NodeId)
 			voterSet[msg.NodeId] = true
 		}
 		if len(voterSet) >= quorumSize {
@@ -194,22 +196,19 @@ func handleElectionMsg(conn *net.UDPConn, msg *ElectionMessage){
 
 // wait for a while before deciding who to vote
 func waitAndVote(conn *net.UDPConn, votingRoundId uint32){
-	voteTimeout := time.After(time.Duration(VOTE_TIMEOUT_MILLI) * time.Millisecond)
-	select {
-	case <- voteTimeout:
-		// we might have moved to another round
-		if votingRoundId != localRoundId {
-			log.Printf("Abstained vote for round %d ", votingRoundId)
-			return
-		}
-
-		msg := ElectionMessage{
-			MessageType: VOTE,
-			RoundId: votingRoundId,
-			NodeId: SelfNodeId,
-		}
-		unicast(conn, NodeIdToAddr(candidateId), msg.ToPayload())
+	<- time.After(time.Duration(VOTE_TIMEOUT_MILLI) * time.Millisecond)
+	// we might have moved to another round
+	if votingRoundId != localRoundId {
+		log.Printf("Abstained vote for round %d ", votingRoundId)
+		return
 	}
+
+	msg := ElectionMessage{
+		MessageType: VOTE,
+		RoundId: votingRoundId,
+		NodeId: SelfNodeId,
+	}
+	unicast(conn, NodeIdToAddr(candidateId), msg.ToPayload())
 }
 
 
