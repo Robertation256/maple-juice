@@ -95,21 +95,10 @@ func StartLeaderElectionServer(){
 			runElection(conn)
 		}
 
-		wasLeader := false
-
-		if LeaderId == SelfNodeId {
-			startLeaderHostedService()
-			wasLeader = true
-		}
-
 		go monitorLeaderFailure()
 		go monitorNewElectionRound(conn)
 
 		for len(LeaderId) > 0 {
-		}
-
-		if wasLeader {
-			termLeaderHostedService()
 		}
 	}
 }
@@ -213,7 +202,8 @@ func waitAndVote(conn *net.UDPConn, votingRoundId uint32){
 		RoundId: votingRoundId,
 		NodeId: SelfNodeId,
 	}
-	unicast(conn, NodeIdToAddr(candidateId), msg.ToPayload())
+	addr := NodeIdToIP(candidateId) + ":" + leaderElectionPort
+	unicast(conn, addr, msg.ToPayload())
 }
 
 
@@ -241,7 +231,8 @@ func monitorNewElectionRound(conn *net.UDPConn){
 					RoundId: localRoundId,
 					NodeId: SelfNodeId,
 				}
-				unicast(conn, NodeIdToAddr(msg.NodeId), outMsg.ToPayload())
+				addr := NodeIdToIP(msg.NodeId) + ":" + leaderElectionPort
+				unicast(conn, addr, outMsg.ToPayload())
 			// some node requested new election
 			} else if msg.RoundId > localRoundId {
 				LeaderId = ""
@@ -284,11 +275,11 @@ func multicast(conn *net.UDPConn, payload []byte){
 }
 
 
-func NodeIdToAddr(nodeId string) string {
+func NodeIdToIP(nodeId string) string {
 	splitted := strings.Split(nodeId, ":")
 	if len(splitted) != 2{
 		log.Printf("Error parsing node id (%s) to udp address", nodeId)
 	}
-	return splitted[0] + ":" + leaderElectionPort
+	return splitted[0]
 }
 

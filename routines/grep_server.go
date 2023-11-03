@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"net/rpc"
 	"os"
 	"os/exec"
@@ -18,15 +16,8 @@ import (
 
 func (this *GrepService) Start(){
 	rpc.Register(this)
-	rpc.HandleHTTP()
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", this.Port))
-	if err != nil {
-		log.Fatal("Failed to start local server", err)
-	}
-
-	go http.Serve(l, nil)
+	
 	defer this.Close()
-	LOG_SERVER_STARTED.Done()
 	SIGTERM.Wait()
 }
 
@@ -50,7 +41,7 @@ func NewGrepService() *GrepService {
 	this := new(GrepService)
 	this.LogFilePath = config.LogFilePath
 	this.Hostnames = config.LogServerHostnames
-	this.Port = config.LogServerPort
+	this.Port = config.RpcServerPort
 	this.clients = make([]*rpc.Client, len(config.LogServerHostnames)) 
 	this.ServerId = config.LogServerId
 	return this
