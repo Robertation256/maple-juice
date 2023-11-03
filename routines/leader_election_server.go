@@ -155,10 +155,12 @@ func runElection(conn *net.UDPConn){
 
 func handleElectionMsg(conn *net.UDPConn, msg *ElectionMessage){
 	if msg.RoundId < localRoundId {
+		log.Printf("Discarded election message of type %d with round ID %d", msg.MessageType, msg.RoundId)
 		return 	// discard message from previous rounds
 	}
 
 	if msg.RoundId > localRoundId {
+		log.Printf("Fast-forwarding round")
 		localRoundId = msg.RoundId - 1
 		endCurrentRound = true	// fast-forward to latest election round
 		return
