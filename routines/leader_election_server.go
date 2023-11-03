@@ -1,11 +1,13 @@
 package routines
 
 import (
-	"cs425-mp2/util"
 	"bytes"
+	"cs425-mp2/config"
+	"cs425-mp2/util"
 	"encoding/binary"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -57,10 +59,10 @@ func FromPayload(payload []byte, size int) *ElectionMessage{
 	return ret
 }	
 
-func StartLeaderElectionServer(port string, legalQuorumSize int){
-	leaderElectionPort = port
-	quorumSize = legalQuorumSize
-	localAddr, err := net.ResolveUDPAddr("udp4", addr)
+func StartLeaderElectionServer(){
+	leaderElectionPort = strconv.Itoa(config.LeaderElectionServerPort)
+	quorumSize = config.LeaderElectionQuorumSize
+	localAddr, err := net.ResolveUDPAddr("udp4", ":"+leaderElectionPort)
 	if err != nil {
 		log.Fatal("[Leader Election Service] Error resolving udp address", err)
 	}
