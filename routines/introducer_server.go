@@ -39,7 +39,7 @@ func StartIntroducer() {
 	defer conn.Close()
 	buf := make([]byte, 20)
 
-	SERVER_STARTED.Done()
+	INTRODUCER_SERVER_STARTED.Done()
 
 	for {
 

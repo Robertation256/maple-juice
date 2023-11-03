@@ -64,8 +64,15 @@ func (rpcServer *FileMetadataService) StartMetadataServer() {
 // query replica distribution about a file, for DFS client
 func (rpcServer *FileMetadataService) GetFileClusterInfo(fileName string) util.FileDistributionInfo{
 	rpcServer.metadataLock.RLock()
-	clusterInfo := *rpcServer.metadata[fileName]
+	clusterInfo := rpcServer.metadata[fileName]
 	rpcServer.metadataLock.RUnlock()
+
+	if clusterInfo == nil {
+		return util.FileDistributionInfo{
+			Exists: false,
+		}
+	}
+	
 	servants := make([]util.FileInfo, len(clusterInfo.Servants))
 	for _, servant := range clusterInfo.Servants{
 		servants = append(servants, *servant)
@@ -73,6 +80,7 @@ func (rpcServer *FileMetadataService) GetFileClusterInfo(fileName string) util.F
 	
 	return util.FileDistributionInfo{
 		FileName: clusterInfo.FileName,
+		Exists: true,
 		Master: *clusterInfo.Master,
 		Servants: servants,
 	}

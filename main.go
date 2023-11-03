@@ -18,27 +18,20 @@ func main() {
 
 	util.CreateProcessLogger(config.LogFilePath)
 	grepService := routines.NewGrepService()
-	go grepService.Start()
-
+	go grepService.Start()		
 
 	routines.InitLocalMembershipList()
 
 	if config.IsIntroducer {
-		// wait for introducer to start
-		routines.AddServerToWait()
-		// wait for membership list server to start
-		routines.AddServerToWait()
 		go routines.StartIntroducer()
-		go routines.StartMembershipListServer()
-	} else {
-		// wait for membership list server to start
-		routines.AddServerToWait()
-		go routines.StartMembershipListServer()
-	}
+	} 
+	go routines.StartMembershipListServer()
+	go routines.StartLeaderElectionServer()
+
 
 	// don't allow commands until all servers properly started
 	fmt.Println("Starting servers...\n")
-	routines.SERVER_STARTED.Wait()
+	routines.WaitAllServerStart()
 
 	if config.IsIntroducer {
 		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%d\n", routines.LocalMembershipList.SelfEntry.Ip[0], 
@@ -58,6 +51,10 @@ func main() {
 		"droprate":          "add an artificial drop rate",
 		"log":		 		 "print logs from remote servers",
 		"help":				 "command manual",
+
+		// debug commands
+		"pl": "print leader",
+		
 	}
 
 	defer util.ProcessLogger.Close()
@@ -113,6 +110,10 @@ func main() {
 				fmt.Printf("%s: %s\n", k, v)
 			}
 			fmt.Println()
+
+		// debug commands
+		case"pl":
+			fmt.Println(routines.LeaderId)
 		}
 	}
 

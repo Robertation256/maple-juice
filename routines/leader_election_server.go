@@ -60,6 +60,7 @@ func FromPayload(payload []byte, size int) *ElectionMessage{
 }	
 
 func StartLeaderElectionServer(){
+	MEMBERSHIP_SERVER_STARTED.Wait()
 	leaderElectionPort = strconv.Itoa(config.LeaderElectionServerPort)
 	quorumSize = config.LeaderElectionQuorumSize
 	localAddr, err := net.ResolveUDPAddr("udp4", ":"+leaderElectionPort)
@@ -84,6 +85,8 @@ func StartLeaderElectionServer(){
 			electionMessageChan <- msg
 		}
 	}()
+
+	LEADER_ELECTION_SERVER_STARTED.Done()
 
 	for {	//low priority but needs graceful termination
 		for len(LeaderId) == 0 {

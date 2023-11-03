@@ -59,11 +59,8 @@ func StartMembershipListServer() {
 
 	go startHeartbeatSender(LocalMembershipList, conn)
 
-	SERVER_STARTED.Done()
-
-	for {
-	}
-
+	MEMBERSHIP_SERVER_STARTED.Done()
+	SIGTERM.Wait()
 }
 
 func startHeartbeatReciever(localList *util.MemberList, conn *net.UDPConn) {

@@ -33,7 +33,7 @@ const (
 var MembershipListEventChan = make(chan *MembershipListEvent, MEMBERSHIP_LIST_EVENT_CHANEL_SIZE)
 
 // read write lock
-var memberListLock sync.Mutex
+var memberListLock sync.Mutex // todo: change this to read-write lock
 
 // linked list node
 type EntryNode struct {

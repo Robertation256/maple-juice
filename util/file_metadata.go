@@ -43,6 +43,7 @@ func NewReplicaInfo(fileName string) *ClusterInfo {
 // return type for DFS client metadata query
 type FileDistributionInfo struct {
 	FileName string
+	Exists bool			// false if a file cannot be found
 	Master   FileInfo
 	Servants []FileInfo
 }

@@ -26,6 +26,7 @@ func (this *GrepService) Start(){
 
 	go http.Serve(l, nil)
 	defer this.Close()
+	LOG_SERVER_STARTED.Done()
 	SIGTERM.Wait()
 }
 
