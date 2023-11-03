@@ -36,14 +36,6 @@ func NewFileMetadataService() *FileMetadataService {
 // file index & file master/servant info server, hosted by leader
 func (rpcServer *FileMetadataService) StartMetadataServer() {
 
-	rpc.Register(rpcServer)
-	rpc.HandleHTTP()
-	addr := ":" + strconv.Itoa(config.FileMetadataServerPort)
-	l, err := net.Listen("tcp", addr)
-	if err != nil {
-		log.Fatal("Failed to start file metadata server", err)
-	}
-
 	// rpcServer.adjustCluster(collectMetadata())
 
 	// go func() {
@@ -56,9 +48,6 @@ func (rpcServer *FileMetadataService) StartMetadataServer() {
 	// 		}
 	// 	}
 	// }()
-
-	go http.Serve(l, nil)
-	log.Print("File metadata server started")
 
 	FILE_METADATA_SERVER_SIGTERM.Wait()
 }

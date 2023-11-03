@@ -23,18 +23,17 @@ var	LeaderElectionServerPort int
 var	LeaderElectionQuorumSize int
 
 
-// file metadata server config
-var	FileMetadataServerPort int 
-
 // file server config
-var	FileServerPort int
 var ReplicationFactor int
 
 // distributed logging and grep configs
 var	LogServerId string
-var	LogServerPort int 	
 var	LogServerHostnames []string
 var	LogFilePath string
+
+
+//RPC server config
+var RpcServerPort int
 
 
 
@@ -101,18 +100,6 @@ func InitConfig() {
 			LeaderElectionQuorumSize = size
 
 
-		case "FILE_METADATA_SERVER_PORT":
-			port, err := strconv.Atoi(kv[1])
-			if err != nil {
-				log.Fatal("Error loading file metadata server port")
-			}
-			FileMetadataServerPort = port
-		case "FILE_SERVER_PORT":
-			port, err := strconv.Atoi(kv[1])
-			if err != nil {
-				log.Fatal("Error loading file server port")
-			}
-			FileServerPort = port
 		case "REPLICATION_FACTOR":
 			factor, err := strconv.Atoi(kv[1])
 			if err != nil {
@@ -121,12 +108,6 @@ func InitConfig() {
 			ReplicationFactor = factor
 
 
-		case "LOG_SERVER_PORT":
-			port, err := strconv.Atoi(kv[1])
-			if err != nil {
-				log.Fatal("Error loading log server port")
-			}
-			LogServerPort = port
 		case "LOG_FILE_NAME":
 			LogFilePath = homeDir+"/"+kv[1]
 		case "LOG_SERVER_ID":
@@ -141,6 +122,13 @@ func InitConfig() {
 				ret[i] = strings.Trim(hostnames[i], " \n\r")
 			}
 			LogServerHostnames = ret
+		
+		case "RPC_SERVER_PORT":
+			port, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading rpc server port")
+			}
+			RpcServerPort = port
 		}
 	}
 	PrintConfig()
@@ -150,14 +138,31 @@ func InitConfig() {
 func PrintConfig() {
 
 	configStr := fmt.Sprintf(
-		"LOG_SERVER_HOSTNAMES: %s\n" +
-		"LOG_SERVER_PORT: %d\n" +
+		"MEMBERSHIP_SERVICE_PORT: %d\n" +
+		"MEMBERSHIP_PROTOCOL: %s\n" +
+		"IS_INTRODUCER: %t\n"+
+		"INTRODUCER_IP: %s\n"+
+		"INTRODUCER_PORT: %d\n"+
+		"LEADER_ELECTION_SERVER_PORT: %d\n"+
+		"LEADER_ELECTION_QUORUM_SIZE: %d\n"+
+		"REPLICATION_FACTOR: %d\n"+
 		"LOG_FILE_PATH: %s\n" +
-		"LOG_SERVER_ID: %s\n",
-		strings.Join(LogServerHostnames, ","),
-		LogServerPort,
+		"LOG_SERVER_ID: %s\n" +
+		"LOG_SERVER_HOSTNAMES: %s\n" +
+		"RPC_SERVER_PORT: %d\n",
+
+		MembershipServicePort,
+		MembershipProtocol,
+		IsIntroducer,
+		IntroducerIp,
+		IntroducerPort,
+		LeaderElectionServerPort,
+		LeaderElectionQuorumSize,
+		ReplicationFactor,
 		LogFilePath,
 		LogServerId,
+		strings.Join(LogServerHostnames, ","),
+		RpcServerPort,
 	)
 
 	log.Printf("Config loaded ------------------\n%s------------------\n", configStr)
