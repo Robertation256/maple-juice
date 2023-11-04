@@ -147,6 +147,11 @@ func main() {
 		"log":               "print logs from remote servers",
 		"store":			 "list local files hosted by DFS",
 		"help":              "command manual",
+		"put":				 "put localfilename sdfsfilename (from local dir",
+		"get":				 "get sdfsfilename localfilename (fetch to local dir)",
+		"delete":  			 "delete sdfsfilename",
+		"ls":				 "ls sdfsfilename: list all VM addresses where this file is currently replicated (If you are splitting files into blocks, just set the block size to be large enough that each file is one block)",
+		"multiread": 		 "launches reads from VMi… VMj simultaneously to filename. (Note that you have to implement this anyway for your report's item (iv) experiments).",
 
 		// debug commands
 		"pl": "print leader",

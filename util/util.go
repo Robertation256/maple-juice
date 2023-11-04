@@ -7,13 +7,17 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"bufio"
+	"os"
 )
 
 func Prompt(title string, cmd *string, args *[]string, isValidCmd func(string) bool) {
 	var input string
 	for {
 		fmt.Println(title)
-		fmt.Scanln(&input)
+		in := bufio.NewReader(os.Stdin)
+		input, _ = in.ReadString('\n')
+
 
 		input = strings.Trim(input, " \n\r")
 		splitted := strings.Split(input, " ")
