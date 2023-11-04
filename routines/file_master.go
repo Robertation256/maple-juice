@@ -98,14 +98,14 @@ func (fm *FileMaster) CheckQueue() {
 	}
 }
 
-func (fm *FileMaster) ReadFile(clientAddr string) error {
+func (fm *FileMaster) ReadFile(clientFilename, clientAddr string) error {
 	var request *Request = nil
 	for {
 		// if the request is not in queue and read condition (reader < 2 and no writer) satisfied
 		if request == nil && fm.CurrentRead < 2 && fm.CurrentWrite == 0 {
 			// no write has been waiting for more than 4 consecutive read
 			if len(fm.WriteQueue) == 0 || (len(fm.WriteQueue) > 0 && fm.WriteQueue[0].WaitRound < 4) {
-				return fm.executeRead(clientAddr)
+				return fm.executeRead(clientFilename, clientAddr)
 			}
 		} else if request == nil {
 			// initial condition to execute the read is not satifised. add to queue
@@ -116,12 +116,12 @@ func (fm *FileMaster) ReadFile(clientAddr string) error {
 			fm.Queue = append(fm.Queue, request)
 		} else if request != nil && !request.InQueue {
 			// request has been poped from queue, execute read
-			return fm.executeRead(clientAddr)
+			return fm.executeRead(clientFilename, clientAddr)
 		}
 	}
 }
 
-func (fm *FileMaster) executeRead(clientAddr string) error {
+func (fm *FileMaster) executeRead(clientFilename, clientAddr string) error {
 	fm.CurrentRead += 1
 	// every request in the wait queue has been forced to wait another one round because of 
 	// the read that is currently executing
@@ -131,7 +131,7 @@ func (fm *FileMaster) executeRead(clientAddr string) error {
 
 	fmt.Println("read" + fm.Filename)
 	// TODO: change this to send file from servant
-	util.CopyFileToRemote(fm.Filename, fm.Filename, clientAddr, fm.SshConfig, fm.SdfsFolder)
+	util.CopyFileToRemote(fm.Filename, clientFilename, clientAddr, fm.SshConfig, fm.SdfsFolder)
 
 
 	fm.CurrentRead -= 1
@@ -139,14 +139,14 @@ func (fm *FileMaster) executeRead(clientAddr string) error {
 	return nil
 }
 
-func (fm *FileMaster) WriteFile(clientAddr string) error {
+func (fm *FileMaster) WriteFile(clientFilename, clientAddr string) error {
 	var request *Request = nil
 	for {
 		// requests just come in, and the condition for write is satisfied
 		if request == nil && fm.CurrentWrite == 0 && fm.CurrentRead == 0 {
 			// if there is no other write pending, simply execute
 			if len(fm.WriteQueue) == 0 {
-				return fm.executeWrite(clientAddr)
+				return fm.executeWrite(clientFilename, clientAddr)
 			} 
 		} else if request == nil {
 			// otherwise add to queue
@@ -157,12 +157,12 @@ func (fm *FileMaster) WriteFile(clientAddr string) error {
 			fm.Queue = append(fm.Queue, request)
 			fm.WriteQueue = append(fm.WriteQueue, request)
 		} else if request != nil && !request.InQueue {
-			return fm.executeWrite(clientAddr)
+			return fm.executeWrite(clientFilename, clientAddr)
 		}
 	}
 }
 
-func (fm *FileMaster) executeWrite(clientAddr string) error {
+func (fm *FileMaster) executeWrite(clientFilename, clientAddr string) error {
 	fm.CurrentWrite += 1
 
 	fmt.Println("write" + fm.Filename)
@@ -182,7 +182,7 @@ func (fm *FileMaster) executeWrite(clientAddr string) error {
 			log.Fatal("Error dialing client:", err)
 		}
 		fromClientArgs := CopyArgs{
-			LocalFilename: fm.Filename, 
+			LocalFilename: clientFilename, 
 			RemoteFilename: fm.Filename, 
 			RemoteAddr: clientAddr,
 		}
@@ -191,16 +191,16 @@ func (fm *FileMaster) executeWrite(clientAddr string) error {
 		client.Close()
 
 		if initialCopyErr != nil {
-			log.Fatal("Error copying from client", err)
+			log.Fatal("Error copying from client: ", err)
 		}
-	}
+	} // else if (clientFilename != fm.Filename)
 
 	// copy the file to each servant
 	// TODO: change these to async calls
 	for _, servant := range fm.Servants {
 		servantErr := util.CopyFileToRemote(fm.Filename, fm.Filename, servant, fm.SshConfig, fm.SdfsFolder)
 		if servantErr != nil {
-			log.Fatal("Error sending file to servant", servantErr)
+			log.Fatal("Error sending file to servant: ", servantErr)
 		}
 	}
 

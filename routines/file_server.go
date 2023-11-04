@@ -25,8 +25,9 @@ type CopyArgs struct {
 }
 
 type RWArgs struct {
-	Filename 	string
-	ClientAddr 	string
+	LocalFilename 	string
+	SdfsFilename 	string
+	ClientAddr 		string
 }
 
 type CreateFMArgs struct {
@@ -67,24 +68,24 @@ func (this *FileService) Start(){
 
 // reroute to the corresponding file master
 func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
-	fm, ok := this.Filename2FileMaster[args.Filename]
+	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
 	// TODO: fix error checking and return the actual error
 	if ok {
-		fm.ReadFile(args.ClientAddr)
+		fm.ReadFile(args.LocalFilename, args.ClientAddr)
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.Filename)
+		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
 	}
 	return nil
 }
 
 // reroute to the corresponding file master
 func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
-	fm, ok := this.Filename2FileMaster[args.Filename]
+	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
 	// TODO: fix error checking and return the actual error
 	if ok {
-		fm.WriteFile(args.ClientAddr)
+		fm.WriteFile(args.LocalFilename, args.ClientAddr)
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.Filename)
+		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
 	}
 	return nil
 }

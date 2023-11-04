@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+
 // file server test -------------
 
 // func main() {
@@ -33,7 +34,7 @@ import (
 	
 // 	servants := []string{"fa23-cs425-3802.cs.illinois.edu"}
 // 	createArgs := &routines.CreateFMArgs{
-// 		Filename: "test-fm.txt",
+// 		Filename: "test-fm-copy.txt",
 // 		Servants: servants,
 // 	}
 
@@ -48,13 +49,15 @@ import (
 	
 
 // 	readArgs := &routines.RWArgs{
-// 		Filename: "test-fm.txt",
+// 		LocalFilename: "test-another-copy.txt",
+// 		SdfsFilename: "test-another.txt",
 // 		ClientAddr: "fa23-cs425-3803.cs.illinois.edu",
 // 	}
 
 // 	// writeArgs := &routines.RWArgs{
-// 	// 	Filename: "test-fm.txt",
-// 	// 	ClientAddr: "fa23-cs425-3801.cs.illinois.edu",
+// 	// 	LocalFilename: "test-fm.txt",
+// 	// 	SdfsFilename: "test-fm-copy.txt",
+// 	// 	ClientAddr: "fa23-cs425-3801.cs.illinois.edu:9000",
 // 	// }
 
 // 	// writeArgs1 := &routines.RWArgs{
@@ -66,8 +69,9 @@ import (
 // 	// 	Filename: "test-fm.txt",
 // 	// }
 
+// 	// client.Call("FileService.WriteFile", writeArgs, &reply)
 // 	client.Call("FileService.ReadFile", readArgs, &reply)
-// 	// client.Call("FileService.WriteFile", writeArgs1, &reply)
+// 	// client.Call("FileService.DeleteFile", deleteArgs, &reply)
 
 
 // 	//fm := routines.NewFileMaster(config.Homedir + "/" + "test-fm.txt", servants, fileService.SshConfig)
