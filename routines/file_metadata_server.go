@@ -35,16 +35,17 @@ func (this *FileMetadataService) Register() {
 	rpc.Register(this)
 
 	// todo: low-priority but needs graceful termination
-
-	for {
-		timer := time.After(time.Duration(RECONCILIATION_PERIOD_MILLIS) * time.Millisecond)
-		select {
-		case <-timer:
-			if LeaderId == SelfNodeId {
-				this.adjustCluster(collectMetadata())
+	go func() {
+		for {
+			timer := time.After(time.Duration(RECONCILIATION_PERIOD_MILLIS) * time.Millisecond)
+			select {
+			case <-timer:
+				if LeaderId == SelfNodeId {
+					this.adjustCluster(collectMetadata())
+				}
 			}
 		}
-	}
+	}()
 
 }
 
