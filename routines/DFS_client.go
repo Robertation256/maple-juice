@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/rpc"
+	"strconv"
 	"time"
 )
 
@@ -49,6 +50,8 @@ func ProcessDfsCmd(cmd string, args []string){
 		DeleteFile(args)
 	case "ls":
 		ListFile(args)
+	case "multiread":
+
 	case "store":
 		// todo: handle store
 	
@@ -60,10 +63,10 @@ func ProcessDfsCmd(cmd string, args []string){
 }
 
 
-func GetFile(args []string){
+func GetFile(args []string) error {
 	if len(args) != 2 {
 		log.Printf("Invalid parameteres for DFS GET command")
-		return
+		return errors.New("Invalid parameteres for DFS GET command")
 	}
 
 	localFileName := args[0]
@@ -71,7 +74,7 @@ func GetFile(args []string){
 
 	if len(localFileName) == 0 || len(remoteFileName) == 0 {
 		log.Printf("Invalid parameteres for DFS GET command")
-		return
+		return errors.New("Invalid parameteres for DFS GET command")
 	}
 
 
@@ -79,14 +82,14 @@ func GetFile(args []string){
 	err := queryMetadataService(FILE_GET, remoteFileName, fileMetadata)
 
 	if err != nil {
-		log.Printf("Encountered error while quering file metadata service: %d", err.Error())
-		return 
+		log.Printf("Encountered error while quering file metadata service: %s", err.Error())
+		return errors.New("Encountered error while quering file metadata service")
 	}
 
 	master := fileMetadata.Master
 	if master.FileStatus != util.COMPLETE {
 		log.Printf("File master is not ready: file upload in progress")
-		return
+		return errors.New("File master is not ready: file upload in progress")
 	}
 
 	// fileMasterIP := NodeIdToIP(master.NodeId)
@@ -94,6 +97,9 @@ func GetFile(args []string){
 
 	
 	// todo: plugin into file server rpc call
+
+
+	return nil
 
 }
 
@@ -116,7 +122,7 @@ func PutFile(args []string){
 	err := queryMetadataService(FILE_PUT, remoteFileName, fileMetadata)
 
 	if err != nil {
-		log.Printf("Encountered error while quering file metadata service: %d", err.Error())
+		log.Printf("Encountered error while quering file metadata service: %s", err.Error())
 		return 
 	}
 
@@ -151,7 +157,7 @@ func DeleteFile(args []string){
 	err := queryMetadataService(FILE_DELETE, remoteFileName, fileMetadata)
 
 	if err != nil {
-		log.Printf("Encountered error while query file metadata service: %d", err.Error())
+		log.Printf("Encountered error while query file metadata service: %s", err.Error())
 		return 
 	}
 
@@ -182,9 +188,59 @@ func ListFile(args []string){
 	fileMetadata := &DfsResponse{}
 	err := queryMetadataService(FILE_LIST, remoteFileName, fileMetadata)
 	if err != nil {
-		log.Printf("Encountered error while query file metadata service: %d", err.Error())
+		log.Printf("Encountered error while query file metadata service: %s", err.Error())
 	} else {
 		fmt.Print(fileMetadata.toString())
+	}
+}
+
+
+func Multiread(args []string){
+	if len(args) < 2 {
+		log.Printf("Invalid parameteres for DFS multiread command")
+	}
+
+	remoteFileName := args[0]
+	machineIds := make([]int, len(args)-1)
+
+	for i:=1; i<len(args); i++ {
+		id, err := strconv.Atoi(args[i])
+		if err != nil  || id < 1 || id > len(config.ServerHostnames) {
+			log.Printf("Invalid machine Id")
+		}
+		machineIds = append(machineIds, id-1)	// switch from 1-index to 0-index
+	}
+
+
+	for machineId := range machineIds {
+		hostName := config.ServerHostnames[machineId]
+		go func() {
+			client := dial(hostName, config.RpcServerPort)
+
+			if client == nil {
+				log.Printf("Unable to connect to %s:%d", hostName, config.RpcServerPort)
+			}
+
+			reply := ""
+			call := client.Go("DfsRemoteReader.Read", &remoteFileName, &reply, nil)
+			timeout := time.After(40 * time.Second)
+
+			select {
+			case <-timeout:
+				log.Printf("DFS file GET times out at %s", hostName)
+				return
+			case _, ok := <-call.Done: 
+				if !ok {
+					log.Println("Channel closed for async rpc call")
+				} else {
+					if call.Error == nil {
+						log.Printf("DFS GET completed at %s", hostName)
+					} else {
+						log.Printf("DFS GET failed at %s. Error: %s", hostName, call.Error.Error())
+					}
+				}
+			}	
+		}()
 	}
 }
 
