@@ -165,5 +165,5 @@ func PrintConfig() {
 		RpcServerPort,
 	)
 
-	log.Printf("Config loaded ------------------\n%s------------------\n", configStr)
+	log.Printf("\n---Config loaded---\n%s-------------------\n", configStr)
 }

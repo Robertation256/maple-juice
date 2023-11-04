@@ -7,14 +7,15 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/rpc"
 	"net/http"
+	"net/rpc"
 	"strconv"
 )
 
 func main() {
 
-	var userCmd string
+	var cmd string
+	var args []string
 
 	routines.InitSignals()
 	config.InitConfig()
@@ -66,6 +67,7 @@ func main() {
 		"disable_suspicion": "change protocol to G",
 		"droprate":          "add an artificial drop rate",
 		"log":               "print logs from remote servers",
+		"store":			 "list local files hosted by DFS",
 		"help":              "command manual",
 
 		// debug commands
@@ -75,10 +77,10 @@ func main() {
 	defer util.ProcessLogger.Close()
 
 	for {
-		util.Prompt(`Enter a command (Type "help" for a list of available commands)`, &userCmd,
-			func(in string) bool {
+		util.Prompt(`Enter a command (Type "help" for a list of available commands)`, &cmd, &args,
+			func(cmdValue string) bool {
 				for k := range validCommands {
-					if k == in {
+					if k == cmdValue {
 						return true
 					}
 				}
@@ -86,7 +88,7 @@ func main() {
 			},
 		)
 
-		switch userCmd {
+		switch cmd {
 		case "list_mem":
 			// print membership list
 			fmt.Println(routines.LocalMembershipList.ToString())
@@ -115,11 +117,16 @@ func main() {
 				fmt.Println("Switched protocol to G")
 			}
 		case "droprate":
-			var dropRate string
-			util.Prompt(`Enter a drop rate (float between 0 and 1)`, &dropRate, util.IsValidDropRate)
-			routines.ReceiverDropRate, _ = strconv.ParseFloat(dropRate, 64)
+			if len(args) == 1 && util.IsValidDropRate(args[0]) {
+				routines.ReceiverDropRate, _ = strconv.ParseFloat(args[0], 64)
+			} else {
+				fmt.Println("Invalid drop rate input, expected floating point number")
+			}
 		case "log":
 			fmt.Println(grepService.CollectLogs())
+		
+		case "store":
+			// todo: list local files
 		case "help":
 			for k, v := range validCommands {
 				fmt.Printf("%s: %s\n", k, v)
@@ -131,7 +138,7 @@ func main() {
 			fmt.Println(routines.LeaderId)
 
 		default:
-			routines.ProcessDfsCmd(userCmd)
+			routines.ProcessDfsCmd(cmd, args)
 		}
 	}
 }

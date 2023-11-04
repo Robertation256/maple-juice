@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/rpc"
-	"strings"
 	"time"
 )
 
@@ -40,19 +39,7 @@ type DfsResponse struct {
 
 
 // parse and dispatch cmd line
-func ProcessDfsCmd(s string){
-
-	s = strings.Trim(s, " \n\r")
-	splitted := strings.Split(s, " ")
-	if len(splitted) == 0 {
-		log.Printf("Invalid DFS command")
-		return 
-	}
-
-	cmd := splitted[0]
-	args := splitted[1:]
-
-
+func ProcessDfsCmd(cmd string, args []string){
 	switch (cmd) {
 	case "put":
 		PutFile(args)
