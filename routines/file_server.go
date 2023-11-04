@@ -9,6 +9,8 @@ import (
 	"cs425-mp2/util"
 	"fmt"
 	"log"
+	"strings"
+	"os"
 )
 
 type FileService struct {
@@ -17,6 +19,7 @@ type FileService struct {
 	Filename2FileMaster 	map[string]*FileMaster
 	SdfsFolder 				string
 	LocalFileFolder			string
+	Report 					util.FileServerMetadataReport
 }
 
 type CopyArgs struct {
@@ -53,6 +56,10 @@ func NewFileService(port int, homedir string) *FileService {
 	this.Filename2FileMaster = make(map[string]*FileMaster)
 	this.SdfsFolder = homedir + "/sdfs/"
 	this.LocalFileFolder = homedir + "/local/"
+	this.Report =  util.FileServerMetadataReport{
+		NodeId: SelfNodeId,
+		FileEntries: make([]util.FileInfo, 0),
+	}
 
 	return this
 }
@@ -94,6 +101,18 @@ func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
 }
 
 // reroute to the corresponding file master
+func (this *FileService) ReplicateFile(args *RWArgs, reply *string) error {
+	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
+	// TODO: fix error checking and return the actual error
+	if ok {
+		fm.ReplicateFile(args.ClientAddr)
+	} else {
+		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
+	}
+	return nil
+}
+
+// reroute to the corresponding file master
 func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 	fm, ok := this.Filename2FileMaster[args.Filename]
 	// TODO: fix error checking and return the actual error
@@ -116,5 +135,90 @@ func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error 
 func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error{
 	fm := NewFileMaster(args.Filename, args.Servants, this.SshConfig, this.Port, this.SdfsFolder, this.LocalFileFolder)
 	this.Filename2FileMaster[args.Filename] = fm
+	return nil
+}
+
+func (this *FileService) ReportMetadata(args *CreateFMArgs, reply *util.FileServerMetadataReport) error{
+	// TODO: check all files that are pending and change status
+
+	for _, fileInfo := range this.Report.FileEntries {
+		if fileInfo.FileStatus == util.PENDING_FILE_UPLOAD || fileInfo.FileStatus == util.WAITING_REPLICATION {
+			// check if file is in sdfs folder
+			_, err := os.Stat(this.SdfsFolder + fileInfo.FileName)
+			if err == nil {
+				// file is in folder
+				fileInfo.FileStatus = util.COMPLETE
+			}
+		}
+	}
+
+
+	reply.NodeId = this.Report.NodeId
+	reply.FileEntries = this.Report.FileEntries
+
+	return nil
+}
+
+func (this *FileService) UpdateMetadata(fileToClusters *util.Metadata, reply *string) error {
+	nodeToFiles := util.Convert(fileToClusters)
+	updatedFileEntries := (*nodeToFiles)[SelfNodeId]
+
+	filename2fileInfo := make(map[string]util.FileInfo)
+	for _, fileInfo := range this.Report.FileEntries {
+		filename2fileInfo[fileInfo.FileName] = fileInfo
+	}
+
+	for _, updatedFileInfo := range updatedFileEntries {
+		currFileInfo, ok := filename2fileInfo[updatedFileInfo.FileName]
+		needToCreateFm := false
+		if ok {
+			// promoted to master
+			if !currFileInfo.IsMaster && updatedFileInfo.IsMaster {
+				// set is Master to true and create a new filemaster
+				currFileInfo.IsMaster = true
+				needToCreateFm = true
+			}
+		} else {
+			// new file
+			if (updatedFileInfo.IsMaster) {
+				needToCreateFm = true
+			} else if (updatedFileInfo.FileStatus == util.WAITING_REPLICATION) {
+				cluster := (*fileToClusters)[updatedFileInfo.FileName]
+				// failure repair
+				// when master's status == PENDING_FILE_UPLOAD, it indicates a new file is uploaded to sdfs
+				// fm will handle writing to all services, so there is no need to do anything
+				if (cluster.Master.FileStatus == util.COMPLETE) {
+					masterIp := strings.Split(cluster.Master.NodeId, ":")[0]
+					client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", masterIp, config.RpcServerPort))
+					if err != nil {
+						log.Println("Error dailing master when trying to retrieve replica", err)
+						return err
+					}
+					args := &RWArgs {
+						LocalFilename: updatedFileInfo.FileName,
+						SdfsFilename: updatedFileInfo.FileName,
+						ClientAddr: strings.Split(SelfNodeId, ":")[0],
+					}
+					var reply string
+					client.Go("FileService.ReplicateFile", args, &reply, nil)
+				}
+			}
+			this.Report.FileEntries = append(this.Report.FileEntries, *updatedFileInfo)
+		}
+
+		if (needToCreateFm) {
+			createArgs := &CreateFMArgs{
+				Filename: updatedFileInfo.FileName,
+				Servants: util.GetServantIps(fileToClusters, updatedFileInfo.FileName),
+			}
+			var reply string
+			err := this.CreateFileMaster(createArgs, &reply)
+			if err != nil {
+				log.Println("Error when creating file master ", err)
+				return err
+			}
+		}
+	}
+
 	return nil
 }

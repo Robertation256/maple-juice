@@ -145,6 +145,49 @@ func (fm *FileMaster) executeRead(clientFilename, clientAddr string) error {
 	return nil
 }
 
+func (fm *FileMaster) ReplicateFile(clientAddr string) error {
+	var request *Request = nil
+	for {
+		// if the request is not in queue and read condition (reader < 2 and no writer) satisfied
+		if request == nil && fm.CurrentRead < 2 && fm.CurrentWrite == 0 {
+			// no write has been waiting for more than 4 consecutive read
+			if len(fm.WriteQueue) == 0 || (len(fm.WriteQueue) > 0 && fm.WriteQueue[0].WaitRound < 4) {
+				return fm.executeReplicate(clientAddr)
+			}
+		} else if request == nil {
+			// initial condition to execute the read is not satifised. add to queue
+			request = &Request{
+				Type:    "R",
+				InQueue: true,
+			}
+			fm.Queue = append(fm.Queue, request)
+		} else if request != nil && !request.InQueue {
+			// request has been poped from queue, execute read
+			return fm.executeReplicate(clientAddr)
+		}
+	}
+}
+
+func (fm *FileMaster) executeReplicate(clientAddr string) error {
+	fm.CurrentRead += 1
+	// every request in the wait queue has been forced to wait another one round because of 
+	// the read that is currently executing
+	for _, writeRequest := range fm.WriteQueue {
+		writeRequest.WaitRound += 1
+	}
+
+	fmt.Println("read" + fm.Filename)
+	// copy to servant's sdfs folder
+	localFilePath := fm.SdfsFolder + fm.Filename
+	remoteFilePath := fm.SdfsFolder + fm.Filename
+	util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
+
+
+	fm.CurrentRead -= 1
+	fm.CheckQueue()
+	return nil
+}
+
 func (fm *FileMaster) WriteFile(clientFilename, clientAddr string) error {
 	var request *Request = nil
 	for {
