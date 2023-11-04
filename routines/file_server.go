@@ -89,12 +89,23 @@ func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
 	return nil
 }
 
+// reroute to the corresponding file master
+func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
+	fm, ok := this.Filename2FileMaster[args.Filename]
+	// TODO: fix error checking and return the actual error
+	if ok {
+		fm.DeleteFile()
+	} else {
+		log.Fatal("No corresponding filemaster for " + args.Filename)
+	}
+	return nil
+}
+
 func (this *FileService) CopyFileToRemote(args *CopyArgs, reply *string) error {
 	return util.CopyFileToRemote(args.LocalFilename, args.RemoteFilename, args.RemoteAddr, this.SshConfig, this.SdfsFolder)
 }
 
-// TODO: delete all replicas
-func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
+func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error {
 	return util.DeleteFile(args.Filename, this.SdfsFolder)
 }
 

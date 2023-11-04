@@ -31,7 +31,7 @@ type FileMaster struct {
 }
 
 type Request struct {
-	// type of request: read (R) or write (W)
+	// type of request: read (R), write (W), delete (D)
 	Type      string
 	// a flag indicating whether the request is still in queue
 	InQueue   bool
@@ -77,7 +77,7 @@ func (fm *FileMaster) CheckQueue() {
 				}
 			}
 		} else {
-			// write request
+			// write request or delete request
 			if fm.CurrentRead == 0 && fm.CurrentWrite == 0 {
 				// write condition satisifed: no reader and no writer (write-write and read-write are both conflict operations)
 				fm.WriteQueue[0].InQueue = false
@@ -206,5 +206,47 @@ func (fm *FileMaster) executeWrite(clientAddr string) error {
 
 	fm.CurrentWrite -= 1
 	fm.CheckQueue()
+	return nil
+}
+
+func (fm *FileMaster) DeleteFile() error {
+	var request *Request = nil
+	for {
+		// requests just come in, and the condition for delete is satisfied
+		if request == nil && fm.CurrentWrite == 0 && fm.CurrentRead == 0 {
+			// if there is no other write pending, simply execute
+			if len(fm.WriteQueue) == 0 {
+				return fm.executeDelete()
+			} 
+		} else if request == nil {
+			// otherwise add to queue. treat delete same as write, so add it to write queue too
+			request = &Request{
+				Type:    "D",
+				InQueue: true,
+			}
+			fm.Queue = append(fm.Queue, request)
+			fm.WriteQueue = append(fm.WriteQueue, request)
+		} else if request != nil && !request.InQueue {
+			return fm.executeDelete()
+		}
+	}
+}
+
+func (fm *FileMaster) executeDelete() error {
+	fmt.Println("delete" + fm.Filename)
+	util.DeleteFile(fm.Filename, fm.SdfsFolder)
+	for _, servant := range fm.Servants {
+		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
+		if err != nil {
+			log.Fatal("Error dialing servant:", err)
+		}
+		deleteArgs := DeleteArgs{
+			Filename: fm.Filename,
+		}
+		var reply string
+		// TODO: change this to async
+		client.Call("FileService.DeleteLocalFile", deleteArgs, &reply)
+		client.Close()
+	}
 	return nil
 }

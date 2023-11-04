@@ -47,18 +47,27 @@ import (
 
 	
 
-// 	writeArgs := &routines.RWArgs{
+// 	readArgs := &routines.RWArgs{
 // 		Filename: "test-fm.txt",
-// 		ClientAddr: "fa23-cs425-3801.cs.illinois.edu",
+// 		ClientAddr: "fa23-cs425-3803.cs.illinois.edu",
 // 	}
 
-// 	writeArgs1 := &routines.RWArgs{
-// 		Filename: "test-another.txt",
-// 		ClientAddr: "fa23-cs425-3801.cs.illinois.edu",
-// 	}
+// 	// writeArgs := &routines.RWArgs{
+// 	// 	Filename: "test-fm.txt",
+// 	// 	ClientAddr: "fa23-cs425-3801.cs.illinois.edu",
+// 	// }
 
-// 	client.Call("FileService.WriteFile", writeArgs, &reply)
-// 	client.Call("FileService.WriteFile", writeArgs1, &reply)
+// 	// writeArgs1 := &routines.RWArgs{
+// 	// 	Filename: "test-another.txt",
+// 	// 	ClientAddr: "fa23-cs425-3801.cs.illinois.edu",
+// 	// }
+
+// 	// deleteArgs := &routines.DeleteArgs{
+// 	// 	Filename: "test-fm.txt",
+// 	// }
+
+// 	client.Call("FileService.ReadFile", readArgs, &reply)
+// 	// client.Call("FileService.WriteFile", writeArgs1, &reply)
 
 
 // 	//fm := routines.NewFileMaster(config.Homedir + "/" + "test-fm.txt", servants, fileService.SshConfig)
