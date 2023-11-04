@@ -39,7 +39,7 @@ type DeleteArgs struct {
 	Filename string
 }
 
-func NewFileService(config *config.Config, port int, homedir string) *FileService {
+func NewFileService(port int, homedir string) *FileService {
 	this := new(FileService)
 	this.Port = port
 	this.SshConfig = &ssh.ClientConfig{

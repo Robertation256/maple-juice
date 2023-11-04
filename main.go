@@ -1,10 +1,14 @@
 package main
 
 import (
-	"cs425-mp2/routines"
 	"cs425-mp2/config"
+	"cs425-mp2/routines"
 	"cs425-mp2/util"
 	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/rpc"
 	"strconv"
 )
 
@@ -83,83 +87,53 @@ import (
 // --------------------
 
 func main() {
-	var isBootstrapServer string
-	var boostrapServicePort string
-	var boostrapProtocol string
-	var protocol uint8
-	var memberListServerPort string
-	var localMembershipList *util.MemberList
-	var userCmd string
-	var boostrapServerAddr string
 
+	var cmd string
+	var args []string
 
 	routines.InitSignals()
+	config.InitConfig()
 
-	// distributed log print service for debugging
-	logConfig := config.NewConfig()
-	util.CreateProcessLogger(logConfig.LogFilePath)
-	grepService := routines.NewGrepService(logConfig)
-	go grepService.Start()
+	util.CreateProcessLogger(config.LogFilePath)
+	grepService := routines.NewGrepService()
+	go grepService.Register()
 
-	
-	util.Prompt("Start as boostrap server? [Y/n]",
-		&isBootstrapServer,
-		func(in string) bool { return in == "Y" || in == "n" },
-	)
+	routines.InitLocalMembershipList()
 
-	if isBootstrapServer == "Y" {
-		util.Prompt("Please enter introducer service port",
-			&boostrapServicePort,
-			util.IsValidPort)
-		util.Prompt("Please enter protocol [G/GS]",
-			&boostrapProtocol,
-			func(in string) bool { return in == "G" || in == "GS" })
-		if boostrapProtocol == "G" {
-			protocol = util.G
-		} else {
-			protocol = util.GS
-		}
-	} else {
-		util.Prompt("Please enter introducer service address (ip:port)",
-			&boostrapServerAddr,
-			util.IsValidAddress)
+	if config.IsIntroducer {
+		go routines.StartIntroducer()
 	}
+	go routines.StartMembershipListServer()
+	go routines.StartLeaderElectionServer()
 
-	util.Prompt("Please enter membership list server port",
-		&memberListServerPort,
-		util.IsValidPort)
 
-	p, _ := strconv.Atoi(memberListServerPort)
-	port := uint16(p)
-	localMembershipList = util.NewMemberList(port)
+	// register and start up rpc services
+	routines.NewFileMetadataService().Register()
+	routines.NewGrepService().Register()
+	routines.NewDfsRemoteReader().Register()
+	rpc.HandleHTTP()
 
-	if isBootstrapServer == "Y" {
-		// wait for introducer to start
-		routines.AddServerToWait()
-		// wait for membership list server to start
-		routines.AddServerToWait()
-		go routines.StartIntroducer(boostrapServicePort, protocol, localMembershipList)
-		go routines.StartMembershipListServer(port, "", localMembershipList)
-	} else {
-		// wait for membership list server to start
-		routines.AddServerToWait()
-		go routines.StartMembershipListServer(port, boostrapServerAddr, localMembershipList)
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.RpcServerPort))
+	if err != nil {
+		log.Fatal("Failed to start RPC server", err)
 	}
+	go http.Serve(l, nil)
+
+
 
 	// don't allow commands until all servers properly started
 	fmt.Println("Starting servers...\n")
-	routines.SERVER_STARTED.Wait()
+	routines.WaitAllServerStart()
 
-	if isBootstrapServer == "Y" {
-		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%s\n", localMembershipList.SelfEntry.Ip[0], 
-		localMembershipList.SelfEntry.Ip[1], 
-		localMembershipList.SelfEntry.Ip[2], 
-		localMembershipList.SelfEntry.Ip[3],
-		boostrapServicePort)
+	if config.IsIntroducer {
+		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%d\n", routines.LocalMembershipList.SelfEntry.Ip[0],
+			routines.LocalMembershipList.SelfEntry.Ip[1],
+			routines.LocalMembershipList.SelfEntry.Ip[2],
+			routines.LocalMembershipList.SelfEntry.Ip[3],
+			config.IntroducerPort)
 	}
 
-	fmt.Printf("Local membership service started at: %s\n\n", localMembershipList.SelfEntry.Addr())
-
+	fmt.Printf("Local membership service started at: %s\n\n", routines.LocalMembershipList.SelfEntry.Addr())
 	validCommands := map[string]string{
 		"list_mem":          "list the membership list",
 		"list_self":         "list local machine info",
@@ -167,17 +141,21 @@ func main() {
 		"enable_suspicion":  "change protocol to GS",
 		"disable_suspicion": "change protocol to G",
 		"droprate":          "add an artificial drop rate",
-		"log":		 		 "print logs from remote servers",
-		"help":				 "command manual",
+		"log":               "print logs from remote servers",
+		"store":			 "list local files hosted by DFS",
+		"help":              "command manual",
+
+		// debug commands
+		"pl": "print leader",
 	}
 
 	defer util.ProcessLogger.Close()
 
 	for {
-		util.Prompt(`Enter a command (Type "help" for a list of available commands)`, &userCmd,
-			func(in string) bool {
+		util.Prompt(`Enter a command (Type "help" for a list of available commands)`, &cmd, &args,
+			func(cmdValue string) bool {
 				for k := range validCommands {
-					if k == in {
+					if k == cmdValue {
 						return true
 					}
 				}
@@ -185,13 +163,13 @@ func main() {
 			},
 		)
 
-		switch userCmd {
+		switch cmd {
 		case "list_mem":
 			// print membership list
-			fmt.Println(localMembershipList.ToString())
+			fmt.Println(routines.LocalMembershipList.ToString())
 		case "list_self":
 			// print local machine info
-			fmt.Println(localMembershipList.SelfEntry.ToString())
+			fmt.Println(routines.LocalMembershipList.SelfEntry.ToString())
 		case "leave":
 			// voluntary leave
 			routines.SignalTermination()
@@ -199,32 +177,43 @@ func main() {
 			return
 		case "enable_suspicion":
 			// switch to GS
-			if localMembershipList.Protocol == util.GS {
+			if routines.LocalMembershipList.Protocol == util.GS {
 				fmt.Println("Suspicion already enabled in current protocol. No changes were made")
 			} else {
-				localMembershipList.UpdateProtocol(util.GS)
+				routines.LocalMembershipList.UpdateProtocol(util.GS)
 				fmt.Println("Switched protocol to GS")
 			}
 		case "disable_suspicion":
 			// switch to G
-			if localMembershipList.Protocol == util.G {
+			if routines.LocalMembershipList.Protocol == util.G {
 				fmt.Println("Suspicion already disabled in current protocol. No changes were made")
 			} else {
-				localMembershipList.UpdateProtocol(util.G)
+				routines.LocalMembershipList.UpdateProtocol(util.G)
 				fmt.Println("Switched protocol to G")
 			}
 		case "droprate":
-			var dropRate string
-			util.Prompt(`Enter a drop rate (float between 0 and 1)`, &dropRate, util.IsValidDropRate)
-			routines.ReceiverDropRate, _ = strconv.ParseFloat(dropRate, 64)
+			if len(args) == 1 && util.IsValidDropRate(args[0]) {
+				routines.ReceiverDropRate, _ = strconv.ParseFloat(args[0], 64)
+			} else {
+				fmt.Println("Invalid drop rate input, expected floating point number")
+			}
 		case "log":
 			fmt.Println(grepService.CollectLogs())
+		
+		case "store":
+			// todo: list local files
 		case "help":
 			for k, v := range validCommands {
 				fmt.Printf("%s: %s\n", k, v)
 			}
 			fmt.Println()
+
+		// debug commands
+		case "pl":
+			fmt.Println(routines.LeaderId)
+
+		default:
+			routines.ProcessDfsCmd(cmd, args)
 		}
 	}
-
 }

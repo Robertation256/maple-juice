@@ -9,13 +9,25 @@ import (
 	"strings"
 )
 
-func Prompt(title string, ret *string, isValidInput func(string) bool) {
+func Prompt(title string, cmd *string, args *[]string, isValidCmd func(string) bool) {
 	var input string
 	for {
 		fmt.Println(title)
 		fmt.Scanln(&input)
-		if isValidInput(input) {
-			*ret = input
+
+		input = strings.Trim(input, " \n\r")
+		splitted := strings.Split(input, " ")
+		if len(splitted) == 0{
+			fmt.Println("Invalid input, please try again.")
+			continue
+		}
+
+		cmdTmp := splitted[0]
+		argsTmp := splitted[1:]
+
+		if isValidCmd(cmdTmp) {
+			*cmd = cmdTmp
+			*args = argsTmp
 			fmt.Println()
 			return
 		}
@@ -55,7 +67,7 @@ func IsValidIp(in string) bool {
 	return true
 }
 
-func getOutboundIp() [4]uint8 {
+func GetOutboundIp() [4]uint8 {
 	var ret [4]uint8
 	conn, _ := net.Dial("udp4", "8.8.8.8:80")
 	defer conn.Close()
