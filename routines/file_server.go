@@ -9,7 +9,6 @@ import (
 	"cs425-mp2/util"
 	"fmt"
 	"log"
-	"strings"
 	"os"
 )
 
@@ -74,6 +73,10 @@ func (this *FileService) Start(){
 	}
 
 	go http.Serve(l, nil)
+}
+
+func (this *FileService) Register(){
+	rpc.Register(this)
 }
 
 // reroute to the corresponding file master
@@ -188,7 +191,7 @@ func (this *FileService) UpdateMetadata(fileToClusters *util.Metadata, reply *st
 				// when master's status == PENDING_FILE_UPLOAD, it indicates a new file is uploaded to sdfs
 				// fm will handle writing to all services, so there is no need to do anything
 				if (cluster.Master.FileStatus == util.COMPLETE) {
-					masterIp := strings.Split(cluster.Master.NodeId, ":")[0]
+					masterIp := NodeIdToIP(cluster.Master.NodeId)
 					client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", masterIp, config.RpcServerPort))
 					if err != nil {
 						log.Println("Error dailing master when trying to retrieve replica", err)
@@ -197,7 +200,7 @@ func (this *FileService) UpdateMetadata(fileToClusters *util.Metadata, reply *st
 					args := &RWArgs {
 						LocalFilename: updatedFileInfo.FileName,
 						SdfsFilename: updatedFileInfo.FileName,
-						ClientAddr: strings.Split(SelfNodeId, ":")[0],
+						ClientAddr: NodeIdToIP(SelfNodeId),
 					}
 					var reply string
 					client.Go("FileService.ReplicateFile", args, &reply, nil)

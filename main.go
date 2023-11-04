@@ -111,6 +111,7 @@ func main() {
 	routines.NewFileMetadataService().Register()
 	routines.NewGrepService().Register()
 	routines.NewDfsRemoteReader().Register()
+	routines.NewFileService(config.RpcServerPort, config.Homedir).Register()
 	rpc.HandleHTTP()
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.RpcServerPort))
