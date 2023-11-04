@@ -15,9 +15,6 @@ import (
 
 func (this *GrepService) Register() {
 	rpc.Register(this)
-
-	defer this.Close()
-	SIGTERM.Wait()
 }
 
 type GrepService struct {

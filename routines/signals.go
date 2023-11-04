@@ -18,7 +18,6 @@ var FILE_METADATA_SERVER_SIGTERM sync.WaitGroup
 var MEMBERSHIP_SERVER_STARTED sync.WaitGroup
 var INTRODUCER_SERVER_STARTED sync.WaitGroup
 var LEADER_ELECTION_SERVER_STARTED sync.WaitGroup
-var RPC_SERVER_STARTED sync.WaitGroup
 
 
 
@@ -26,8 +25,6 @@ func InitSignals() {
 	NeedTermination = false
 	SIGTERM.Add(1)
 	HEARTBEAT_SENDER_TERM.Add(1)
-
-	RPC_SERVER_STARTED.Add(1)
 
 	MEMBERSHIP_SERVER_STARTED.Add(1)
 	INTRODUCER_SERVER_STARTED.Add(1)
@@ -43,7 +40,6 @@ func WaitAllServerStart(){
 	if config.IsIntroducer {
 		INTRODUCER_SERVER_STARTED.Wait()
 	}
-	RPC_SERVER_STARTED.Wait()
 }
 
 func SignalTermination() {

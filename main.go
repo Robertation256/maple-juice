@@ -95,21 +95,23 @@ func main() {
 	config.InitConfig()
 
 	util.CreateProcessLogger(config.LogFilePath)
-	grepService := routines.NewGrepService()
-	go grepService.Register()
+	defer util.ProcessLogger.Close()
+	
 
 	routines.InitLocalMembershipList()
 
 	if config.IsIntroducer {
 		go routines.StartIntroducer()
 	}
+
 	go routines.StartMembershipListServer()
 	go routines.StartLeaderElectionServer()
 
 
 	// register and start up rpc services
 	routines.NewFileMetadataService().Register()
-	routines.NewGrepService().Register()
+	grepService := routines.NewGrepService()
+	grepService.Register()
 	routines.NewDfsRemoteReader().Register()
 	rpc.HandleHTTP()
 
@@ -148,8 +150,6 @@ func main() {
 		// debug commands
 		"pl": "print leader",
 	}
-
-	defer util.ProcessLogger.Close()
 
 	for {
 		util.Prompt(`Enter a command (Type "help" for a list of available commands)`, &cmd, &args,
