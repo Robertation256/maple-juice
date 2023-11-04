@@ -14,6 +14,11 @@ type Config struct {
 	LogServerPort int 	
 	LogServerHostnames []string
 	LogFilePath string
+	// ssh configs
+	SshUsername string
+	SshPassword string
+	// file server configs
+	Homedir string
 }
 
 
@@ -59,8 +64,14 @@ func NewConfig() *Config {
 				ret[i] = strings.Trim(hostnames[i], " \n\r")
 			}
 			config.LogServerHostnames = ret
-		}
+		case "SSH_USERNAME":
+			config.SshUsername = kv[1]
+		case "SSH_PASSWORD":
+			config.SshPassword = kv[1]
+		}	
 	}
+	config.Homedir = homeDir
+
 	log.Printf("Config loaded ------------------\n%s------------------\n", config.ToString())
 
 	return config

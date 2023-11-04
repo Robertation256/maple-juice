@@ -2,12 +2,41 @@ package main
 
 import (
 	"cs425-mp2/routines"
-	"cs425-mp2/util"
 	"cs425-mp2/config"
+	"cs425-mp2/util"
 	"fmt"
 	"strconv"
 )
 
+// file server test -------------
+
+// func main() {
+// 	config := config.NewConfig()
+
+// 	fileService := routines.NewFileService(config, 8000)
+// 	fileService.Start()
+
+// 	// client, err := rpc.DialHTTP("tcp", "fa23-cs425-3801.cs.illinois.edu:8000")
+// 	// if err != nil {
+// 	// 	log.Fatal("dialing:", err)
+// 	// }
+
+// 	// putArgs := &routines.PutArgs{
+// 	// 	LocalFilePath: config.Homedir + "/cs-425-mp-3/test.txt", 
+// 	// 	RemoteFilePath: config.Homedir + "/test-sftp.txt", 
+// 	// 	RemoteAddr: "fa23-cs425-3803.cs.illinois.edu",
+// 	// }
+
+// 	// var reply error
+
+// 	// client.Call("FileService.PutFile", putArgs, &reply)
+	
+// 	servants := []string{"fa23-cs425-3803.cs.illinois.edu", "fa23-cs425-3802.cs.illinois.edu"}
+// 	fm := routines.NewFileMaster(config.Homedir + "/cs-425-mp-3/test.txt", servants, fileService.SshConfig)
+// 	fm.WriteFile("fa23-cs425-3801.cs.illinois.edu:8000")
+// }
+
+// --------------------
 
 func main() {
 	var isBootstrapServer string
