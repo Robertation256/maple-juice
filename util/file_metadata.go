@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"log"
 )
 
@@ -249,4 +250,41 @@ func FindAvailableNodes(fileName string, nodeToFiles *NodeToFiles, nodeNum int) 
 	}
 
 	return ret
+}
+
+// type FileInfo struct {
+// 	NodeId   string
+// 	FileName string
+// 	IsMaster bool
+// 	FileStatus int 
+// 	Version  int
+// }
+
+func (this *FileInfo)ToString() string {
+	role := "servant"
+
+	if this.IsMaster {
+		role = "master"
+	}
+
+	fileStatus := "unknown"
+	switch (this.FileStatus){
+	case COMPLETE:
+		fileStatus = "normal"
+	case PENDING_FILE_UPLOAD:
+		fileStatus = "file upload in progress"
+	case WAITING_REPLICATION:
+		fileStatus = "replication in progress"
+	}
+
+	return fmt.Sprintf(
+		"---------------------\n" +
+		"Node ID: %s\n" +
+		"Role: %s\n" +
+		"File status: %s\n" +
+		"File version: %d\n", 
+		this.NodeId,
+		role,
+		fileStatus,
+		this.Version)
 }
