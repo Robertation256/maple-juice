@@ -31,9 +31,11 @@ import (
 
 // 	// client.Call("FileService.PutFile", putArgs, &reply)
 	
-// 	servants := []string{"fa23-cs425-3803.cs.illinois.edu", "fa23-cs425-3802.cs.illinois.edu"}
-// 	fm := routines.NewFileMaster(config.Homedir + "/cs-425-mp-3/test.txt", servants, fileService.SshConfig)
-// 	fm.WriteFile("fa23-cs425-3801.cs.illinois.edu:8000")
+// 	servants := []string{"fa23-cs425-3802.cs.illinois.edu"}
+// 	fm := routines.NewFileMaster(config.Homedir + "/" + "test-fm.txt", servants, fileService.SshConfig)
+// 	err := fm.WriteFile("fa23-cs425-3801.cs.illinois.edu:8000")
+// 	fmt.Println(err)
+// 	fm.ReadFile("fa23-cs425-3803.cs.illinois.edu")
 // }
 
 // --------------------

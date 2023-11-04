@@ -2,11 +2,12 @@ package routines
 
 import (
 	"fmt"
-	"time"
 	"net/rpc"
 	"log"
 	"golang.org/x/crypto/ssh"
 	"cs425-mp2/util"
+	"os"
+	"strings"
 )
 
 type FileMaster struct {
@@ -16,8 +17,9 @@ type FileMaster struct {
 	CurrentWrite int
 	Filename     string
 	Servants     []string
+	SelfAddr 	 string
 	// TODO: remove this and integrate filemaster into file server
-	SshConfig *ssh.ClientConfig
+	SshConfig 	 *ssh.ClientConfig
 }
 
 type Request struct {
@@ -27,12 +29,14 @@ type Request struct {
 }
 
 func NewFileMaster(filename string, servants []string, sshConfig *ssh.ClientConfig) *FileMaster {
+	selfAddr, _ := os.Hostname()
 	return &FileMaster{
 		CurrentRead:  0,
 		CurrentWrite: 0,
 		Filename:     filename,
 		Servants: servants,
 		SshConfig: sshConfig,
+		SelfAddr: selfAddr,
 	}
 }
 
@@ -81,12 +85,12 @@ func (fm *FileMaster) CheckQueue() {
 	}
 }
 
-func (fm *FileMaster) ReadFile() error {
+func (fm *FileMaster) ReadFile(clientAddr string) error {
 	var request *Request = nil
 	for {
 		if request == nil && fm.CurrentRead < 2 && fm.CurrentWrite == 0 {
 			if len(fm.WriteQueue) == 0 || (len(fm.WriteQueue) > 0 && fm.WriteQueue[0].WaitRound < 4) {
-				return fm.executeRead()
+				return fm.executeRead(clientAddr)
 			}
 		} else if request == nil {
 			request = &Request{
@@ -95,19 +99,21 @@ func (fm *FileMaster) ReadFile() error {
 			}
 			fm.Queue = append(fm.Queue, request)
 		} else if request != nil && !request.InQueue {
-			return fm.executeRead()
+			return fm.executeRead(clientAddr)
 		}
 	}
 }
 
-func (fm *FileMaster) executeRead() error {
+func (fm *FileMaster) executeRead(clientAddr string) error {
 	fm.CurrentRead += 1
 	for _, writeRequest := range fm.WriteQueue {
 		writeRequest.WaitRound += 1
 	}
 
-	time.Sleep(3 * time.Second)
 	fmt.Println("read" + fm.Filename)
+	// TODO: change this to send file from servant
+	util.CopyFileToRemote(fm.Filename, fm.Filename, clientAddr, fm.SshConfig)
+
 
 	fm.CurrentRead -= 1
 	fm.CheckQueue()
@@ -138,28 +144,37 @@ func (fm *FileMaster) executeWrite(clientAddr string) error {
 	// time.Sleep(4 * time.Second)
 	fmt.Println("write" + fm.Filename)
 
-	// first get the file from client
-	client, err := rpc.DialHTTP("tcp", clientAddr)
-	if err != nil {
-		log.Fatal("Error dialing client:", err)
+	clientIp := clientAddr
+	if (strings.Contains(clientAddr, ":")) {
+		clientIp = strings.Split(clientAddr, ":")[0]
 	}
-	fromClientArgs := CopyArgs{
-		LocalFilePath: fm.Filename, 
-		RemoteFilePath: "/home/xinshuo3/test-fm.txt", 
-		RemoteAddr: "fa23-cs425-3801.cs.illinois.edu",
-	}
-	var reply string
-	initialCopyErr := client.Call("FileService.CopyFileToRemote", fromClientArgs, &reply)
-	client.Close()
+	if (clientIp != fm.SelfAddr) {
+		// if client is not self, get the file from client
+		client, err := rpc.DialHTTP("tcp", clientAddr)
+		if err != nil {
+			log.Fatal("Error dialing client:", err)
+		}
+		fromClientArgs := CopyArgs{
+			LocalFilePath: fm.Filename, 
+			RemoteFilePath: fm.Filename, 
+			RemoteAddr: clientAddr,
+		}
+		var reply string
+		initialCopyErr := client.Call("FileService.CopyFileToRemote", fromClientArgs, &reply)
+		client.Close()
 
-	if initialCopyErr != nil {
-		log.Fatal("Error copying from client", err)
+		if initialCopyErr != nil {
+			log.Fatal("Error copying from client", err)
+		}
 	}
 
 	// copy the file to each servant
 	// TODO: change these to async calls
 	for _, servant := range fm.Servants {
-		util.CopyFileToRemote("/home/xinshuo3/test-fm.txt",  "/home/xinshuo3/test-fm.txt", servant, fm.SshConfig)
+		servantErr := util.CopyFileToRemote(fm.Filename, fm.Filename, servant, fm.SshConfig)
+		if servantErr != nil {
+			log.Fatal("Error sending file to servant", servantErr)
+		}
 	}
 
 	fm.CurrentWrite -= 1
