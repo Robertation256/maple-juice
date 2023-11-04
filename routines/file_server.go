@@ -74,6 +74,17 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	return nil
 }
 
+func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
+	fm, ok := this.Filename2FileMaster[args.Filename]
+	// TODO: fix error checking and return the actual error
+	if ok {
+		fm.WriteFile(args.ClientAddr)
+	} else {
+		log.Fatal("No corresponding filemaster for " + args.Filename)
+	}
+	return nil
+}
+
 func (this *FileService) CopyFileToRemote(args *CopyArgs, reply *string) error {
 	return util.CopyFileToRemote(args.LocalFilePath, args.RemoteFilePath, args.RemoteAddr, this.SshConfig)
 }
@@ -85,6 +96,5 @@ func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error{
 	fm := NewFileMaster(args.Filename, args.Servants, this.SshConfig)
 	this.Filename2FileMaster[args.Filename] = fm
-	fmt.Println("here")
 	return nil
 }
