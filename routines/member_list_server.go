@@ -1,11 +1,13 @@
 package routines
 
 import (
+	"cs425-mp2/config"
 	"cs425-mp2/util"
 	"encoding/binary"
 	"log"
 	"math/rand"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -15,10 +17,21 @@ const (
 )
 
 var ReceiverDropRate float64 = 0
+var SelfNodeId string = ""
+var LocalMembershipList *util.MemberList
 
-func StartMembershipListServer(receivePort uint16, introducerAddr string, localList *util.MemberList) {
+var membershipServicePort string
 
-	localAddr, err := net.ResolveUDPAddr("udp4", localList.SelfEntry.Addr())
+func InitLocalMembershipList(){
+	LocalMembershipList = util.NewMemberList(uint16(config.MembershipServicePort))
+}
+
+func StartMembershipListServer() {
+	membershipServicePort = strconv.Itoa(config.MembershipServicePort)
+
+	SelfNodeId = LocalMembershipList.GetSelfNodeId()
+
+	localAddr, err := net.ResolveUDPAddr("udp4", LocalMembershipList.SelfEntry.Addr())
 	if err != nil {
 		log.Fatal("Error resolving udp address", err)
 	}
@@ -30,29 +43,27 @@ func StartMembershipListServer(receivePort uint16, introducerAddr string, localL
 	}
 
 	// bootstrap if not introducer
-	if introducerAddr != "" {
-		boostrapMemberList := getBootstrapMemberList(introducerAddr, localList.Entries.Value.StartUpTs, conn)
+	if !config.IsIntroducer {
+		introducerAddr := config.IntroducerIp + ":" + strconv.Itoa(config.IntroducerPort)
+		boostrapMemberList := getBootstrapMemberList(introducerAddr, LocalMembershipList.Entries.Value.StartUpTs, conn)
 		if boostrapMemberList == nil {
 			log.Fatal("Membership list server failed to boostrap. Please check introducer address")
 		}
 
-		localList.Merge(boostrapMemberList)
+		LocalMembershipList.Merge(boostrapMemberList)
 	}
 
 	defer conn.Close()
 
-	go startHeartbeatReciever(receivePort, localList, conn)
+	go startHeartbeatReciever(LocalMembershipList, conn)
 
-	go startHeartbeatSender(localList, conn)
+	go startHeartbeatSender(LocalMembershipList, conn)
 
-	SERVER_STARTED.Done()
-
-	for {
-	}
-
+	MEMBERSHIP_SERVER_STARTED.Done()
+	SIGTERM.Wait()
 }
 
-func startHeartbeatReciever(port uint16, localList *util.MemberList, conn *net.UDPConn) {
+func startHeartbeatReciever(localList *util.MemberList, conn *net.UDPConn) {
 
 	buf := make([]byte, util.MAX_ENTRY_NUM*util.ENTRY_SIZE+5)
 
@@ -98,16 +109,17 @@ func startHeartbeatSender(localList *util.MemberList, conn *net.UDPConn) {
 		}
 
 		for _, ip := range aliveMembers {
-			remoteAddr, err := net.ResolveUDPAddr("udp4", ip)
+			addr := ip + ":" + membershipServicePort
+			remoteAddr, err := net.ResolveUDPAddr("udp4", addr)
 			if err != nil {
-				log.Printf("Error resolving remote address %s\n", ip)
+				log.Printf("Error resolving remote address %s\n", addr)
 				continue
 			}
 
 			for i, payload := range payloads {
 				_, err := conn.WriteToUDP(payload, remoteAddr)
 				if err != nil {
-					log.Printf("Failed to send  member list %d/%d to %s  %s", i+1, len(payloads), ip, err)
+					log.Printf("Failed to send  member list %d/%d to %s  %s", i+1, len(payloads), addr, err)
 				}
 			}
 		}

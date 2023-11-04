@@ -26,10 +26,14 @@ const (
 
 	MAX_ENTRY_NUM int = 100 // max number of entries per UDP packet
 	ENTRY_SIZE    int = 19  // size of a single serialized entry struct
+	MEMBERSHIP_LIST_EVENT_CHANEL_SIZE int = 100
 )
 
+// channel for notifying leader election service
+var MembershipListEventChan = make(chan *MembershipListEvent, MEMBERSHIP_LIST_EVENT_CHANEL_SIZE)
+
 // read write lock
-var memberListLock sync.Mutex
+var memberListLock sync.Mutex // todo: change this to read-write lock
 
 // linked list node
 type EntryNode struct {
@@ -46,7 +50,7 @@ type MemberList struct {
 
 func NewMemberList(port uint16) *MemberList {
 	selfEntry := &MemberListEntry{
-		Ip:        getOutboundIp(),
+		Ip:        GetOutboundIp(),
 		Port:      port,
 		StartUpTs: time.Now().UnixMilli(),
 		SeqNum:    0,
@@ -220,6 +224,10 @@ func FromPayload(payload []byte, size int) *MemberList {
 	return ret
 }
 
+func (this *MemberList) GetSelfNodeId() string {
+	return this.SelfEntry.NodeId()
+}
+
 func (this *MemberList) ToString() string {
 	memberListLock.Lock()
 	protocol := "Unknown"
@@ -324,14 +332,14 @@ func (this *MemberList) mergeProtocol(other *MemberList) {
 
 }
 
-// get an array of host:port of alive members
+// get an array of IPs of alive members
 func (this *MemberList) AliveMembers() []string {
 	var ret []string
 	memberListLock.Lock()
 	ptr := this.Entries
 	for ptr != nil {
 		if ptr.Value != this.SelfEntry && ptr.Value.isAlive() {
-			ret = append(ret, ptr.Value.Addr())
+			ret = append(ret, ptr.Value.IpString())
 		}
 		ptr = ptr.Next
 	}
@@ -371,14 +379,17 @@ func reportStatusUpdate(e *MemberListEntry) {
 	if e.Status == FAILED {
 		status = "FAILED"
 		ProcessLogger.LogFail(currentTime, id)
+		NotifyOffline(e)
 	} else if e.Status == LEFT {
 		status = "LEFT"
 		ProcessLogger.LogLeave(currentTime, id)
+		NotifyOffline(e)
 	} else if e.Status == SUS {
 		status = "SUS"
 		ProcessLogger.LogSUS(currentTime, id)
 	} else {
 		ProcessLogger.LogJoin(currentTime, id)
+		NotifyJoin(e)
 	}
 	log.Printf("(%d) Entry update: %s - %s", time.Now().UnixMilli(), status, id)
 }

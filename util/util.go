@@ -55,7 +55,7 @@ func IsValidIp(in string) bool {
 	return true
 }
 
-func getOutboundIp() [4]uint8 {
+func GetOutboundIp() [4]uint8 {
 	var ret [4]uint8
 	conn, _ := net.Dial("udp4", "8.8.8.8:80")
 	defer conn.Close()
