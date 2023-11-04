@@ -9,6 +9,7 @@ import (
 	"net/rpc"
 	"strconv"
 	"time"
+	"io/ioutil"
 )
 
 
@@ -54,7 +55,7 @@ func ProcessDfsCmd(cmd string, args []string){
 
 	case "store":
 		// todo: handle store
-	
+		OutputStore(args)
 	default:
 		log.Printf("Unsupported DFS command: (%s)", cmd)	
 	}
@@ -69,8 +70,8 @@ func GetFile(args []string) error {
 		return errors.New("Invalid parameteres for DFS GET command")
 	}
 
-	localFileName := args[0]
-	remoteFileName := args[1]
+	remoteFileName := args[0]
+	localFileName := args[1]
 
 	if len(localFileName) == 0 || len(remoteFileName) == 0 {
 		log.Printf("Invalid parameteres for DFS GET command")
@@ -92,12 +93,21 @@ func GetFile(args []string) error {
 		return errors.New("File master is not ready: file upload in progress")
 	}
 
-	// fileMasterIP := NodeIdToIP(master.NodeId)
-	// port := config.RpcServerPort
+	fileMasterIP := NodeIdToIP(master.NodeId)
+	port := config.RpcServerPort
 
 	
-	// todo: plugin into file server rpc call
-
+	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", fileMasterIP, port))
+	if (err != nil) {
+		log.Println("Encountered error when connecting to file master: ", err)
+	}
+	getArgs := &RWArgs{
+		LocalFilename: localFileName,
+		SdfsFilename: remoteFileName,
+		ClientAddr: NodeIdToIP(SelfNodeId),
+	}
+	var reply string
+	client.Call("FileService.ReadFile", getArgs, &reply)
 
 	return nil
 
@@ -126,17 +136,22 @@ func PutFile(args []string){
 		return 
 	}
 
-	// master := fileMetadata.Master
+	master := fileMetadata.Master
 
-	// fileMasterIP := NodeIdToIP(master.NodeId)
-	// port := config.RpcServerPort
+	fileMasterIP := NodeIdToIP(master.NodeId)
+	port := config.RpcServerPort
 
-
-	
-	// todo: plugin into file server rpc call
-
-
-	// todo: plugin into file server rpc call
+	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", fileMasterIP, port))
+	if (err != nil) {
+		log.Println("Encountered error when connecting to file master: ", err)
+	}
+	putArgs := &RWArgs{
+		LocalFilename: localFileName,
+		SdfsFilename: remoteFileName,
+		ClientAddr: NodeIdToIP(SelfNodeId),
+	}
+	var reply string
+	client.Call("FileService.WriteFile", putArgs, &reply)
 }
 
 
@@ -162,12 +177,20 @@ func DeleteFile(args []string){
 	}
 
 
-	// master := fileMetadata.Master
-	// fileMasterIP := NodeIdToIP(master.NodeId)
-	// port := config.RpcServerPort
+	master := fileMetadata.Master
+	fileMasterIP := NodeIdToIP(master.NodeId)
+	port := config.RpcServerPort
 
 
-	// todo: plugin into file server rpc call
+	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", fileMasterIP, port))
+	if (err != nil) {
+		log.Println("Encountered error when connecting to file master: ", err)
+	}
+	deletArgs := &DeleteArgs{
+		Filename: remoteFileName,
+	}
+	var reply string
+	client.Call("FileService.ReadFile", deletArgs, &reply)
 }
 
 
@@ -243,6 +266,18 @@ func Multiread(args []string){
 		}()
 	}
 }
+
+func OutputStore(args []string) {
+	sdfsFolder := config.Homedir + "/sdfs"
+	files, err := ioutil.ReadDir(sdfsFolder)
+	if err != nil {
+		fmt.Println("Error reading sdfs folder :", err)
+		return
+	}
+	for _, file := range files {
+		fmt.Println(file.Name())
+	}
+}	
 
 
 
