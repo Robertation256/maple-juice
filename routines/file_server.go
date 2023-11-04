@@ -63,6 +63,7 @@ func (this *FileService) Start(){
 	go http.Serve(l, nil)
 }
 
+// reroute to the corresponding file master
 func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	fm, ok := this.Filename2FileMaster[args.Filename]
 	// TODO: fix error checking and return the actual error
@@ -74,6 +75,7 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	return nil
 }
 
+// reroute to the corresponding file master
 func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
 	fm, ok := this.Filename2FileMaster[args.Filename]
 	// TODO: fix error checking and return the actual error

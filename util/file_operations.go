@@ -8,6 +8,8 @@ import (
 	"fmt"
 )
 
+
+// copy file to a remote location using sftp
 func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr string, sshConfig *ssh.ClientConfig) error {
 	conn, err := ssh.Dial("tcp", remoteAddr + ":22", sshConfig)
 	if err != nil {
