@@ -100,3 +100,13 @@ func ExtractLineCount(str string) (int32, error) {
 	}
 	return int32(ret), nil
 }
+
+func GetServantIps(fileToClusters *Metadata, fileName string) []string{
+	cluster := (*fileToClusters)[fileName]
+	servantIps := make([]string, len(cluster.Servants))
+	for i, servantFileInfo := range cluster.Servants {
+		ip := strings.Split(servantFileInfo.NodeId, ":")[0]
+		servantIps[i] = ip
+	}
+	return servantIps
+}

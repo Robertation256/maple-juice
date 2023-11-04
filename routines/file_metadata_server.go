@@ -201,11 +201,11 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 
 		if clients[index] != nil {
 			// perform async rpc call
-			call := clients[index].Go("FileServer.ReportMetadata", new(Args), &(reports[index]), nil)
+			call := clients[index].Go("FileService.ReportMetadata", new(Args), &(reports[index]), nil)
 			if call.Error != nil {
 				clients[index] = dial(ip, config.RpcServerPort) // best effort re-dial
 				if clients[index] != nil {
-					call = clients[index].Go("FileServer.ReportMetadata", new(Args), &(reports[index]), nil)
+					call = clients[index].Go("FileService.ReportMetadata", new(Args), &(reports[index]), nil)
 				}
 			}
 			calls[index] = call
@@ -264,7 +264,7 @@ func informMetadata(nodeId string, metadata *util.Metadata) error {
 
 	retFlag := ""
 
-	call := client.Go("FileServer.UpdateMetadata", &metadata, &retFlag, nil)
+	call := client.Go("FileService.UpdateMetadata", &metadata, &retFlag, nil)
 	if call.Error != nil {
 		log.Printf("Encountered error while informing node %s", nodeId)
 		return call.Error
