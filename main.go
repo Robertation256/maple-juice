@@ -36,6 +36,7 @@ func main() {
 	// register and start up rpc services
 	routines.NewFileMetadataService().Register()
 	routines.NewGrepService().Register()
+	routines.NewDfsRemoteReader().Register()
 	rpc.HandleHTTP()
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.RpcServerPort))

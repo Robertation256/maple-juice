@@ -8,34 +8,28 @@ import (
 	"strings"
 )
 
-
-
-
 // membership service config
 var MembershipServicePort int
-var MembershipProtocol string  		// G/GS
+var MembershipProtocol string // G/GS
 var IsIntroducer bool = false
 var IntroducerIp string
 var IntroducerPort int
 
 // leader election config
-var	LeaderElectionServerPort int
-var	LeaderElectionQuorumSize int
-
+var LeaderElectionServerPort int
+var LeaderElectionQuorumSize int
 
 // file server config
 var ReplicationFactor int
 
 // distributed logging and grep configs
-var	LogServerId string
-var	LogServerHostnames []string
-var	LogFilePath string
+var LogServerId string
+var LogFilePath string
 
 
-//RPC server config
+// RPC server config
 var RpcServerPort int
-
-
+var ServerHostnames []string		
 
 func InitConfig() {
 
@@ -65,16 +59,16 @@ func InitConfig() {
 			}
 			MembershipServicePort = port
 		case "MEMBERSHIP_PROTOCOL":
-			if kv[1] != "G" && kv[1]!= "GS"{
+			if kv[1] != "G" && kv[1] != "GS" {
 				log.Fatalf("Invalid membership protocol %s", kv[1])
 			}
 			MembershipProtocol = kv[1]
 		case "IS_INTRODUCER":
-			if kv[1] == "TRUE"{
+			if kv[1] == "TRUE" {
 				IsIntroducer = true
 			}
 		case "INTRODUCER_IP":
-			if len(kv[1]) > 0{
+			if len(kv[1]) > 0 {
 				IntroducerIp = kv[1]
 			} else {
 				log.Fatalf("Invalid introducer ip %s", kv[1])
@@ -99,7 +93,6 @@ func InitConfig() {
 			}
 			LeaderElectionQuorumSize = size
 
-
 		case "REPLICATION_FACTOR":
 			factor, err := strconv.Atoi(kv[1])
 			if err != nil {
@@ -107,22 +100,21 @@ func InitConfig() {
 			}
 			ReplicationFactor = factor
 
-
 		case "LOG_FILE_NAME":
-			LogFilePath = homeDir+"/"+kv[1]
+			LogFilePath = homeDir + "/" + kv[1]
 		case "LOG_SERVER_ID":
 			LogServerId = kv[1]
-		case "LOG_SERVER_HOSTNAMES":
+		case "SERVER_HOSTNAMES":
 			hostnames := strings.Split(string(kv[1]), ",")
 			if len(hostnames) == 0 {
 				log.Fatal("Log server hostnames config is empty")
 			}
 			ret := make([]string, len(hostnames))
-			for i:=0; i<len(ret); i++{
+			for i := 0; i < len(ret); i++ {
 				ret[i] = strings.Trim(hostnames[i], " \n\r")
 			}
-			LogServerHostnames = ret
-		
+			ServerHostnames = ret
+
 		case "RPC_SERVER_PORT":
 			port, err := strconv.Atoi(kv[1])
 			if err != nil {
@@ -134,22 +126,21 @@ func InitConfig() {
 	PrintConfig()
 }
 
-
 func PrintConfig() {
 
 	configStr := fmt.Sprintf(
-		"MEMBERSHIP_SERVICE_PORT: %d\n" +
-		"MEMBERSHIP_PROTOCOL: %s\n" +
-		"IS_INTRODUCER: %t\n"+
-		"INTRODUCER_IP: %s\n"+
-		"INTRODUCER_PORT: %d\n"+
-		"LEADER_ELECTION_SERVER_PORT: %d\n"+
-		"LEADER_ELECTION_QUORUM_SIZE: %d\n"+
-		"REPLICATION_FACTOR: %d\n"+
-		"LOG_FILE_PATH: %s\n" +
-		"LOG_SERVER_ID: %s\n" +
-		"LOG_SERVER_HOSTNAMES: %s\n" +
-		"RPC_SERVER_PORT: %d\n",
+		"MEMBERSHIP_SERVICE_PORT: %d\n"+
+			"MEMBERSHIP_PROTOCOL: %s\n"+
+			"IS_INTRODUCER: %t\n"+
+			"INTRODUCER_IP: %s\n"+
+			"INTRODUCER_PORT: %d\n"+
+			"LEADER_ELECTION_SERVER_PORT: %d\n"+
+			"LEADER_ELECTION_QUORUM_SIZE: %d\n"+
+			"REPLICATION_FACTOR: %d\n"+
+			"LOG_FILE_PATH: %s\n"+
+			"LOG_SERVER_ID: %s\n"+
+			"LOG_SERVER_HOSTNAMES: %s\n"+
+			"RPC_SERVER_PORT: %d\n",
 
 		MembershipServicePort,
 		MembershipProtocol,
@@ -161,7 +152,7 @@ func PrintConfig() {
 		ReplicationFactor,
 		LogFilePath,
 		LogServerId,
-		strings.Join(LogServerHostnames, ","),
+		strings.Join(ServerHostnames, ","),
 		RpcServerPort,
 	)
 

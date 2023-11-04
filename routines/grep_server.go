@@ -36,9 +36,9 @@ func NewGrepService() *GrepService {
 
 	this := new(GrepService)
 	this.LogFilePath = config.LogFilePath
-	this.Hostnames = config.LogServerHostnames
+	this.Hostnames = config.ServerHostnames
 	this.Port = config.RpcServerPort
-	this.clients = make([]*rpc.Client, len(config.LogServerHostnames))
+	this.clients = make([]*rpc.Client, len(config.ServerHostnames))
 	this.ServerId = config.LogServerId
 	return this
 }
