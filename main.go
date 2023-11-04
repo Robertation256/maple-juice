@@ -16,12 +16,12 @@ import (
 // file server test -------------
 
 // func main() {
-// 	config := config.NewConfig()
+// 	config.InitConfig()
 
-// 	fileService := routines.NewFileService(config, config.FileServerPort, config.Homedir)
+// 	fileService := routines.NewFileService(config.RpcServerPort, config.Homedir)
 // 	fileService.Start()
 
-// 	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("fa23-cs425-3801.cs.illinois.edu:%d", config.FileServerPort))
+// 	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("fa23-cs425-3801.cs.illinois.edu:%d", config.RpcServerPort))
 // 	if err != nil {
 // 		log.Fatal("dialing:", err)
 // 	}
@@ -38,7 +38,7 @@ import (
 	
 // 	servants := []string{"fa23-cs425-3802.cs.illinois.edu"}
 // 	createArgs := &routines.CreateFMArgs{
-// 		Filename: "test-fm-copy.txt",
+// 		Filename: "test-folder.txt",
 // 		Servants: servants,
 // 	}
 
@@ -52,17 +52,17 @@ import (
 
 	
 
-// 	readArgs := &routines.RWArgs{
-// 		LocalFilename: "test-another-copy.txt",
-// 		SdfsFilename: "test-another.txt",
-// 		ClientAddr: "fa23-cs425-3803.cs.illinois.edu",
-// 	}
-
-// 	// writeArgs := &routines.RWArgs{
-// 	// 	LocalFilename: "test-fm.txt",
-// 	// 	SdfsFilename: "test-fm-copy.txt",
-// 	// 	ClientAddr: "fa23-cs425-3801.cs.illinois.edu:9000",
+// 	// readArgs := &routines.RWArgs{
+// 	// 	LocalFilename: "test-another-copy-2.txt",
+// 	// 	SdfsFilename: "test-another.txt",
+// 	// 	ClientAddr: "fa23-cs425-3803.cs.illinois.edu",
 // 	// }
+
+// 	writeArgs := &routines.RWArgs{
+// 		LocalFilename: "test-fm.txt",
+// 		SdfsFilename: "test-folder.txt",
+// 		ClientAddr: "fa23-cs425-3801.cs.illinois.edu:9000",
+// 	}
 
 // 	// writeArgs1 := &routines.RWArgs{
 // 	// 	Filename: "test-another.txt",
@@ -73,8 +73,8 @@ import (
 // 	// 	Filename: "test-fm.txt",
 // 	// }
 
-// 	// client.Call("FileService.WriteFile", writeArgs, &reply)
-// 	client.Call("FileService.ReadFile", readArgs, &reply)
+// 	client.Call("FileService.WriteFile", writeArgs, &reply)
+// 	// client.Call("FileService.ReadFile", readArgs, &reply)
 // 	// client.Call("FileService.DeleteFile", deleteArgs, &reply)
 
 

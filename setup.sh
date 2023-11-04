@@ -1,6 +1,7 @@
 cd ~
 
 mkdir sdfs
+mkdir local
 touch config.txt
 
 echo "MEMBERSHIP_SERVICE_PORT=8001" > config.txt
