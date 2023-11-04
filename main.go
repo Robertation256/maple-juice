@@ -13,10 +13,10 @@ import (
 // func main() {
 // 	config := config.NewConfig()
 
-// 	fileService := routines.NewFileService(config, 8000)
+// 	fileService := routines.NewFileService(config, config.FileServerPort, config.Homedir)
 // 	fileService.Start()
 
-// 	client, err := rpc.DialHTTP("tcp", "fa23-cs425-3801.cs.illinois.edu:8000")
+// 	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("fa23-cs425-3801.cs.illinois.edu:%d", config.FileServerPort))
 // 	if err != nil {
 // 		log.Fatal("dialing:", err)
 // 	}
@@ -33,12 +33,12 @@ import (
 	
 // 	servants := []string{"fa23-cs425-3802.cs.illinois.edu"}
 // 	createArgs := &routines.CreateFMArgs{
-// 		Filename: config.Homedir + "/" + "test-fm.txt",
+// 		Filename: "test-fm.txt",
 // 		Servants: servants,
 // 	}
 
 // 	createArgs1 := &routines.CreateFMArgs{
-// 		Filename: config.Homedir + "/" + "test-another.txt",
+// 		Filename: "test-another.txt",
 // 		Servants: servants,
 // 	}
 
@@ -47,18 +47,18 @@ import (
 
 	
 
-// 	readArgs := &routines.RWArgs{
-// 		Filename: config.Homedir + "/" + "test-fm.txt",
-// 		ClientAddr: "fa23-cs425-3803.cs.illinois.edu",
+// 	writeArgs := &routines.RWArgs{
+// 		Filename: "test-fm.txt",
+// 		ClientAddr: "fa23-cs425-3801.cs.illinois.edu",
 // 	}
 
-// 	readArgs1 := &routines.RWArgs{
-// 		Filename: config.Homedir + "/" + "test-another.txt",
-// 		ClientAddr: "fa23-cs425-3803.cs.illinois.edu",
+// 	writeArgs1 := &routines.RWArgs{
+// 		Filename: "test-another.txt",
+// 		ClientAddr: "fa23-cs425-3801.cs.illinois.edu",
 // 	}
 
-// 	client.Call("FileService.ReadFile", readArgs, &reply)
-// 	client.Call("FileService.ReadFile", readArgs1, &reply)
+// 	client.Call("FileService.WriteFile", writeArgs, &reply)
+// 	client.Call("FileService.WriteFile", writeArgs1, &reply)
 
 
 // 	//fm := routines.NewFileMaster(config.Homedir + "/" + "test-fm.txt", servants, fileService.SshConfig)

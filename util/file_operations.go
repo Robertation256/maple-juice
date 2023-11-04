@@ -10,7 +10,10 @@ import (
 
 
 // copy file to a remote location using sftp
-func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr string, sshConfig *ssh.ClientConfig) error {
+func CopyFileToRemote(localFilename string, remoteFilename string, remoteAddr string, sshConfig *ssh.ClientConfig, sdfsFolder string) error {
+	localFilePath := sdfsFolder + localFilename
+	remoteFilePath := sdfsFolder + remoteFilename
+
 	conn, err := ssh.Dial("tcp", remoteAddr + ":22", sshConfig)
 	if err != nil {
 		return(err)
@@ -42,8 +45,9 @@ func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr st
 	return nil
 }
 
-func DeleteFile(localFilePath string) error{
-	err := os.Remove(localFilePath)
+func DeleteFile(filename string, sdfsFolder string) error{
+	filePath := sdfsFolder + filename
+	err := os.Remove(filePath)
     if err != nil {
         return err
     }

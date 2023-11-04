@@ -12,20 +12,22 @@ import (
 
 type FileMaster struct {
 	// main queue: store the requests that are waiting in the order they are received
-	Queue        []*Request
+	Queue        	[]*Request
 	// write queue: keep track of write requests that are waiting
-	WriteQueue   []*Request
+	WriteQueue   	[]*Request
 	// number of nodes that are currently reading the file
-	CurrentRead  int
+	CurrentRead  	int
 	// number of nodes that are currently writing the file
-	CurrentWrite int
-	Filename     string
+	CurrentWrite 	int
+	Filename     	string
 	// list of servant ip addresses
-	Servants     []string
+	Servants     	[]string
 	// address of self. used to prevent errors in case fm = client
-	SelfAddr 	 string
-	// TODO: remove this and integrate filemaster into file server
-	SshConfig 	 *ssh.ClientConfig
+	SelfAddr 	 	string
+	// TODO: remove this?
+	SshConfig 	 	*ssh.ClientConfig
+	FileServerPort 	int
+	SdfsFolder 		string
 }
 
 type Request struct {
@@ -37,15 +39,17 @@ type Request struct {
 	WaitRound int
 }
 
-func NewFileMaster(filename string, servants []string, sshConfig *ssh.ClientConfig) *FileMaster {
+func NewFileMaster(filename string, servants []string, sshConfig *ssh.ClientConfig, fileServerPort int, sdfsFolder string) *FileMaster {
 	selfAddr, _ := os.Hostname()
 	return &FileMaster{
-		CurrentRead:  0,
-		CurrentWrite: 0,
-		Filename:     filename,
-		Servants: servants,
-		SshConfig: sshConfig,
-		SelfAddr: selfAddr,
+		CurrentRead:  	0,
+		CurrentWrite: 	0,
+		Filename:     	filename,
+		Servants: 		servants,
+		SshConfig: 		sshConfig,
+		SelfAddr: 		selfAddr,
+		FileServerPort: fileServerPort,
+		SdfsFolder:		sdfsFolder,
 	}
 }
 
@@ -127,7 +131,7 @@ func (fm *FileMaster) executeRead(clientAddr string) error {
 
 	fmt.Println("read" + fm.Filename)
 	// TODO: change this to send file from servant
-	util.CopyFileToRemote(fm.Filename, fm.Filename, clientAddr, fm.SshConfig)
+	util.CopyFileToRemote(fm.Filename, fm.Filename, clientAddr, fm.SshConfig, fm.SdfsFolder)
 
 
 	fm.CurrentRead -= 1
@@ -165,7 +169,11 @@ func (fm *FileMaster) executeWrite(clientAddr string) error {
 
 	clientIp := clientAddr
 	if (strings.Contains(clientAddr, ":")) {
+		// if clientaddr has a port, get ip
 		clientIp = strings.Split(clientAddr, ":")[0]
+	} else {
+		// if clientaddr doesn't have a port, use the default port for file server
+		clientAddr = fmt.Sprintf("%s:%d", clientAddr, fm.FileServerPort)
 	}
 	if (clientIp != fm.SelfAddr) {
 		// if client is not self, get the file from client
@@ -174,8 +182,8 @@ func (fm *FileMaster) executeWrite(clientAddr string) error {
 			log.Fatal("Error dialing client:", err)
 		}
 		fromClientArgs := CopyArgs{
-			LocalFilePath: fm.Filename, 
-			RemoteFilePath: fm.Filename, 
+			LocalFilename: fm.Filename, 
+			RemoteFilename: fm.Filename, 
 			RemoteAddr: clientAddr,
 		}
 		var reply string
@@ -190,7 +198,7 @@ func (fm *FileMaster) executeWrite(clientAddr string) error {
 	// copy the file to each servant
 	// TODO: change these to async calls
 	for _, servant := range fm.Servants {
-		servantErr := util.CopyFileToRemote(fm.Filename, fm.Filename, servant, fm.SshConfig)
+		servantErr := util.CopyFileToRemote(fm.Filename, fm.Filename, servant, fm.SshConfig, fm.SdfsFolder)
 		if servantErr != nil {
 			log.Fatal("Error sending file to servant", servantErr)
 		}

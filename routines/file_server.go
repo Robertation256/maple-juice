@@ -12,32 +12,33 @@ import (
 )
 
 type FileService struct {
-	Port int
-	SshConfig *ssh.ClientConfig
-	Filename2FileMaster map[string]*FileMaster
+	Port 					int
+	SshConfig 				*ssh.ClientConfig
+	Filename2FileMaster 	map[string]*FileMaster
+	SdfsFolder 				string
 }
 
 type CopyArgs struct {
-	LocalFilePath string
-	RemoteFilePath string
-	RemoteAddr string
+	LocalFilename 	string
+	RemoteFilename 	string
+	RemoteAddr 		string
 }
 
 type RWArgs struct {
-	Filename string
-	ClientAddr string
+	Filename 	string
+	ClientAddr 	string
 }
 
 type CreateFMArgs struct {
-	Filename string
-	Servants []string
+	Filename 	string
+	Servants 	[]string
 }
 
 type DeleteArgs struct {
-	LocalFilePath string
+	Filename string
 }
 
-func NewFileService(config *config.Config, port int) *FileService {
+func NewFileService(config *config.Config, port int, homedir string) *FileService {
 	this := new(FileService)
 	this.Port = port
 	this.SshConfig = &ssh.ClientConfig{
@@ -48,6 +49,7 @@ func NewFileService(config *config.Config, port int) *FileService {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	this.Filename2FileMaster = make(map[string]*FileMaster)
+	this.SdfsFolder = homedir + "/sdfs/"
 	return this
 }
 
@@ -88,15 +90,16 @@ func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
 }
 
 func (this *FileService) CopyFileToRemote(args *CopyArgs, reply *string) error {
-	return util.CopyFileToRemote(args.LocalFilePath, args.RemoteFilePath, args.RemoteAddr, this.SshConfig)
+	return util.CopyFileToRemote(args.LocalFilename, args.RemoteFilename, args.RemoteAddr, this.SshConfig, this.SdfsFolder)
 }
 
+// TODO: delete all replicas
 func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
-	return util.DeleteFile(args.LocalFilePath)
+	return util.DeleteFile(args.Filename, this.SdfsFolder)
 }
 
 func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error{
-	fm := NewFileMaster(args.Filename, args.Servants, this.SshConfig)
+	fm := NewFileMaster(args.Filename, args.Servants, this.SshConfig, this.Port, this.SdfsFolder)
 	this.Filename2FileMaster[args.Filename] = fm
 	return nil
 }

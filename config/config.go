@@ -19,6 +19,7 @@ type Config struct {
 	SshPassword string
 	// file server configs
 	Homedir string
+	FileServerPort int
 }
 
 
@@ -68,6 +69,12 @@ func NewConfig() *Config {
 			config.SshUsername = kv[1]
 		case "SSH_PASSWORD":
 			config.SshPassword = kv[1]
+		case "FILE_SERVER_PORT":
+			port, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading file server port")
+			}
+			config.FileServerPort = port
 		}	
 	}
 	config.Homedir = homeDir
@@ -83,10 +90,12 @@ func (this *Config) ToString() string {
 		"LOG_SERVER_HOSTNAMES: %s\n" +
 		"LOG_SERVER_PORT: %d\n" +
 		"LOG_FILE_PATH: %s\n" +
-		"LOG_SERVER_ID: %s\n",
+		"LOG_SERVER_ID: %s\n" + 
+		"FILE_SERVER_PORT: %d\n",
 		strings.Join(this.LogServerHostnames, ","),
 		this.LogServerPort,
 		this.LogFilePath,
 		this.LogServerId,
+		this.FileServerPort,
 	)
 }
