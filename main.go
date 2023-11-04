@@ -129,7 +129,9 @@ func main() {
 		// debug commands
 		case "pl":
 			fmt.Println(routines.LeaderId)
+
+		default:
+			routines.ProcessDfsCmd(userCmd)
 		}
 	}
-
 }

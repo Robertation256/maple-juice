@@ -1,7 +1,6 @@
 package routines
 
 import (
-	"cs425-mp2/client"
 	"cs425-mp2/config"
 	"cs425-mp2/util"
 	"errors"
@@ -54,7 +53,7 @@ func (this *FileMetadataService) Register() {
 // --------------------------------------------
 
 // query replica distribution about a file, for DFS client
-func (this *FileMetadataService) HandleDfsClientRequest(request *client.DfsRequest, reply *client.DfsResponse) error {
+func (this *FileMetadataService) HandleDfsClientRequest(request *DfsRequest, reply *DfsResponse) error {
 	requestType := request.RequestType
 	fileName := request.FileName
 
@@ -68,13 +67,13 @@ func (this *FileMetadataService) HandleDfsClientRequest(request *client.DfsReque
 	}
 
 	switch requestType {
-	case client.FILE_GET:
+	case FILE_GET:
 		return this.handleGetRequest(fileName, reply)
-	case client.FILE_PUT:
+	case FILE_PUT:
 		return this.handlePutRequest(fileName, reply)
-	case client.FILE_DELETE:
+	case FILE_DELETE:
 		return this.handleDeleteRequest(fileName) // no data replied, no error means success
-	case client.FILE_LIST:
+	case FILE_LIST:
 		return this.handleListRequest(fileName, reply)
 	}
 
@@ -82,7 +81,7 @@ func (this *FileMetadataService) HandleDfsClientRequest(request *client.DfsReque
 }
 
 // clients tries to fetch distribution info of a file
-func (this *FileMetadataService) handleGetRequest(fileName string, reply *client.DfsResponse) error {
+func (this *FileMetadataService) handleGetRequest(fileName string, reply *DfsResponse) error {
 	this.metadataLock.RLock()
 	clusterInfo, exists := this.metadata[fileName]
 	this.metadataLock.RUnlock()
@@ -95,7 +94,7 @@ func (this *FileMetadataService) handleGetRequest(fileName string, reply *client
 }
 
 // clients tries to write a file
-func (this *FileMetadataService) handlePutRequest(fileName string, reply *client.DfsResponse) error {
+func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsResponse) error {
 	this.metadataLock.Lock()
 	defer this.metadataLock.Unlock()
 
@@ -145,7 +144,7 @@ func (this *FileMetadataService) handleDeleteRequest(fileName string) error {
 }
 
 // clients tries to write a file
-func (this *FileMetadataService) handleListRequest(fileName string, reply *client.DfsResponse) error {
+func (this *FileMetadataService) handleListRequest(fileName string, reply *DfsResponse) error {
 	this.metadataLock.RLock()
 	defer this.metadataLock.RUnlock()
 
@@ -290,14 +289,14 @@ func informMetadata(nodeId string, metadata *util.Metadata) error {
 	}
 }
 
-func toResponse(clusterInfo *util.ClusterInfo) *client.DfsResponse {
+func toResponse(clusterInfo *util.ClusterInfo) *DfsResponse {
 
 	servants := make([]util.FileInfo, len(clusterInfo.Servants))
 	for _, servant := range clusterInfo.Servants {
 		servants = append(servants, *servant)
 	}
 
-	ret := &client.DfsResponse{
+	ret := &DfsResponse{
 		FileName: clusterInfo.FileName,
 		Master:   *clusterInfo.Master,
 		Servants: servants,
