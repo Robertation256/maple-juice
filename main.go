@@ -103,6 +103,8 @@ func main() {
 	if config.IsIntroducer {
 		go routines.StartIntroducer()
 	}
+
+	fmt.Println("Before\n")
 	go routines.StartMembershipListServer()
 	go routines.StartLeaderElectionServer()
 
@@ -112,6 +114,7 @@ func main() {
 	routines.NewGrepService().Register()
 	routines.NewDfsRemoteReader().Register()
 	rpc.HandleHTTP()
+	fmt.Println("Before\n")
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.RpcServerPort))
 	if err != nil {
@@ -150,6 +153,8 @@ func main() {
 	}
 
 	defer util.ProcessLogger.Close()
+
+	fmt.Println("Finally\n")
 
 	for {
 		util.Prompt(`Enter a command (Type "help" for a list of available commands)`, &cmd, &args,
