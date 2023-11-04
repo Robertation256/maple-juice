@@ -31,6 +31,14 @@ var LogFilePath string
 var RpcServerPort int
 var ServerHostnames []string		
 
+
+var SshUsername string
+var SshPassword string
+// file server configs
+var Homedir string
+
+
+
 func InitConfig() {
 
 	homeDir, homeDirErr := os.UserHomeDir()
@@ -51,6 +59,7 @@ func InitConfig() {
 		if len(kv) != 2 || len(kv[0]) == 0 || len(kv[1]) == 0 {
 			continue
 		}
+
 		switch kv[0] {
 		case "MEMBERSHIP_SERVICE_PORT":
 			port, err := strconv.Atoi(kv[1])
@@ -114,17 +123,25 @@ func InitConfig() {
 				ret[i] = strings.Trim(hostnames[i], " \n\r")
 			}
 			ServerHostnames = ret
-
+		
 		case "RPC_SERVER_PORT":
 			port, err := strconv.Atoi(kv[1])
 			if err != nil {
 				log.Fatal("Error loading rpc server port")
 			}
 			RpcServerPort = port
+		case "SSH_USERNAME":
+			SshUsername = kv[1]
+		case "SSH_PASSWORD":
+			SshPassword = kv[1]
 		}
 	}
+	Homedir = homeDir
+
 	PrintConfig()
 }
+
+
 
 func PrintConfig() {
 

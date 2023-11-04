@@ -12,6 +12,80 @@ import (
 	"strconv"
 )
 
+
+// file server test -------------
+
+// func main() {
+// 	config := config.NewConfig()
+
+// 	fileService := routines.NewFileService(config, config.FileServerPort, config.Homedir)
+// 	fileService.Start()
+
+// 	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("fa23-cs425-3801.cs.illinois.edu:%d", config.FileServerPort))
+// 	if err != nil {
+// 		log.Fatal("dialing:", err)
+// 	}
+
+// 	// putArgs := &routines.PutArgs{
+// 	// 	LocalFilePath: config.Homedir + "/cs-425-mp-3/test.txt", 
+// 	// 	RemoteFilePath: config.Homedir + "/test-sftp.txt", 
+// 	// 	RemoteAddr: "fa23-cs425-3803.cs.illinois.edu",
+// 	// }
+
+// 	var reply string
+
+// 	// client.Call("FileService.PutFile", putArgs, &reply)
+	
+// 	servants := []string{"fa23-cs425-3802.cs.illinois.edu"}
+// 	createArgs := &routines.CreateFMArgs{
+// 		Filename: "test-fm-copy.txt",
+// 		Servants: servants,
+// 	}
+
+// 	createArgs1 := &routines.CreateFMArgs{
+// 		Filename: "test-another.txt",
+// 		Servants: servants,
+// 	}
+
+// 	client.Call("FileService.CreateFileMaster", createArgs, &reply)
+// 	client.Call("FileService.CreateFileMaster", createArgs1, &reply)
+
+	
+
+// 	readArgs := &routines.RWArgs{
+// 		LocalFilename: "test-another-copy.txt",
+// 		SdfsFilename: "test-another.txt",
+// 		ClientAddr: "fa23-cs425-3803.cs.illinois.edu",
+// 	}
+
+// 	// writeArgs := &routines.RWArgs{
+// 	// 	LocalFilename: "test-fm.txt",
+// 	// 	SdfsFilename: "test-fm-copy.txt",
+// 	// 	ClientAddr: "fa23-cs425-3801.cs.illinois.edu:9000",
+// 	// }
+
+// 	// writeArgs1 := &routines.RWArgs{
+// 	// 	Filename: "test-another.txt",
+// 	// 	ClientAddr: "fa23-cs425-3801.cs.illinois.edu",
+// 	// }
+
+// 	// deleteArgs := &routines.DeleteArgs{
+// 	// 	Filename: "test-fm.txt",
+// 	// }
+
+// 	// client.Call("FileService.WriteFile", writeArgs, &reply)
+// 	client.Call("FileService.ReadFile", readArgs, &reply)
+// 	// client.Call("FileService.DeleteFile", deleteArgs, &reply)
+
+
+// 	//fm := routines.NewFileMaster(config.Homedir + "/" + "test-fm.txt", servants, fileService.SshConfig)
+// 	// err := fm.WriteFile("fa23-cs425-3801.cs.illinois.edu:8000")
+// 	// fmt.Println(err)
+// 	// fm.ReadFile("fa23-cs425-3803.cs.illinois.edu")
+// }
+
+// --------------------
+
 func main() {
 
 	var cmd string
