@@ -1,13 +1,16 @@
 package main
 
 import (
+	"cs425-mp2/config"
 	"cs425-mp2/routines"
 	"cs425-mp2/util"
-	"cs425-mp2/config"
 	"fmt"
+	"log"
+	"net"
+	"net/rpc"
+	"net/http"
 	"strconv"
 )
-
 
 func main() {
 
@@ -18,15 +21,28 @@ func main() {
 
 	util.CreateProcessLogger(config.LogFilePath)
 	grepService := routines.NewGrepService()
-	go grepService.Start()		
+	go grepService.Register()
 
 	routines.InitLocalMembershipList()
 
 	if config.IsIntroducer {
 		go routines.StartIntroducer()
-	} 
+	}
 	go routines.StartMembershipListServer()
 	go routines.StartLeaderElectionServer()
+
+
+	// register and start up rpc services
+	routines.NewFileMetadataService().Register()
+	routines.NewGrepService().Register()
+	rpc.HandleHTTP()
+
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.RpcServerPort))
+	if err != nil {
+		log.Fatal("Failed to start RPC server", err)
+	}
+	go http.Serve(l, nil)
+
 
 
 	// don't allow commands until all servers properly started
@@ -34,11 +50,11 @@ func main() {
 	routines.WaitAllServerStart()
 
 	if config.IsIntroducer {
-		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%d\n", routines.LocalMembershipList.SelfEntry.Ip[0], 
-		routines.LocalMembershipList.SelfEntry.Ip[1], 
-		routines.LocalMembershipList.SelfEntry.Ip[2], 
-		routines.LocalMembershipList.SelfEntry.Ip[3],
-		config.IntroducerPort)
+		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%d\n", routines.LocalMembershipList.SelfEntry.Ip[0],
+			routines.LocalMembershipList.SelfEntry.Ip[1],
+			routines.LocalMembershipList.SelfEntry.Ip[2],
+			routines.LocalMembershipList.SelfEntry.Ip[3],
+			config.IntroducerPort)
 	}
 
 	fmt.Printf("Local membership service started at: %s\n\n", routines.LocalMembershipList.SelfEntry.Addr())
@@ -49,12 +65,11 @@ func main() {
 		"enable_suspicion":  "change protocol to GS",
 		"disable_suspicion": "change protocol to G",
 		"droprate":          "add an artificial drop rate",
-		"log":		 		 "print logs from remote servers",
-		"help":				 "command manual",
+		"log":               "print logs from remote servers",
+		"help":              "command manual",
 
 		// debug commands
 		"pl": "print leader",
-		
 	}
 
 	defer util.ProcessLogger.Close()
@@ -112,7 +127,7 @@ func main() {
 			fmt.Println()
 
 		// debug commands
-		case"pl":
+		case "pl":
 			fmt.Println(routines.LeaderId)
 		}
 	}

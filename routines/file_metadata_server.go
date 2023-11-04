@@ -32,7 +32,7 @@ func NewFileMetadataService() *FileMetadataService {
 }
 
 // file index & file master/servant info server, hosted by leader
-func (this *FileMetadataService) StartMetadataServer() {
+func (this *FileMetadataService) Register() {
 	rpc.Register(this)
 
 	// todo: low-priority but needs graceful termination
@@ -48,7 +48,6 @@ func (this *FileMetadataService) StartMetadataServer() {
 	}
 
 }
-
 
 // --------------------------------------------
 // Functions for handling DFS client requests
@@ -68,14 +67,13 @@ func (this *FileMetadataService) HandleDfsClientRequest(request *client.DfsReque
 		return errors.New("File name is empty")
 	}
 
-
 	switch requestType {
 	case client.FILE_GET:
 		return this.handleGetRequest(fileName, reply)
 	case client.FILE_PUT:
 		return this.handlePutRequest(fileName, reply)
 	case client.FILE_DELETE:
-		return this.handleDeleteRequest(fileName)	// no data replied, no error means success
+		return this.handleDeleteRequest(fileName) // no data replied, no error means success
 	case client.FILE_LIST:
 		return this.handleListRequest(fileName, reply)
 	}
@@ -113,7 +111,7 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *client
 		// write back to metdata and notify invovlved nodes
 		this.metadata[fileName] = targetCluster
 		var err error
-		for _, node := range *targetCluster.Flatten(){
+		for _, node := range *targetCluster.Flatten() {
 			err = informMetadata(node.NodeId, &this.metadata)
 		}
 		return err
@@ -123,7 +121,6 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *client
 	reply = toResponse(clusterInfo)
 	return nil
 }
-
 
 // clients tries to write a file
 func (this *FileMetadataService) handleDeleteRequest(fileName string) error {
@@ -140,13 +137,12 @@ func (this *FileMetadataService) handleDeleteRequest(fileName string) error {
 	delete(this.metadata, fileName)
 
 	var err error
-	for _, node := range *clusterInfo.Flatten(){
+	for _, node := range *clusterInfo.Flatten() {
 		err = informMetadata(node.NodeId, &this.metadata)
 	}
 	return err
 
 }
-
 
 // clients tries to write a file
 func (this *FileMetadataService) handleListRequest(fileName string, reply *client.DfsResponse) error {
@@ -163,7 +159,6 @@ func (this *FileMetadataService) handleListRequest(fileName string, reply *clien
 	reply = toResponse(clusterInfo)
 	return nil
 }
-
 
 // ----------------------------------------
 // Functions for maintaining metadata
@@ -295,9 +290,7 @@ func informMetadata(nodeId string, metadata *util.Metadata) error {
 	}
 }
 
-
-
-func toResponse(clusterInfo *util.ClusterInfo) *client.DfsResponse{
+func toResponse(clusterInfo *util.ClusterInfo) *client.DfsResponse {
 
 	servants := make([]util.FileInfo, len(clusterInfo.Servants))
 	for _, servant := range clusterInfo.Servants {
