@@ -16,11 +16,12 @@ type FileService struct {
 	SshConfig 				*ssh.ClientConfig
 	Filename2FileMaster 	map[string]*FileMaster
 	SdfsFolder 				string
+	LocalFileFolder			string
 }
 
 type CopyArgs struct {
-	LocalFilename 	string
-	RemoteFilename 	string
+	LocalFilePath 	string
+	RemoteFilePath 	string
 	RemoteAddr 		string
 }
 
@@ -51,6 +52,8 @@ func NewFileService(port int, homedir string) *FileService {
 	}
 	this.Filename2FileMaster = make(map[string]*FileMaster)
 	this.SdfsFolder = homedir + "/sdfs/"
+	this.LocalFileFolder = homedir + "/local/"
+
 	return this
 }
 
@@ -103,7 +106,7 @@ func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 }
 
 func (this *FileService) CopyFileToRemote(args *CopyArgs, reply *string) error {
-	return util.CopyFileToRemote(args.LocalFilename, args.RemoteFilename, args.RemoteAddr, this.SshConfig, this.SdfsFolder)
+	return util.CopyFileToRemote(args.LocalFilePath, args.RemoteFilePath, args.RemoteAddr, this.SshConfig)
 }
 
 func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error {
@@ -111,7 +114,7 @@ func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error 
 }
 
 func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error{
-	fm := NewFileMaster(args.Filename, args.Servants, this.SshConfig, this.Port, this.SdfsFolder)
+	fm := NewFileMaster(args.Filename, args.Servants, this.SshConfig, this.Port, this.SdfsFolder, this.LocalFileFolder)
 	this.Filename2FileMaster[args.Filename] = fm
 	return nil
 }

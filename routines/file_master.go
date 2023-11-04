@@ -8,6 +8,7 @@ import (
 	"cs425-mp2/util"
 	"os"
 	"strings"
+	"os/exec"
 )
 
 type FileMaster struct {
@@ -28,6 +29,7 @@ type FileMaster struct {
 	SshConfig 	 	*ssh.ClientConfig
 	FileServerPort 	int
 	SdfsFolder 		string
+	LocalFileFolder string
 }
 
 type Request struct {
@@ -39,17 +41,18 @@ type Request struct {
 	WaitRound int
 }
 
-func NewFileMaster(filename string, servants []string, sshConfig *ssh.ClientConfig, fileServerPort int, sdfsFolder string) *FileMaster {
+func NewFileMaster(filename string, servants []string, sshConfig *ssh.ClientConfig, fileServerPort int, sdfsFolder string, localFileFlder string) *FileMaster {
 	selfAddr, _ := os.Hostname()
 	return &FileMaster{
-		CurrentRead:  	0,
-		CurrentWrite: 	0,
-		Filename:     	filename,
-		Servants: 		servants,
-		SshConfig: 		sshConfig,
-		SelfAddr: 		selfAddr,
-		FileServerPort: fileServerPort,
-		SdfsFolder:		sdfsFolder,
+		CurrentRead:  		0,
+		CurrentWrite: 		0,
+		Filename:     		filename,
+		Servants: 			servants,
+		SshConfig: 			sshConfig,
+		SelfAddr: 			selfAddr,
+		FileServerPort: 	fileServerPort,
+		SdfsFolder:			sdfsFolder,
+		LocalFileFolder: 	localFileFlder,
 	}
 }
 
@@ -131,7 +134,10 @@ func (fm *FileMaster) executeRead(clientFilename, clientAddr string) error {
 
 	fmt.Println("read" + fm.Filename)
 	// TODO: change this to send file from servant
-	util.CopyFileToRemote(fm.Filename, clientFilename, clientAddr, fm.SshConfig, fm.SdfsFolder)
+	// copy to client's local folder
+	localFilePath := fm.SdfsFolder + fm.Filename
+	remoteFilePath := fm.LocalFileFolder + clientFilename
+	util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
 
 
 	fm.CurrentRead -= 1
@@ -181,9 +187,12 @@ func (fm *FileMaster) executeWrite(clientFilename, clientAddr string) error {
 		if err != nil {
 			log.Fatal("Error dialing client:", err)
 		}
+		// copy from client's local folder to fm's sdfs folder
+		localFilePath := fm.LocalFileFolder + clientFilename
+		remoteFilePath := fm.SdfsFolder + fm.Filename
 		fromClientArgs := CopyArgs{
-			LocalFilename: clientFilename, 
-			RemoteFilename: fm.Filename, 
+			LocalFilePath: localFilePath, 
+			RemoteFilePath: remoteFilePath, 
 			RemoteAddr: clientAddr,
 		}
 		var reply string
@@ -193,12 +202,22 @@ func (fm *FileMaster) executeWrite(clientFilename, clientAddr string) error {
 		if initialCopyErr != nil {
 			log.Fatal("Error copying from client: ", err)
 		}
-	} // else if (clientFilename != fm.Filename)
+	} else {
+		// if fm is client, copy from local folder to sdfs folder
+		sourceFile := fm.LocalFileFolder + clientFilename
+		destinationFile := fm.SdfsFolder + fm.Filename
+		cmd := exec.Command("cp", sourceFile, destinationFile)
+		_, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Fatal("Error copying from local folder to sdfs folder ", err)
+		}
+	}
 
-	// copy the file to each servant
+	// copy the file from sdfs folder to each servant's sdfs folder
 	// TODO: change these to async calls
 	for _, servant := range fm.Servants {
-		servantErr := util.CopyFileToRemote(fm.Filename, fm.Filename, servant, fm.SshConfig, fm.SdfsFolder)
+		filePath := fm.SdfsFolder + fm.Filename
+		servantErr := util.CopyFileToRemote(filePath, filePath, servant, fm.SshConfig)
 		if servantErr != nil {
 			log.Fatal("Error sending file to servant: ", servantErr)
 		}
