@@ -16,10 +16,10 @@ import (
 // 	fileService := routines.NewFileService(config, 8000)
 // 	fileService.Start()
 
-// 	// client, err := rpc.DialHTTP("tcp", "fa23-cs425-3801.cs.illinois.edu:8000")
-// 	// if err != nil {
-// 	// 	log.Fatal("dialing:", err)
-// 	// }
+// 	client, err := rpc.DialHTTP("tcp", "fa23-cs425-3801.cs.illinois.edu:8000")
+// 	if err != nil {
+// 		log.Fatal("dialing:", err)
+// 	}
 
 // 	// putArgs := &routines.PutArgs{
 // 	// 	LocalFilePath: config.Homedir + "/cs-425-mp-3/test.txt", 
@@ -27,15 +27,44 @@ import (
 // 	// 	RemoteAddr: "fa23-cs425-3803.cs.illinois.edu",
 // 	// }
 
-// 	// var reply error
+// 	var reply string
 
 // 	// client.Call("FileService.PutFile", putArgs, &reply)
 	
 // 	servants := []string{"fa23-cs425-3802.cs.illinois.edu"}
-// 	fm := routines.NewFileMaster(config.Homedir + "/" + "test-fm.txt", servants, fileService.SshConfig)
-// 	err := fm.WriteFile("fa23-cs425-3801.cs.illinois.edu:8000")
-// 	fmt.Println(err)
-// 	fm.ReadFile("fa23-cs425-3803.cs.illinois.edu")
+// 	createArgs := &routines.CreateFMArgs{
+// 		Filename: config.Homedir + "/" + "test-fm.txt",
+// 		Servants: servants,
+// 	}
+
+// 	createArgs1 := &routines.CreateFMArgs{
+// 		Filename: config.Homedir + "/" + "test-another.txt",
+// 		Servants: servants,
+// 	}
+
+// 	client.Call("FileService.CreateFileMaster", createArgs, &reply)
+// 	client.Call("FileService.CreateFileMaster", createArgs1, &reply)
+
+	
+
+// 	readArgs := &routines.RWArgs{
+// 		Filename: config.Homedir + "/" + "test-fm.txt",
+// 		ClientAddr: "fa23-cs425-3803.cs.illinois.edu",
+// 	}
+
+// 	readArgs1 := &routines.RWArgs{
+// 		Filename: config.Homedir + "/" + "test-another.txt",
+// 		ClientAddr: "fa23-cs425-3803.cs.illinois.edu",
+// 	}
+
+// 	client.Call("FileService.ReadFile", readArgs, &reply)
+// 	client.Call("FileService.ReadFile", readArgs1, &reply)
+
+
+// 	//fm := routines.NewFileMaster(config.Homedir + "/" + "test-fm.txt", servants, fileService.SshConfig)
+// 	// err := fm.WriteFile("fa23-cs425-3801.cs.illinois.edu:8000")
+// 	// fmt.Println(err)
+// 	// fm.ReadFile("fa23-cs425-3803.cs.illinois.edu")
 // }
 
 // --------------------
