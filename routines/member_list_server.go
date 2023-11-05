@@ -31,6 +31,9 @@ func StartMembershipListServer() {
 
 	SelfNodeId = LocalMembershipList.GetSelfNodeId()
 
+
+	log.Println("Self Node ID is %s", SelfNodeId)
+
 	localAddr, err := net.ResolveUDPAddr("udp4", LocalMembershipList.SelfEntry.Addr())
 	if err != nil {
 		log.Fatal("Error resolving udp address", err)

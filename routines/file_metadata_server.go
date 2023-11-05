@@ -20,12 +20,12 @@ var FileMetadataServerSigTerm chan int = make(chan int)
 type FileMetadataService struct {
 	metadataLock sync.RWMutex
 	// fileName -> replica distribution info
-	metadata map[string]*util.ClusterInfo
+	metadata util.NodeToFiles
 }
 
 func NewFileMetadataService() *FileMetadataService {
 	server := FileMetadataService{
-		metadata: make(map[string]*util.ClusterInfo),
+		metadata: make(map[string]map[string]*util.FileInfo),
 	}
 	return &server
 }
@@ -84,8 +84,10 @@ func (this *FileMetadataService) HandleDfsClientRequest(request *DfsRequest, rep
 // clients tries to fetch distribution info of a file
 func (this *FileMetadataService) handleGetRequest(fileName string, reply *DfsResponse) error {
 	this.metadataLock.RLock()
-	clusterInfo, exists := this.metadata[fileName]
+	fileToClusterInfo := util.Convert2(&this.metadata)
 	this.metadataLock.RUnlock()
+
+	clusterInfo, exists := (*fileToClusterInfo)[fileName]
 
 	if !exists {
 		return errors.New("File " + fileName + "does not exist")
@@ -99,7 +101,9 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 	this.metadataLock.Lock()
 	defer this.metadataLock.Unlock()
 
-	targetCluster, exists := this.metadata[fileName]
+	fileToClusterInfo := util.Convert2(&this.metadata)
+
+	targetCluster, exists := (*fileToClusterInfo)[fileName]
 
 	if !exists {
 		// new file, allocate a new cluster
@@ -108,7 +112,8 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 		targetCluster.RecruitFullCluster(&this.metadata, config.ReplicationFactor)
 
 		// write back to metdata and notify invovlved nodes
-		this.metadata[fileName] = targetCluster
+		(*fileToClusterInfo)[fileName] = targetCluster
+		this.metadata = *util.Convert(fileToClusterInfo)
 		var err error
 		for _, node := range *targetCluster.Flatten() {
 			err = informMetadata(node.NodeId, &this.metadata)
@@ -130,14 +135,17 @@ func (this *FileMetadataService) handleDeleteRequest(fileName string) error {
 	this.metadataLock.Lock()
 	defer this.metadataLock.Unlock()
 
-	clusterInfo, exists := this.metadata[fileName]
+	fileToClusterInfo := *util.Convert2(&this.metadata)
+
+	clusterInfo, exists := fileToClusterInfo[fileName]
 
 	if !exists {
 		// new file, allocate a new cluster
 		return errors.New("File " + fileName + " does not exists")
 	}
 
-	delete(this.metadata, fileName)
+	delete(fileToClusterInfo, fileName)
+	this.metadata = *util.Convert(&fileToClusterInfo)
 
 	var err error
 	for _, node := range *clusterInfo.Flatten() {
@@ -152,7 +160,9 @@ func (this *FileMetadataService) handleListRequest(fileName string, reply *DfsRe
 	this.metadataLock.RLock()
 	defer this.metadataLock.RUnlock()
 
-	clusterInfo, exists := this.metadata[fileName]
+	fileToClusterInfo := *util.Convert2(&this.metadata)
+
+	clusterInfo, exists := fileToClusterInfo[fileName]
 
 	if !exists {
 		// new file, allocate a new cluster
@@ -260,16 +270,16 @@ func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMe
 	checkAndRepair(nodeIdToFiles, filenameToCluster)
 
 	rpcServer.metadataLock.Lock()
-	rpcServer.metadata = *filenameToCluster
+	rpcServer.metadata = *nodeIdToFiles
 	rpcServer.metadataLock.Unlock()
 
 	nodeIdToFiles = util.Convert(filenameToCluster)
 	for nodeId, _ := range *nodeIdToFiles {
-		go informMetadata(nodeId, filenameToCluster)
+		go informMetadata(nodeId, nodeIdToFiles)
 	}
 }
 
-func informMetadata(nodeId string, metadata *util.Metadata) error {
+func informMetadata(nodeId string, metadata *util.NodeToFiles) error {
 	timeout := time.After(5 * time.Second)
 	ip := NodeIdToIP(nodeId)
 	client := dial(ip, config.RpcServerPort)

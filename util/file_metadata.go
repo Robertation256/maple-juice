@@ -15,7 +15,7 @@ const (
 	COMPLETE int = 2				// file is intact 
 )
 
-type Metadata = map[string]*ClusterInfo
+type FileNameToCluster = map[string]*ClusterInfo
 type NodeToFiles = map[string]map[string]*FileInfo
 
 
@@ -51,7 +51,7 @@ func NewClusterInfo(fileName string) *ClusterInfo {
 
 
 // compile reports into map of nodeId -> fileName -> FileInfo and a map of fileName -> replicaInfo
-func CompileReports(reports *[]FileServerMetadataReport) (*NodeToFiles, *Metadata) {
+func CompileReports(reports *[]FileServerMetadataReport) (*NodeToFiles, *FileNameToCluster) {
 	log.Printf("Initial report length: %d", len(*reports))
 
 	nodeIdToFiles := make(map[string]map[string]*FileInfo)
@@ -150,14 +150,12 @@ func (cluster *ClusterInfo) RecruitServants(nodeIdToFiles *NodeToFiles, replicat
 
 
 // recruit both master and slaves, used when a file is written for the first time
-func (cluster *ClusterInfo) RecruitFullCluster(metadata *Metadata, replicationFactor int) {
+func (cluster *ClusterInfo) RecruitFullCluster(nodeToFiles *NodeToFiles, replicationFactor int) {
 	recruitNum := replicationFactor - cluster.ClusterSize()
 	if recruitNum <= 0 {
 		log.Print("Cluster is already fulfilled")
 		return
 	}
-
-	nodeToFiles := Convert(metadata)
 
 	avaibleNodes := FindAvailableNodes(cluster.FileName, nodeToFiles, replicationFactor)
 
@@ -214,7 +212,7 @@ func (this *ClusterInfo) Flatten() *[]*FileInfo {
 	return &ret
 }
 
-func Convert(fileToCluster *Metadata) *NodeToFiles {
+func Convert(fileToCluster *FileNameToCluster) *NodeToFiles {
 	ret := make(map[string]map[string]*FileInfo)
 
 	for fileName, cluster := range *fileToCluster {
@@ -231,9 +229,29 @@ func Convert(fileToCluster *Metadata) *NodeToFiles {
 	return &ret
 }
 
+func Convert2(nodeToFiles *NodeToFiles) *FileNameToCluster {
+
+	ret := make(map[string]*ClusterInfo)
+
+	for _, fmap := range *nodeToFiles{
+		for fileName, fileInfo := range fmap {
+			cluster, exists := ret[fileName]
+			if !exists {
+				cluster = NewClusterInfo(fileName)
+			}
+			if fileInfo.IsMaster {
+				cluster.Master = fileInfo
+			} else {
+				cluster.Servants = append(cluster.Servants, fileInfo)
+			}
+			ret[fileName] = cluster
+		}
+	}
+	return &ret
+}
+
 // for a file, allocate new nodes
 func FindAvailableNodes(fileName string, nodeToFiles *NodeToFiles, nodeNum int) []string {
-	log.Printf("Metadata length: %d", len(*nodeToFiles) )
 
 	ret := make([]string, 0)
 	if nodeNum <= 0 {
