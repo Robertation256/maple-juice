@@ -2,9 +2,9 @@ package routines
 
 import (
 	"bytes"
-	"cs425-mp2/config"
+	// "cs425-mp2/config"
 	"encoding/binary"
-	"io"
+	// "io"
 	"log"
 	"net"
 	"strconv"
@@ -41,7 +41,7 @@ func (this *FilerHeader) ToPayload() []byte{
 
 
 func StartFileTransferServer(receiverFileFolder string){
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(config.FileTransferPort))
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(9000)) // todo: replace with config.FileTransferPort
     if err != nil {
         log.Fatal("Failed to start file transfer server", err)
     }
