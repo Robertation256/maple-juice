@@ -63,6 +63,7 @@ func NewFileService(port int, homedir string, serverHostnames[]string) *FileServ
 	}
 
 	util.CreateSshClients(serverHostnames, this.SshConfig, NodeIdToIP(SelfNodeId))
+	util.EmptySdfsFolder(this.SdfsFolder)
 
 	return this
 }

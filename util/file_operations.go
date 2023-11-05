@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"net"
+	"path/filepath"
 )
 
 var SshClients map[string]*sftp.Client
@@ -16,6 +17,30 @@ var SshClients map[string]*sftp.Client
 type clientResult struct {
 	Ip string
 	Client *sftp.Client
+}
+
+func EmptySdfsFolder(sdfsFolder string) error{
+	dir, err := os.Open(sdfsFolder)
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+
+	// Read all file names in the folder
+	fileNames, err := dir.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+
+	// Remove each file
+	for _, fileName := range fileNames {
+		filePath := filepath.Join(sdfsFolder, fileName)
+		err := os.Remove(filePath)
+		if err != nil {
+			return err
+		} 
+	}
+	return nil
 }
 
 func CreateSshClients(serverHostnames []string, sshConfig *ssh.ClientConfig, selfIp string) {
