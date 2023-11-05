@@ -146,12 +146,11 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 		}
 	}
 
-	log.Printf("response + " + toResponse(targetCluster).toString())
-
 
 
 	// return distribution info if found, client will contact file master if it is alive
 	reply = toResponse(targetCluster)
+	log.Printf("Sent put response: \n " + toResponse(targetCluster).toString())
 	return nil
 }
 
@@ -338,7 +337,7 @@ func informMetadata(nodeId string, metadata *util.NodeToFiles) error {
 
 func toResponse(clusterInfo *util.ClusterInfo) *DfsResponse {
 
-	servants := make([]util.FileInfo, len(clusterInfo.Servants))
+	servants := make([]util.FileInfo, 0)
 	for _, servant := range clusterInfo.Servants {
 		if servant == nil {
 			log.Printf("Warn: null servant ptr")
@@ -349,8 +348,13 @@ func toResponse(clusterInfo *util.ClusterInfo) *DfsResponse {
 
 	ret := &DfsResponse{
 		FileName: clusterInfo.FileName,
-		Master:   *clusterInfo.Master,
 		Servants: servants,
+	}
+
+	if clusterInfo.Master != nil {
+		ret.Master = *clusterInfo.Master
+	} else {
+		log.Println("Warn: responded with null master")
 	}
 
 	return ret
