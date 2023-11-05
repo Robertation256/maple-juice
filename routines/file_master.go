@@ -103,7 +103,7 @@ type Request struct {
 }
 
 func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsFolder string, localFileFlder string) *FileMaster {
-	FileMasterProgressTracker = NewProgressManager()
+	//FileMasterProgressTracker = NewProgressManager()
 	selfAddr  := NodeIdToIP(SelfNodeId)
 	return &FileMaster{
 		CurrentRead:  		0,
