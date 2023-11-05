@@ -172,7 +172,12 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 			// promoted to master
 			if !currFileInfo.IsMaster && updatedFileInfo.IsMaster {
 				// set is Master to true and create a new filemaster
-				currFileInfo.IsMaster = true
+				for idx, fileInfo := range this.Report.FileEntries {
+					if fileInfo.FileName == currFileInfo.FileName {
+						this.Report.FileEntries[idx].IsMaster = true
+						break
+					}
+				}
 				needToCreateFm = true
 			}
 		} else {
