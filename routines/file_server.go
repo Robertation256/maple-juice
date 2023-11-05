@@ -1,15 +1,14 @@
 package routines
 
 import (
-	"net/http"
 	"net/rpc"
-	"net"
 	"golang.org/x/crypto/ssh"
 	"cs425-mp2/config"
 	"cs425-mp2/util"
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 type FileService struct {
@@ -42,7 +41,7 @@ type DeleteArgs struct {
 	Filename string
 }
 
-func NewFileService(port int, homedir string) *FileService {
+func NewFileService(port int, homedir string, serverHostnames[]string) *FileService {
 	MEMBERSHIP_SERVER_STARTED.Wait()
 
 	this := new(FileService)
@@ -53,6 +52,7 @@ func NewFileService(port int, homedir string) *FileService {
 			ssh.Password(config.SshPassword),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout: 8 * time.Second,
 	}
 	this.Filename2FileMaster = make(map[string]*FileMaster)
 	this.SdfsFolder = homedir + "/sdfs/"
@@ -62,21 +62,9 @@ func NewFileService(port int, homedir string) *FileService {
 		FileEntries: make([]util.FileInfo, 0),
 	}
 
-	util.EmptySdfsFolder(this.SdfsFolder)
+	util.CreateSshClients(serverHostnames, this.SshConfig, NodeIdToIP(SelfNodeId))
 
 	return this
-}
-
-func (this *FileService) Start(){
-	// TODO: integrate this with the grep server
-	rpc.Register(this)
-	rpc.HandleHTTP()
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", this.Port))
-	if err != nil {
-		log.Fatal("Failed to start file server", err)
-	}
-
-	go http.Serve(l, nil)
 }
 
 func (this *FileService) Register(){
