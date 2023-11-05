@@ -205,7 +205,11 @@ func PutFile(args []string){
 	} 
 
 	// We are given a token by the scheduler, proceed with uploading files
-	SendFile(localFileName, remoteFileName, NodeIdToIP(SelfNodeId)+":"+strconv.Itoa(config.FileServerReceivePort), token)
+	err1 := SendFile(localFileName, remoteFileName, NodeIdToIP(SelfNodeId)+":"+strconv.Itoa(config.FileServerReceivePort), token)
+
+	if err1 != nil {
+		log.Print("Send file failed with error", err1)
+	}
 
 
 	
