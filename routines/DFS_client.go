@@ -138,6 +138,8 @@ func PutFile(args []string){
 
 	master := fileMetadata.Master
 
+	log.Printf("Master value: "+ master.ToString())
+
 	fileMasterIP := NodeIdToIP(master.NodeId)
 	port := config.RpcServerPort
 
@@ -299,6 +301,7 @@ func queryMetadataService(requestType int, fileName string, reply *DfsResponse) 
 	select {
 	case _, ok := <-call.Done: // check if channel has output ready
 		if !ok || reply == nil{
+			log.Println("RPC call corrupted")
 			return errors.New("RPC call corrupted")
 		}
 	case <- requestTimeout:
