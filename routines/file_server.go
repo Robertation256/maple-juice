@@ -62,6 +62,8 @@ func NewFileService(port int, homedir string) *FileService {
 		FileEntries: make([]util.FileInfo, 0),
 	}
 
+	util.EmptySdfsFolder(this.SdfsFolder)
+
 	return this
 }
 
