@@ -94,11 +94,10 @@ func receiveFile(conn net.Conn, targetFolder string){
 			bytesRemained -= n
 			_, err := file.Write(buf[:n])
 			if err != nil {
-				log.Printf("File transfer server: failed to write to file.", err)
+				log.Print("File transfer server: failed to write to file.", err)
 				return
 			}
 
-			log.Printf("Receiving file  %d bytes remains", bytesRemained)
 			if bytesRemained <= 0 {
 				log.Printf("Completed receving file to %s", file.Name())
 				return
