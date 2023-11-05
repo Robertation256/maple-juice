@@ -282,6 +282,8 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 	// allow client to start sending file, and assign it a token corresponding to that file write
 	token := fm.GetNewToken()
 	*reply = token
+
+	log.Printf("FM returned write request with permission token %d", token)
 	
 
 	go func(){

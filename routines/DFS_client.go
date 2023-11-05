@@ -167,8 +167,6 @@ func PutFile(args []string){
 		return
 	}
 
-	log.Println("entered put command")
-
 	fileMetadata := &DfsResponse{}
 	err := queryMetadataService(FILE_PUT, remoteFileName, fileMetadata)
 
@@ -198,6 +196,8 @@ func PutFile(args []string){
 	}
 	var token uint64
 	responseErr := client.Call("FileService.WriteFile", putArgs, &token)
+
+	log.Printf("Received permission token %d", token)
 
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
