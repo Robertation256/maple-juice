@@ -114,7 +114,7 @@ func main() {
 	grepService := routines.NewGrepService()
 	grepService.Register()
 	routines.NewDfsRemoteReader().Register()
-	routines.NewFileService(config.RpcServerPort, config.Homedir).Register()
+	routines.NewFileService(config.RpcServerPort, config.Homedir, config.ServerHostnames).Register()
 	rpc.HandleHTTP()
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.RpcServerPort))

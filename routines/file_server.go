@@ -1,7 +1,6 @@
 package routines
 
 import (
-	"net/http"
 	"net/rpc"
 	"net"
 	"golang.org/x/crypto/ssh"
@@ -10,6 +9,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"github.com/pkg/sftp"
+	"sync"
+	"time"
 )
 
 type FileService struct {
@@ -19,6 +21,7 @@ type FileService struct {
 	SdfsFolder 				string
 	LocalFileFolder			string
 	Report 					util.FileServerMetadataReport
+	SshClients				map[string]*sftp.Client
 }
 
 type CopyArgs struct {
@@ -42,7 +45,12 @@ type DeleteArgs struct {
 	Filename string
 }
 
-func NewFileService(port int, homedir string) *FileService {
+type clientResult struct {
+	Ip string
+	Client *sftp.Client
+}
+
+func NewFileService(port int, homedir string, serverHostnames[]string) *FileService {
 	MEMBERSHIP_SERVER_STARTED.Wait()
 
 	this := new(FileService)
@@ -53,6 +61,7 @@ func NewFileService(port int, homedir string) *FileService {
 			ssh.Password(config.SshPassword),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout: 8 * time.Second,
 	}
 	this.Filename2FileMaster = make(map[string]*FileMaster)
 	this.SdfsFolder = homedir + "/sdfs/"
@@ -62,19 +71,54 @@ func NewFileService(port int, homedir string) *FileService {
 		FileEntries: make([]util.FileInfo, 0),
 	}
 
+	this.createSshClients(serverHostnames)
+
 	return this
 }
 
-func (this *FileService) Start(){
-	// TODO: integrate this with the grep server
-	rpc.Register(this)
-	rpc.HandleHTTP()
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", this.Port))
-	if err != nil {
-		log.Fatal("Failed to start file server", err)
+func (this *FileService) createSshClients(serverHostnames []string) {
+	this.SshClients = make(map[string]*sftp.Client)
+	resultsChan := make(chan clientResult, len(serverHostnames))
+	var wg sync.WaitGroup
+
+	for _, hostname := range serverHostnames {
+		wg.Add(1)
+		go func(hostname string){
+			
+			ips, _ := net.LookupHost(hostname)
+			ip := ips[0]
+			if ip == NodeIdToIP(SelfNodeId) {
+				wg.Done()
+				return
+			}
+			conn, connErr := ssh.Dial("tcp", ip + ":22", this.SshConfig)
+			if connErr != nil {
+				wg.Done()
+				return
+			} 
+
+			client, err := sftp.NewClient(conn)
+			if err != nil {
+				wg.Done()
+				return
+			}
+
+			resultsChan <- clientResult {
+				Ip: ip,
+				Client: client,
+			}
+			wg.Done()
+
+		}(hostname)
 	}
 
-	go http.Serve(l, nil)
+	wg.Wait()
+	close(resultsChan)
+
+	for result := range resultsChan {
+		this.SshClients[result.Ip] = result.Client
+	}
+	//fmt.Println(this.SshClients)
 }
 
 func (this *FileService) Register(){
