@@ -29,8 +29,10 @@ func (this *FileMetadataService)ToString() string {
 	this.metadataLock.RUnlock()
 	ret := ""
 
-	for _, fmap := range val {
-		ret += "---------------"
+	for nodeId, fmap := range val {
+		ret += "---------------\n"
+		ret += "Node ID: " + nodeId
+		ret += "---------------\n"
 		for _, fileInfo := range fmap {
 			ret += fileInfo.ToString()
 		}
