@@ -105,10 +105,6 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 
 	fileToClusterInfo := util.Convert2(&this.metadata)
 
-	if (fileToClusterInfo == nil){
-		log.Println("FILE TO CLUSTER INFO IS NILL")
-	}
-
 	targetCluster, exists := (*fileToClusterInfo)[fileName]
 
 	if !exists {
@@ -120,9 +116,6 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 		// write back to metdata and notify invovlved nodes
 		(*fileToClusterInfo)[fileName] = targetCluster
 		converted := util.Convert(fileToClusterInfo)
-		if (converted == nil){
-			log.Println("CONVERTED IS NILL")
-		}
 		this.metadata = *converted
 		var err error
 		for _, node := range *targetCluster.Flatten() {
@@ -207,8 +200,6 @@ func checkAndRepair(nodeIdToFiles *map[string]map[string]*util.FileInfo, fileNam
 }
 
 func collectMetadata() *[]util.FileServerMetadataReport {
-
-	log.Printf("Collecting metdata...")
 
 	ips := LocalMembershipList.AliveMembers()
 	ips = append(ips, NodeIdToIP(SelfNodeId))

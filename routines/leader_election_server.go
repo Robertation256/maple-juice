@@ -133,7 +133,7 @@ func runElection(conn *net.UDPConn) {
 	for len(LeaderId) == 0 && !endCurrentRound {
 		select {
 		case <-electionTimeout:
-			log.Printf("Election timeout for round %d", localRoundId)
+			// log.Printf("Election timeout for round %d", localRoundId)
 			return
 		case msg := <-electionMessageChan:
 			handleElectionMsg(conn, msg)
@@ -143,7 +143,7 @@ func runElection(conn *net.UDPConn) {
 
 func handleElectionMsg(conn *net.UDPConn, msg *ElectionMessage) {
 	if msg.RoundId < localRoundId {
-		log.Printf("Discarded election message of type %d with round ID %d", msg.MessageType, msg.RoundId)
+		// log.Printf("Discarded election message of type %d with round ID %d", msg.MessageType, msg.RoundId)
 		return // discard message from previous rounds
 	}
 
@@ -155,19 +155,19 @@ func handleElectionMsg(conn *net.UDPConn, msg *ElectionMessage) {
 	}
 
 	if msg.MessageType == ELECTION_REQUEST {
-		log.Printf("Received election request from node %s for round %d", msg.NodeId, msg.RoundId)
+		// log.Printf("Received election request from node %s for round %d", msg.NodeId, msg.RoundId)
 		if msg.NodeId < candidateId {
 			candidateId = msg.NodeId
 		}
 	} else if msg.MessageType == VOTE {
-		log.Printf("Received vote from node %s for round %d", msg.NodeId, msg.RoundId)
+		// log.Printf("Received vote from node %s for round %d", msg.NodeId, msg.RoundId)
 		_, exists := voterSet[msg.NodeId]
 		if !exists {
 			voterSet[msg.NodeId] = true
 		}
 		if len(voterSet) >= quorumSize {
 			LeaderId = SelfNodeId
-			log.Print("Received majority votes, multicasting leader notification")
+			// log.Print("Received majority votes, multicasting leader notification")
 			msg := ElectionMessage{
 				MessageType: LEADER_NOTIFICATION,
 				RoundId:     localRoundId,
@@ -177,7 +177,7 @@ func handleElectionMsg(conn *net.UDPConn, msg *ElectionMessage) {
 		}
 	} else if msg.MessageType == LEADER_NOTIFICATION {
 		LeaderId = msg.NodeId
-		log.Printf("Elected leader at %s for round %d", LeaderId, localRoundId)
+		// log.Printf("Elected leader at %s for round %d", LeaderId, localRoundId)
 		return
 	} else {
 		log.Print("Received invalid election message type")
@@ -192,7 +192,7 @@ func waitAndVote(conn *net.UDPConn, votingRoundId uint32) {
 		log.Printf("Abstained vote for round %d ", votingRoundId)
 		return
 	}
-	log.Printf("Casted vote for %s at round %d ", candidateId, votingRoundId)
+	// log.Printf("Casted vote for %s at round %d ", candidateId, votingRoundId)
 	msg := ElectionMessage{
 		MessageType: VOTE,
 		RoundId:     votingRoundId,
