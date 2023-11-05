@@ -146,13 +146,14 @@ func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) err
 func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMetadataReport) error{
 	// TODO: check all files that are pending and change status
 
-	for _, fileInfo := range this.Report.FileEntries {
+	for i, fileInfo := range this.Report.FileEntries {
 		if fileInfo.FileStatus == util.PENDING_FILE_UPLOAD || fileInfo.FileStatus == util.WAITING_REPLICATION {
 			// check if file is in sdfs folder
 			_, err := os.Stat(this.SdfsFolder + fileInfo.FileName)
 			if err == nil {
+				log.Println("file status changed to complete")
 				// file is in folder
-				fileInfo.FileStatus = util.COMPLETE
+				this.Report.FileEntries[i].FileStatus = util.COMPLETE
 			}
 		}
 	}
