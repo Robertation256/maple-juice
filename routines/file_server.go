@@ -226,5 +226,6 @@ func (this *FileService) UpdateMetadata(fileToClusters *util.FileNameToCluster, 
 		}
 	}
 
+	*reply = "ACK"
 	return nil
 }
