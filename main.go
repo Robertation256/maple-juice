@@ -156,7 +156,7 @@ func main() {
 
 		// debug commands
 		"pl": "print leader",
-		// "pm": "print metadata",
+		"pm": "print metadata",
 	}
 
 	for {
