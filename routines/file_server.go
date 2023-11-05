@@ -159,6 +159,8 @@ func (this *FileService) ReportMetadata(args *CreateFMArgs, reply *util.FileServ
 	reply.NodeId = this.Report.NodeId
 	reply.FileEntries = this.Report.FileEntries
 
+	log.Printf("Node %s reported self metadata info", reply.NodeId)
+
 	return nil
 }
 

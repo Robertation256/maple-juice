@@ -206,13 +206,15 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 			clients[index] = dial(ip, config.RpcServerPort)
 		}
 
+		arg := ""
+
 		if clients[index] != nil {
 			// perform async rpc call
-			call := clients[index].Go("FileService.ReportMetadata", new(Args), &(reports[index]), nil)
+			call := clients[index].Go("FileService.ReportMetadata", &arg, &(reports[index]), nil)
 			if call.Error != nil {
 				clients[index] = dial(ip, config.RpcServerPort) // best effort re-dial
 				if clients[index] != nil {
-					call = clients[index].Go("FileService.ReportMetadata", new(Args), &(reports[index]), nil)
+					call = clients[index].Go("FileService.ReportMetadata", &arg, &(reports[index]), nil)
 				}
 			}
 			calls[index] = call
