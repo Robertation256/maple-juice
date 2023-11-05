@@ -1,13 +1,14 @@
 package util
 
 import (
+	"fmt"
+	"io"
+	"log"
+	"os"
+
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
-	"os"
-	"io" 
-	"fmt"
 )
-
 
 // copy file to a remote location using sftp
 func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr string, sshConfig *ssh.ClientConfig) error {
@@ -19,9 +20,10 @@ func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr st
 	
 	client, err := sftp.NewClient(conn)
 	if err != nil {
+		log.Printf("Failed to create SFTP client: %s", err.Error())
 		return(fmt.Errorf("Failed to create SFTP client: %w", err))
 	}
-	defer client.Close()
+	
 
 	localFile, err := os.Open(localFilePath)
 	if err != nil {
@@ -40,6 +42,8 @@ func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr st
 		return(fmt.Errorf("Failed to upload file: %w", err))
 	}
 
+
+	client.Close()
 	return nil
 }
 
