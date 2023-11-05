@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	FILE_TRANSFER_BUFFER_SIZE int = 10*1024*1024
+	FILE_TRANSFER_BUFFER_SIZE int = 20*1024
 )
 
 type FilerHeader struct {
@@ -82,7 +82,7 @@ func receiveFile(conn net.Conn, targetFolder string, progressManager *ProgressMa
 			if progressManager != nil {		
 				progressManager.Complete(fileName, token, MASTER_WRITE_COMPLETE)
 			}
-			log.Printf("Completed receving file to %s", file.Name())
+			log.Printf("Completed receving file to %s, remaining bytes size is %d", file.Name(), n)
 			return
 		}
 		if err != nil {
@@ -152,6 +152,9 @@ func initializeFile(targetFolder string, buf *[]byte, size int) (*os.File, int, 
 
 
 func SendFile(localFilePath string, remoteFileName, remoteAddr string, token uint64) error {
+
+	var total uint64 = 0
+
 	localFile, err := os.Open(localFilePath)
 	if err != nil {
 		return err
@@ -186,15 +189,18 @@ func SendFile(localFilePath string, remoteFileName, remoteAddr string, token uin
 
 	for {
 		n, err := localFile.Read(buf)
+		total += uint64(n)
 
 		if err == io.EOF {
-			log.Print("Finished sending file")
+
+			log.Printf("Finished sending file, remaining bytes is %d", n)
             return nil 	// we are finished
         }
 		if err != nil {
 			return err
 		}
 
+		log.Printf("Writing file  %d kb written", total/1024)
 		conn.Write(buf[:n])
 	}	
 }
