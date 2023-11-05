@@ -245,7 +245,7 @@ func Multiread(args []string){
 	}
 
 	remoteFileName := args[0]
-	machineIds := make([]int, len(args)-1)
+	machineIds := make([]int, 0)
 
 	for i:=1; i<len(args); i++ {
 		id, err := strconv.Atoi(args[i])
@@ -257,12 +257,15 @@ func Multiread(args []string){
 
 
 	for machineId := range machineIds {
+		fmt.Printf("Instructing read for machine %d", machineId)
 		hostName := config.ServerHostnames[machineId]
+		fmt.Printf("Hostname is %s", hostName)
 		go func() {
 			client := dial(hostName, config.RpcServerPort)
 
 			if client == nil {
 				log.Printf("Unable to connect to %s:%d", hostName, config.RpcServerPort)
+				return
 			}
 
 			reply := ""

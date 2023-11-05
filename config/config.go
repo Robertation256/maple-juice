@@ -116,7 +116,7 @@ func InitConfig() {
 		case "SERVER_HOSTNAMES":
 			hostnames := strings.Split(string(kv[1]), ",")
 			if len(hostnames) == 0 {
-				log.Fatal("Log server hostnames config is empty")
+				log.Fatal("Server hostnames config is empty")
 			}
 			ret := make([]string, len(hostnames))
 			for i := 0; i < len(ret); i++ {
