@@ -174,7 +174,7 @@ func (cluster *ClusterInfo) RecruitFullCluster(nodeToFiles *NodeToFiles, replica
 		avaibleNodes = avaibleNodes[1:]
 	}
 
-	servants := make([]*FileInfo, len(avaibleNodes))
+	servants := make([]*FileInfo, 0)
 
 	for _, nodeId := range avaibleNodes {
 		fileInfo := &FileInfo{
