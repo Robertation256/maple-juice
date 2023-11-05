@@ -141,7 +141,7 @@ func (cluster *ClusterInfo) RecruitServants(nodeIdToFiles *NodeToFiles, replicat
 		}
 	}
 
-	if cluster.ClusterSize() >= replicationFactor {
+	if cluster.ClusterSize() < replicationFactor {
 		log.Printf("[Warn] unable to fulfill replication factor for file %s, current cluster size is %d", cluster.FileName, cluster.ClusterSize())
 	}
 }
