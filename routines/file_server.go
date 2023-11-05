@@ -165,7 +165,7 @@ func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMeta
 	return nil
 }
 
-func (this *FileService) UpdateMetadata(fileToClusters *util.Metadata, reply *string) error {
+func (this *FileService) UpdateMetadata(fileToClusters *util.FileNameToCluster, reply *string) error {
 	nodeToFiles := util.Convert(fileToClusters)
 	updatedFileEntries := (*nodeToFiles)[SelfNodeId]
 
