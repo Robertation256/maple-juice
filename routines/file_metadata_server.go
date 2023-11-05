@@ -191,6 +191,7 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 	log.Printf("Collecting metdata...")
 
 	ips := LocalMembershipList.AliveMembers()
+	ips = append(ips, NodeIdToIP(SelfNodeId))
 	clients := make([]*rpc.Client, len(ips))
 	reports := make([]util.FileServerMetadataReport, len(ips))
 

@@ -62,6 +62,7 @@ func CompileReports(reports *[]FileServerMetadataReport) (*NodeToFiles, *Metadat
 		_, ok := nodeIdToFiles[nodeId]
 
 		if !ok {
+			log.Printf("Added node %s", nodeId)
 			nodeIdToFiles[nodeId] = make(map[string]*FileInfo)
 		}
 

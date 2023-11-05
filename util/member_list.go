@@ -332,7 +332,7 @@ func (this *MemberList) mergeProtocol(other *MemberList) {
 
 }
 
-// get an array of IPs of alive members
+// get an array of IPs of alive members (does not include self)
 func (this *MemberList) AliveMembers() []string {
 	var ret []string
 	memberListLock.Lock()
