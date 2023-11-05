@@ -297,7 +297,7 @@ func informMetadata(nodeId string, metadata *util.NodeToFiles) error {
 
 	retFlag := ""
 
-	call := client.Go("FileService.UpdateMetadata", &metadata, &retFlag, nil)
+	call := client.Go("FileService.UpdateMetadata", metadata, &retFlag, nil)
 	if call.Error != nil {
 		log.Printf("Encountered error while informing node %s", nodeId)
 		return call.Error
@@ -311,6 +311,7 @@ func informMetadata(nodeId string, metadata *util.NodeToFiles) error {
 			log.Println("File Metadata Server: Channel closed for async rpc call")
 			return errors.New("Node " + nodeId + " failed to respond to metadata update.")
 		} else {
+			log.Println(retFlag)
 			if retFlag == "ACK" {
 				log.Printf("File Metadata Server: successfully informed node %s", nodeId)
 				return nil
