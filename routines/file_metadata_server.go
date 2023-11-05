@@ -23,6 +23,24 @@ type FileMetadataService struct {
 	metadata util.NodeToFiles
 }
 
+func (this *FileMetadataService)ToString() string {
+	this.metadataLock.RLock()
+	val := this.metadata
+	this.metadataLock.RUnlock()
+	ret := ""
+
+	for _, fmap := range val {
+		ret += "---------------"
+		for _, fileInfo := range fmap {
+			ret += fileInfo.ToString()
+		}
+		
+	}
+	ret += "---------------"
+
+	return ret
+}
+
 func NewFileMetadataService() *FileMetadataService {
 	server := FileMetadataService{
 		metadata: make(map[string]map[string]*util.FileInfo),

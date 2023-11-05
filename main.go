@@ -109,7 +109,8 @@ func main() {
 
 
 	// register and start up rpc services
-	routines.NewFileMetadataService().Register()
+	fileMetadataService :=routines.NewFileMetadataService()
+	fileMetadataService.Register()
 	grepService := routines.NewGrepService()
 	grepService.Register()
 	routines.NewDfsRemoteReader().Register()
@@ -155,7 +156,7 @@ func main() {
 
 		// debug commands
 		"pl": "print leader",
-		// "pm": "print metadata",
+		"pm": "print metadata",
 	}
 
 	for {
@@ -218,8 +219,8 @@ func main() {
 		// debug commands
 		case "pl":
 			fmt.Println(routines.LeaderId)
-		// case "pm":
-		// 	fmt.Println()
+		case "pm":
+			fmt.Println(fileMetadataService.ToString())
 
 		default:
 			routines.ProcessDfsCmd(cmd, args)
