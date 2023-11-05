@@ -21,7 +21,7 @@ func (this *DfsRemoteReader) Register(){
 
 func (this *DfsRemoteReader) Read(fileName *string, reply *string) error {
 	localFileName := "remoted_initiated_" + *fileName 
-	args := []string {localFileName, *fileName}
+	args := []string {*fileName, localFileName}
 	err := GetFile(args)
 
 	if err == nil {
