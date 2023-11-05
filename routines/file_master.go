@@ -162,24 +162,6 @@ func (fm *FileMaster) CheckQueue() {
 	}
 }
 
-func (fm *FileMaster) CheckWriteCompleted(key *string, reply *string) error {
-	
-	timeout := time.After(120 * time.Second)
-	for {
-		time.Sleep(2*time.Second)
-		select {
-		case <-timeout:
-			*reply = ""
-			return nil
-		default:
-			if FileMasterProgressTracker.IsFullCompletedByKey(*key){	// received file, send it to servants
-				*reply = "ACK"
-				return nil
-			}
-		}
-	}
-
-}
 
 func (fm *FileMaster) ReadFile(clientFilename string, clientAddr string, token uint64) error {
 	var request *Request = nil
