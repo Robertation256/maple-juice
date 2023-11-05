@@ -80,6 +80,8 @@ func GetFile(args []string) error {
 		return errors.New("Invalid parameteres for DFS GET command")
 	}
 
+	log.Println("entered get command")
+
 
 	fileMetadata := &DfsResponse{}
 	err := queryMetadataService(FILE_GET, remoteFileName, fileMetadata)
@@ -114,7 +116,7 @@ func GetFile(args []string) error {
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
 	} else {
-		fmt.Print("Done\n\n")
+		log.Print("Done\n\n")
 	}
 	return nil
 
@@ -134,6 +136,8 @@ func PutFile(args []string){
 		log.Printf("Invalid parameteres for DFS GET command")
 		return
 	}
+
+	log.Println("entered put command")
 
 	fileMetadata := &DfsResponse{}
 	err := queryMetadataService(FILE_PUT, remoteFileName, fileMetadata)
@@ -165,7 +169,7 @@ func PutFile(args []string){
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
 	} else {
-		fmt.Print("Done\n\n")
+		log.Print("Done\n\n")
 	}
 }
 
@@ -182,6 +186,8 @@ func DeleteFile(args []string){
 		log.Printf("Invalid parameteres for DFS DELETE command")
 		return
 	}
+
+	log.Println("entered delete command")
 
 	fileMetadata := &DfsResponse{}
 	err := queryMetadataService(FILE_DELETE, remoteFileName, fileMetadata)
@@ -210,7 +216,7 @@ func DeleteFile(args []string){
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
 	} else {
-		fmt.Print("Done\n\n")
+		log.Print("Done\n\n")
 	}
 }
 
