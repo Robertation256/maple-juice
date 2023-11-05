@@ -172,6 +172,7 @@ func (cluster *ClusterInfo) RecruitFullCluster(nodeToFiles *NodeToFiles, replica
 		}
 
 		avaibleNodes = avaibleNodes[1:]
+		recruitNum -= 1
 	}
 
 	servants := make([]*FileInfo, 0)
@@ -185,6 +186,9 @@ func (cluster *ClusterInfo) RecruitFullCluster(nodeToFiles *NodeToFiles, replica
 			Version: 0,
 		}
 		servants = append(servants, fileInfo)
+		if len(servants) >= recruitNum {
+			break
+		}
 	}
 
 	cluster.Servants = servants
