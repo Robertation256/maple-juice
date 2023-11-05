@@ -143,7 +143,8 @@ func GetFile(args []string) error {
 			log.Println("GET timeout")
 			return nil
 		default:
-			if ClientProgressTracker.IsMasterCompleted(remoteFileName, t) {
+			log.Printf("Checking with file name %s and token %d", localFileName, t)
+			if ClientProgressTracker.IsMasterCompleted(localFileName, t) {
 				log.Print("Done\n\n")
 				return nil
 			}
