@@ -63,8 +63,6 @@ func StartFileReceiver(receiverFileFolder string, port int, progressManager *Pro
 }
 
 
-
-
 func receiveFile(conn net.Conn, targetFolder string, progressManager *ProgressManager){
 	defer conn.Close()
 
@@ -107,13 +105,6 @@ func receiveFile(conn net.Conn, targetFolder string, progressManager *ProgressMa
 				log.Print("File transfer server: failed to write to file.", err)
 				return
 			}
-
-			if bytesRemained <= 0 {
-
-				log.Printf("We hit here before a EOF!! %s", file.Name())
-				return
-			}
-
 		}
 	}
 }
