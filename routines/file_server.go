@@ -141,7 +141,7 @@ func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) err
 	return nil
 }
 
-func (this *FileService) ReportMetadata(args *CreateFMArgs, reply *util.FileServerMetadataReport) error{
+func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMetadataReport) error{
 	// TODO: check all files that are pending and change status
 
 	for _, fileInfo := range this.Report.FileEntries {
