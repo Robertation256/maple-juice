@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	FILE_TRANSFER_BUFFER_SIZE int = 1024*1024
+	FILE_TRANSFER_BUFFER_SIZE int = 10*1024*1024
 )
 
 type FilerHeader struct {
@@ -121,7 +121,7 @@ func initializeFile(targetFolder string, buf *[]byte, size int) (*os.File, int) 
 
 	remainingBytesToRead := int(fileSize) - dataSize
 
-	filePath := targetFolder + fileName
+	filePath := targetFolder + "/" + fileName
 	file, err := os.Create(strings.TrimSpace(filePath))
 	if err != nil {
 		log.Printf("File transfer server: failed to create file.", err)

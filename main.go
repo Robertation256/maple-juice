@@ -234,7 +234,7 @@ func main() {
 			fmt.Println(fileMetadataService.ToString())
 		
 		case "send":
-			routines.SendFile(config.Homedir+"/local/test1.txt", "tcp_sent", config.ServerHostnames[1]+":"+strconv.Itoa(config.FileServerReceivePort))
+			routines.SendFile(config.Homedir+"/local/500mb.txt", "500mb_tcp_sent", config.ServerHostnames[1]+":"+strconv.Itoa(config.FileServerReceivePort))
 
 		default:
 			routines.ProcessDfsCmd(cmd, args)
