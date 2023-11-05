@@ -73,6 +73,10 @@ func receiveFile(conn net.Conn, targetFolder string){
 
 	for {
 		n, err := conn.Read(buf)
+		if err == io.EOF {
+			log.Printf("Completed receving file to %s", file.Name())
+			return
+		}
 		if err != nil {
 			log.Println("File transfer server: encountered error while receving file", err)
 			return
@@ -96,7 +100,7 @@ func receiveFile(conn net.Conn, targetFolder string){
 
 			log.Printf("Receiving file  %d bytes remains", bytesRemained)
 			if bytesRemained <= 0 {
-				log.Printf("Completed receving file to %d", file.Name())
+				log.Printf("Completed receving file to %s", file.Name())
 				return
 			}
 
