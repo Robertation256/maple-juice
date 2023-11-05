@@ -282,13 +282,6 @@ func FindAvailableNodes(fileName string, nodeToFiles *NodeToFiles, nodeNum int) 
 	return ret
 }
 
-// type FileInfo struct {
-// 	NodeId   string
-// 	FileName string
-// 	IsMaster bool
-// 	FileStatus int 
-// 	Version  int
-// }
 
 func (this *FileInfo)ToString() string {
 	role := "servant"
@@ -309,10 +302,12 @@ func (this *FileInfo)ToString() string {
 
 	return fmt.Sprintf(
 		"---------------------\n" +
+		"File name: %s\n" +
 		"Node ID: %s\n" +
 		"Role: %s\n" +
 		"File status: %s\n" +
 		"File version: %d\n", 
+		this.FileName,
 		this.NodeId,
 		role,
 		fileStatus,

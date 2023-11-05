@@ -112,7 +112,7 @@ func GetFile(args []string) error {
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
 	} else {
-		fmt.Printf("Done")
+		fmt.Print("Done\n\n")
 	}
 	return nil
 
@@ -163,7 +163,7 @@ func PutFile(args []string){
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
 	} else {
-		fmt.Printf("Done")
+		fmt.Print("Done\n\n")
 	}
 }
 
@@ -208,7 +208,7 @@ func DeleteFile(args []string){
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
 	} else {
-		fmt.Printf("Done")
+		fmt.Print("Done\n\n")
 	}
 }
 
