@@ -214,7 +214,8 @@ func PutFile(args []string){
 
 	
 	reply := ""
-	err2 := client.Call("FileService.CheckWriteCompleted", &reply, &reply)
+	key := remoteFileName + "-" + strconv.Itoa(int(token))
+	err2 := client.Call("FileService.CheckWriteCompleted", &key, &reply)
 
 	if err2 != nil  || reply != "ACK" {
 		log.Println("Encountered error while checking write completion", err2)
