@@ -116,6 +116,8 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 		return err
 	}
 
+	log.Printf("response + " + toResponse(targetCluster).toString())
+
 
 
 	// return distribution info if found, client will contact file master if it is alive
