@@ -90,7 +90,7 @@ func (this *FileMetadataService) HandleDfsClientRequest(request *DfsRequest, rep
 	case FILE_PUT:
 		return this.handlePutRequest(fileName, reply)
 	case FILE_DELETE:
-		return this.handleDeleteRequest(fileName) // no data replied, no error means success
+		return this.handleDeleteRequest(fileName, reply) // no data replied, no error means success
 	case FILE_LIST:
 		return this.handleListRequest(fileName, reply)
 	}
