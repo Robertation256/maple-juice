@@ -1,6 +1,7 @@
 package routines
 
 import (
+	"cs425-mp2/config"
 	"cs425-mp2/util"
 	"fmt"
 	"log"
@@ -297,7 +298,7 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 			default:
 				if FileMasterProgressTracker.IsMasterCompleted(clientFilename, token){	// received file, send it to servants
 					for _, servant := range fm.Servants {
-						SendFile(fm.Filename, fm.Filename, servant, 0)
+						SendFile(config.Homedir+"/sdfs/"+fm.Filename, fm.Filename, servant, 0)
 					}
 					FileMasterProgressTracker.Complete(clientFilename, token, FULL_WRITE_COMPLETE)
 					return
