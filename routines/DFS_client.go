@@ -210,7 +210,7 @@ func PutFile(args []string){
 
 	
 	reply := ""
-	err2 := client.Call("FileService.CheckWriteCompleted", &token, &reply)
+	err2 := client.Call("FileService.CheckWriteCompleted", &reply, &reply)
 
 	if err2 != nil  || reply != "ACK" {
 		log.Println("Encountered error while checking write completion", err2)
