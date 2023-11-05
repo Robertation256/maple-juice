@@ -153,7 +153,7 @@ func SendFile(localFilePath string, remoteFileName, remoteAddr string) error {
     fileSize := fileInfo.Size()
 
 
-	conn, err := net.Dial("tcp", "remoteAddr")
+	conn, err := net.Dial("tcp", remoteAddr)
     if err != nil {
 		return err
     }
@@ -173,6 +173,7 @@ func SendFile(localFilePath string, remoteFileName, remoteAddr string) error {
 		n, err := localFile.Read(buf)
 
 		if err == io.EOF {
+			log.Print("Finished sending file")
             return nil 	// we are finished
         }
 		if err != nil {
