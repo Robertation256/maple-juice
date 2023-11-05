@@ -99,8 +99,7 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 	this.metadataLock.Lock()
 	defer this.metadataLock.Unlock()
 
-	clusterInfo, exists := this.metadata[fileName]
-	var targetCluster *util.ClusterInfo
+	targetCluster, exists := this.metadata[fileName]
 
 	if !exists {
 		// new file, allocate a new cluster
@@ -117,8 +116,10 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 		return err
 	}
 
+
+
 	// return distribution info if found, client will contact file master if it is alive
-	reply = toResponse(clusterInfo)
+	reply = toResponse(targetCluster)
 	return nil
 }
 
