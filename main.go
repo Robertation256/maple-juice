@@ -155,6 +155,7 @@ func main() {
 
 		// debug commands
 		"pl": "print leader",
+		// "pm": "print metadata",
 	}
 
 	for {
@@ -217,6 +218,8 @@ func main() {
 		// debug commands
 		case "pl":
 			fmt.Println(routines.LeaderId)
+		// case "pm":
+		// 	fmt.Println()
 
 		default:
 			routines.ProcessDfsCmd(cmd, args)

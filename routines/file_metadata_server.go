@@ -121,7 +121,9 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 		for _, node := range *targetCluster.Flatten() {
 			err = informMetadata(node.NodeId, &this.metadata)
 		}
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Printf("response + " + toResponse(targetCluster).toString())
