@@ -199,7 +199,7 @@ func (fm *FileMaster) executeRead(clientFilename string, clientAddr string, toke
 
 
 	localFilePath := fm.SdfsFolder + fm.Filename
-	SendFile(localFilePath, clientFilename, clientAddr, token)
+	SendFile(localFilePath, clientFilename, clientAddr+":"+strconv.Itoa(config.FileServerReceivePort) , token)
 
 	// util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
 
@@ -246,7 +246,7 @@ func (fm *FileMaster) executeReplicate(clientAddr string) error {
 
 	// util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
 
-	SendFile(localFilePath, fm.Filename, clientAddr, 0) 
+	SendFile(localFilePath, fm.Filename, clientAddr+":"+strconv.Itoa(config.FileServerReceivePort), 0) 
 
 
 	fm.CurrentRead -= 1
