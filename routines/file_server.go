@@ -43,6 +43,8 @@ type DeleteArgs struct {
 }
 
 func NewFileService(port int, homedir string) *FileService {
+	MEMBERSHIP_SERVER_STARTED.Wait()
+
 	this := new(FileService)
 	this.Port = port
 	this.SshConfig = &ssh.ClientConfig{
@@ -155,8 +157,7 @@ func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMeta
 		}
 	}
 
-
-	reply.NodeId = this.Report.NodeId
+	reply.NodeId = SelfNodeId
 	reply.FileEntries = this.Report.FileEntries
 
 	log.Printf("Node %s reported self metadata info", reply.NodeId)
