@@ -102,7 +102,7 @@ func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr st
 	}
 
 
-	client.Close()
+	//client.Close()
 	return nil
 }
 
