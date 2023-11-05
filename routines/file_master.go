@@ -297,9 +297,12 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 				return
 			default:
 				log.Printf("Checking with file name %s and id %d", fm.Filename, token)
+				if len(fm.Servants) > 0{
+					log.Println("Servant string is %s", fm.Servants[0])
+				}
 				if FileMasterProgressTracker.IsMasterCompleted(fm.Filename, token){	// received file, send it to servants
 					for _, servant := range fm.Servants {
-						SendFile(config.Homedir+"/sdfs/"+fm.Filename, fm.Filename, servant, 0)
+						SendFile(config.Homedir+"/sdfs/"+fm.Filename, fm.Filename, servant+":"+strconv.Itoa(config.FileServerReceivePort), 0)
 					}
 
 					log.Print("Global write completed")
