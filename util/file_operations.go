@@ -69,6 +69,7 @@ func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr st
 	client, ok := SshClients[remoteAddr]
 
 	if (!ok) {
+		log.Printf("Ssh client not found, re-creating...")
 		conn, err := ssh.Dial("tcp", remoteAddr + ":22", sshConfig)
 		if err != nil {
 			return(err)
