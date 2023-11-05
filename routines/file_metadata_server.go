@@ -225,6 +225,7 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 			select {
 			case <-collectionTimeout:
 				complete = true
+				log.Print("Collection timeout !!!")
 				break
 			default:
 				if call != nil {
@@ -252,7 +253,7 @@ func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMe
 	nodeIdToFiles, filenameToCluster := util.CompileReports(reports)
 
 	log.Printf("Collected report length : %d", len(*nodeIdToFiles))
-	
+
 	checkAndRepair(nodeIdToFiles, filenameToCluster)
 
 	rpcServer.metadataLock.Lock()

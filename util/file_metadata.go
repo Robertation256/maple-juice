@@ -52,6 +52,8 @@ func NewClusterInfo(fileName string) *ClusterInfo {
 
 // compile reports into map of nodeId -> fileName -> FileInfo and a map of fileName -> replicaInfo
 func CompileReports(reports *[]FileServerMetadataReport) (*NodeToFiles, *Metadata) {
+	log.Printf("Initial report length: %d", len(*reports))
+
 	nodeIdToFiles := make(map[string]map[string]*FileInfo)
 	fileNameToCluster := make(map[string]*ClusterInfo)
 
