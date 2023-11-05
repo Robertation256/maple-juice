@@ -338,7 +338,11 @@ func toResponse(clusterInfo *util.ClusterInfo) *DfsResponse {
 
 	servants := make([]util.FileInfo, len(clusterInfo.Servants))
 	for _, servant := range clusterInfo.Servants {
-		servants = append(servants, *servant)
+		if servant == nil {
+			log.Printf("Warn: null servant ptr")
+		} else {
+			servants = append(servants, *servant)
+		}
 	}
 
 	ret := &DfsResponse{
