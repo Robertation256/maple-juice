@@ -307,9 +307,13 @@ func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMe
 }
 
 func informMetadata(nodeId string, metadata *util.NodeToFiles) error {
-	timeout := time.After(5 * time.Second)
+	timeout := time.After(30 * time.Second)
 	ip := NodeIdToIP(nodeId)
 	client := dial(ip, config.RpcServerPort)
+	if client == nil {
+		log.Printf("Cannot connect to node %s while informing metadata", nodeId)
+		return errors.New("Cannot connect to node")
+	}
 	defer client.Close()
 
 	retFlag := ""

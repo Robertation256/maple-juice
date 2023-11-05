@@ -116,7 +116,7 @@ func dial(hostname string, port int) *rpc.Client {
 		if err == nil {
 			return client
 		}
-	case <-time.After(1 * time.Second):
+	case <-time.After(10 * time.Second):
 		return nil
 	}
 	return nil
