@@ -242,7 +242,7 @@ func (fm *FileMaster) executeWrite(clientFilename, clientAddr string) error {
 		client.Close()
 
 		if initialCopyErr != nil {
-			log.Fatal("Error copying from client: ", err)
+			log.Fatal("Error copying from client: ", initialCopyErr)
 		}
 	} else {
 		// if fm is client, copy from local folder to sdfs folder
