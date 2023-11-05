@@ -2,18 +2,17 @@ package routines
 
 import (
 	"bytes"
-	// "cs425-mp2/config"
 	"encoding/binary"
-	// "io"
 	"log"
 	"net"
 	"strconv"
 	"os"
+	"io"
 	"strings"
 )
 
 const (
-	FILE_TRANSFER_BUFFER_SIZE int = 1024*1024
+	FILE_TRANSFER_BUFFER_SIZE int = 10*1024*1024
 )
 
 type FilerHeader struct {
@@ -40,8 +39,8 @@ func (this *FilerHeader) ToPayload() []byte{
 }
 
 
-func StartFileTransferServer(receiverFileFolder string){
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(9000)) // todo: replace with config.FileTransferPort
+func StartFileReceiver(receiverFileFolder string, port int){
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port)) 
     if err != nil {
         log.Fatal("Failed to start file transfer server", err)
     }
@@ -72,12 +71,12 @@ func receiveFile(conn net.Conn, targetFolder string){
 
 	var file *os.File
 
-
-
-
-
 	for {
 		n, err := conn.Read(buf)
+		if err == io.EOF {
+			log.Printf("Completed receving file to %s", file.Name())
+			return
+		}
 		if err != nil {
 			log.Println("File transfer server: encountered error while receving file", err)
 			return
@@ -95,13 +94,12 @@ func receiveFile(conn net.Conn, targetFolder string){
 			bytesRemained -= n
 			_, err := file.Write(buf[:n])
 			if err != nil {
-				log.Printf("File transfer server: failed to write to file.", err)
+				log.Print("File transfer server: failed to write to file.", err)
 				return
 			}
 
-			log.Printf("Receiving file  %d bytes remains", bytesRemained)
 			if bytesRemained <= 0 {
-				log.Printf("Completed receving file to %d", file.Name())
+				log.Printf("Completed receving file to %s", file.Name())
 				return
 			}
 
@@ -112,7 +110,6 @@ func receiveFile(conn net.Conn, targetFolder string){
 // parse out file header, create local file and return file pointer,  and remaining file size
 func initializeFile(targetFolder string, buf *[]byte, size int) (*os.File, int) {
 
-	
 
 	fileSize := binary.LittleEndian.Uint64((*buf)[:8])
 	nameLength := binary.LittleEndian.Uint64((*buf)[8:16])
@@ -123,7 +120,7 @@ func initializeFile(targetFolder string, buf *[]byte, size int) (*os.File, int) 
 
 	remainingBytesToRead := int(fileSize) - dataSize
 
-	filePath := targetFolder + fileName
+	filePath := targetFolder + "/" + fileName
 	file, err := os.Create(strings.TrimSpace(filePath))
 	if err != nil {
 		log.Printf("File transfer server: failed to create file.", err)
@@ -143,5 +140,50 @@ func initializeFile(targetFolder string, buf *[]byte, size int) (*os.File, int) 
 
 
 
-func SendFile(){}
+func SendFile(localFilePath string, remoteFileName, remoteAddr string) error {
+	localFile, err := os.Open(localFilePath)
+	if err != nil {
+		return err
+	}
+	defer localFile.Close()
+
+
+	fileInfo, err := os.Stat(localFilePath)
+    if err != nil {
+        return err
+    }
+
+    fileSize := fileInfo.Size()
+
+
+	conn, err := net.Dial("tcp", remoteAddr)
+    if err != nil {
+		return err
+    }
+    defer conn.Close()
+
+	buf := make([]byte, FILE_TRANSFER_BUFFER_SIZE)
+
+	header := FilerHeader{
+		FileSize: uint64(fileSize),
+		FileNameLength: uint64(len([]byte(remoteFileName))),
+		FileName: remoteFileName,
+	}
+
+	conn.Write(header.ToPayload())
+
+	for {
+		n, err := localFile.Read(buf)
+
+		if err == io.EOF {
+			log.Print("Finished sending file")
+            return nil 	// we are finished
+        }
+		if err != nil {
+			return err
+		}
+
+		conn.Write(buf[:n])
+	}	
+}
 
