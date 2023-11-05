@@ -1,14 +1,21 @@
 package routines
 
 import (
-	"fmt"
-	"net/rpc"
-	"log"
-	"golang.org/x/crypto/ssh"
 	"cs425-mp2/util"
-	"strings"
-	"os/exec"
+	"fmt"
+	"log"
+	"net/rpc"
+	"strconv"
+	"sync"
+	"time"
 )
+
+const (
+	MASTER_WRITE_COMPLETE int = 1
+	FULL_WRITE_COMPLETE int = 2
+)
+
+var FileMasterProgressTracker *ProgressManager = NewProgressManager()
 
 type FileMaster struct {
 	// main queue: store the requests that are waiting in the order they are received
@@ -25,10 +32,65 @@ type FileMaster struct {
 	// address of self. used to prevent errors in case fm = client
 	SelfAddr 	 	string
 	// TODO: remove this?
-	SshConfig 	 	*ssh.ClientConfig
+	// SshConfig 	 	*ssh.ClientConfig
 	FileServerPort 	int
 	SdfsFolder 		string
 	LocalFileFolder string
+
+	taskToken uint64
+	taskTokenLock sync.Mutex
+}
+
+
+type ProgressManager struct {
+	writeTaskCompleted map[string]int	// a map of token to id for tracing the progress of write tasks
+	lock sync.RWMutex
+}
+
+func NewProgressManager() *ProgressManager{
+	return &ProgressManager{
+		writeTaskCompleted: make(map[string]int),
+	}
+}
+
+func (this *ProgressManager) IsMasterCompleted(fileName string, token uint64) bool {
+	key := fileName + "-" + strconv.Itoa(int(token))
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	value, exists := this.writeTaskCompleted[key]
+	return exists && value == MASTER_WRITE_COMPLETE
+}
+
+func (this *ProgressManager) IsFullCompleted(fileName string, token uint64) bool {
+	key := fileName + "-" + strconv.Itoa(int(token))
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	value, exists := this.writeTaskCompleted[key]
+	return exists && value == FULL_WRITE_COMPLETE
+}
+
+
+func (this *ProgressManager) IsFullCompletedByKey(key string) bool {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	value, exists := this.writeTaskCompleted[key]
+	return exists && value == FULL_WRITE_COMPLETE
+}
+
+func (this *ProgressManager) Complete(fileName string, token uint64, completionType int) {
+	key := fileName + "-" + strconv.Itoa(int(token))
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	this.writeTaskCompleted[key] = completionType
+}
+
+func (this *FileMaster) GetNewToken() uint64 {
+	this.taskTokenLock.Lock()
+	this.taskToken += 1
+	token := this.taskToken
+	this.taskTokenLock.Unlock()
+	return token
 }
 
 type Request struct {
@@ -40,14 +102,14 @@ type Request struct {
 	WaitRound int
 }
 
-func NewFileMaster(filename string, servants []string, sshConfig *ssh.ClientConfig, fileServerPort int, sdfsFolder string, localFileFlder string) *FileMaster {
+func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsFolder string, localFileFlder string) *FileMaster {
+	//FileMasterProgressTracker = NewProgressManager()
 	selfAddr  := NodeIdToIP(SelfNodeId)
 	return &FileMaster{
 		CurrentRead:  		0,
 		CurrentWrite: 		0,
 		Filename:     		filename,
 		Servants: 			servants,
-		SshConfig: 			sshConfig,
 		SelfAddr: 			selfAddr,
 		FileServerPort: 	fileServerPort,
 		SdfsFolder:			sdfsFolder,
@@ -100,14 +162,33 @@ func (fm *FileMaster) CheckQueue() {
 	}
 }
 
-func (fm *FileMaster) ReadFile(clientFilename, clientAddr string) error {
+func (fm *FileMaster) CheckWriteCompleted(key *string, reply *string) error {
+	
+	timeout := time.After(120 * time.Second)
+	for {
+		time.Sleep(2*time.Second)
+		select {
+		case <-timeout:
+			*reply = ""
+			return nil
+		default:
+			if FileMasterProgressTracker.IsFullCompletedByKey(*key){	// received file, send it to servants
+				*reply = "ACK"
+				return nil
+			}
+		}
+	}
+
+}
+
+func (fm *FileMaster) ReadFile(clientFilename string, clientAddr string, token uint64) error {
 	var request *Request = nil
 	for {
 		// if the request is not in queue and read condition (reader < 2 and no writer) satisfied
 		if request == nil && fm.CurrentRead < 2 && fm.CurrentWrite == 0 {
 			// no write has been waiting for more than 4 consecutive read
 			if len(fm.WriteQueue) == 0 || (len(fm.WriteQueue) > 0 && fm.WriteQueue[0].WaitRound < 4) {
-				return fm.executeRead(clientFilename, clientAddr)
+				return fm.executeRead(clientFilename, clientAddr, token)
 			}
 		} else if request == nil {
 			// initial condition to execute the read is not satifised. add to queue
@@ -118,12 +199,12 @@ func (fm *FileMaster) ReadFile(clientFilename, clientAddr string) error {
 			fm.Queue = append(fm.Queue, request)
 		} else if request != nil && !request.InQueue {
 			// request has been poped from queue, execute read
-			return fm.executeRead(clientFilename, clientAddr)
+			return fm.executeRead(clientFilename, clientAddr, token)
 		}
 	}
 }
 
-func (fm *FileMaster) executeRead(clientFilename, clientAddr string) error {
+func (fm *FileMaster) executeRead(clientFilename string, clientAddr string, token uint64) error {
 	fm.CurrentRead += 1
 	// every request in the wait queue has been forced to wait another one round because of 
 	// the read that is currently executing
@@ -131,12 +212,13 @@ func (fm *FileMaster) executeRead(clientFilename, clientAddr string) error {
 		writeRequest.WaitRound += 1
 	}
 
-	fmt.Println("read" + fm.Filename)
-	// TODO: change this to send file from servant
-	// copy to client's local folder
+	log.Printf("Sending file to client at %s", clientAddr)
+
+
 	localFilePath := fm.SdfsFolder + fm.Filename
-	remoteFilePath := fm.LocalFileFolder + clientFilename
-	util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
+	SendFile(localFilePath, clientFilename, clientAddr, token)
+
+	// util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
 
 
 	fm.CurrentRead -= 1
@@ -178,8 +260,10 @@ func (fm *FileMaster) executeReplicate(clientAddr string) error {
 	fmt.Println("read" + fm.Filename)
 	// copy to servant's sdfs folder
 	localFilePath := fm.SdfsFolder + fm.Filename
-	remoteFilePath := fm.SdfsFolder + fm.Filename
-	util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
+
+	// util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
+
+	SendFile(localFilePath, fm.Filename, clientAddr, 0) 
 
 
 	fm.CurrentRead -= 1
@@ -187,14 +271,14 @@ func (fm *FileMaster) executeReplicate(clientAddr string) error {
 	return nil
 }
 
-func (fm *FileMaster) WriteFile(clientFilename, clientAddr string) error {
+func (fm *FileMaster) WriteFile(clientFilename string, reply *uint64) error {
 	var request *Request = nil
 	for {
 		// requests just come in, and the condition for write is satisfied
 		if request == nil && fm.CurrentWrite == 0 && fm.CurrentRead == 0 {
 			// if there is no other write pending, simply execute
 			if len(fm.WriteQueue) == 0 {
-				return fm.executeWrite(clientFilename, clientAddr)
+				return fm.executeWrite(clientFilename, reply)
 			} 
 		} else if request == nil {
 			// otherwise add to queue
@@ -205,66 +289,40 @@ func (fm *FileMaster) WriteFile(clientFilename, clientAddr string) error {
 			fm.Queue = append(fm.Queue, request)
 			fm.WriteQueue = append(fm.WriteQueue, request)
 		} else if request != nil && !request.InQueue {
-			return fm.executeWrite(clientFilename, clientAddr)
+			return fm.executeWrite(clientFilename, reply)
 		}
 	}
 }
 
-func (fm *FileMaster) executeWrite(clientFilename, clientAddr string) error {
+func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 	fm.CurrentWrite += 1
 
-	fmt.Println("write" + fm.Filename)
+	// allow client to start sending file, and assign it a token corresponding to that file write
+	token := fm.GetNewToken()
+	*reply = token
+	
 
-	clientIp := clientAddr
-	if (strings.Contains(clientAddr, ":")) {
-		// if clientaddr has a port, get ip
-		clientIp = strings.Split(clientAddr, ":")[0]
-	} else {
-		// if clientaddr doesn't have a port, use the default port for file server
-		clientAddr = fmt.Sprintf("%s:%d", clientAddr, fm.FileServerPort)
-	}
-	if (clientIp != fm.SelfAddr) {
-		// if client is not self, get the file from client
-		client, err := rpc.DialHTTP("tcp", clientAddr)
-		if err != nil {
-			log.Fatal("Error dialing client:", err)
+	go func(){
+		timeout := time.After(60 * time.Second)
+		for {
+			time.Sleep(1*time.Second)		// check if client finished uploading every second
+			select {
+			case <-timeout:
+				log.Print("Client did not finish uploading file to master in 60s")
+				return
+			default:
+				if FileMasterProgressTracker.IsMasterCompleted(clientFilename, token){	// received file, send it to servants
+					for _, servant := range fm.Servants {
+						SendFile(fm.Filename, fm.Filename, servant, 0)
+					}
+					FileMasterProgressTracker.Complete(clientFilename, token, FULL_WRITE_COMPLETE)
+					return
+				}
+			}
 		}
-		// copy from client's local folder to fm's sdfs folder
-		localFilePath := fm.LocalFileFolder + clientFilename
-		remoteFilePath := fm.SdfsFolder + fm.Filename
-		fromClientArgs := CopyArgs{
-			LocalFilePath: localFilePath, 
-			RemoteFilePath: remoteFilePath, 
-			RemoteAddr: fm.SelfAddr,
-		}
-		var reply string
-		initialCopyErr := client.Call("FileService.CopyFileToRemote", fromClientArgs, &reply)
-		client.Close()
 
-		if initialCopyErr != nil {
-			log.Fatal("Error copying from client: ", initialCopyErr)
-		}
-	} else {
-		// if fm is client, copy from local folder to sdfs folder
-		sourceFile := fm.LocalFileFolder + clientFilename
-		destinationFile := fm.SdfsFolder + fm.Filename
-		cmd := exec.Command("cp", sourceFile, destinationFile)
-		_, err := cmd.CombinedOutput()
-		if err != nil {
-			log.Fatal("Error copying from local folder to sdfs folder ", err)
-		}
-	}
-
-	// copy the file from sdfs folder to each servant's sdfs folder
-	// TODO: change these to async calls
-	for _, servant := range fm.Servants {
-		filePath := fm.SdfsFolder + fm.Filename
-		servantErr := util.CopyFileToRemote(filePath, filePath, servant, fm.SshConfig)
-		if servantErr != nil {
-			log.Fatal("Error sending file to servant: ", servantErr)
-		}
-	}
-
+	}()
+	
 	fm.CurrentWrite -= 1
 	fm.CheckQueue()
 	return nil

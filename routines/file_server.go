@@ -27,6 +27,7 @@ type CopyArgs struct {
 }
 
 type RWArgs struct {
+	Token uint64
 	LocalFilename 	string
 	SdfsFilename 	string
 	ClientAddr 		string
@@ -77,7 +78,7 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
 	// TODO: fix error checking and return the actual error
 	if ok {
-		fm.ReadFile(args.LocalFilename, args.ClientAddr)
+		fm.ReadFile(args.LocalFilename, args.ClientAddr, 0)
 	} else {
 		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
 	}
@@ -85,11 +86,11 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 }
 
 // reroute to the corresponding file master
-func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
+func (this *FileService) WriteFile(args *RWArgs, reply *uint64) error {
 	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
 	// TODO: fix error checking and return the actual error
 	if ok {
-		fm.WriteFile(args.LocalFilename, args.ClientAddr)
+		fm.WriteFile(args.LocalFilename, reply)
 	} else {
 		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
 	}
@@ -129,7 +130,7 @@ func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error 
 }
 
 func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error{
-	fm := NewFileMaster(args.Filename, args.Servants, this.SshConfig, this.Port, this.SdfsFolder, this.LocalFileFolder)
+	fm := NewFileMaster(args.Filename, args.Servants, this.Port, this.SdfsFolder, this.LocalFileFolder)
 	this.Filename2FileMaster[args.Filename] = fm
 	return nil
 }

@@ -5,12 +5,20 @@ import (
 	"cs425-mp2/util"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/rpc"
 	"strconv"
+	"sync"
 	"time"
-	"io/ioutil"
 )
+
+
+
+var clientToken uint64 = 0
+var tokenLock sync.Mutex
+
+var ClientProgressTracker *ProgressManager = NewProgressManager()
 
 
 const (
@@ -60,8 +68,6 @@ func ProcessDfsCmd(cmd string, args []string){
 	default:
 		log.Printf("Unsupported DFS command: (%s)", cmd)	
 	}
-
-
 }
 
 
@@ -105,20 +111,44 @@ func GetFile(args []string) error {
 	if (err != nil) {
 		log.Println("Encountered error when connecting to file master: ", err)
 	}
+
+
+	tokenLock.Lock()
+	clientToken += 1
+	t := clientToken
+	tokenLock.Unlock()
+
+
 	getArgs := &RWArgs{
+		Token: t,
 		LocalFilename: localFileName,
 		SdfsFilename: remoteFileName,
 		ClientAddr: NodeIdToIP(SelfNodeId),
 	}
+
 	var reply string
 	responseErr := client.Call("FileService.ReadFile", getArgs, &reply)
 
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
-	} else {
-		log.Print("Done\n\n")
+		return nil
 	}
-	return nil
+
+	timeout := time.After(60 * time.Second)
+
+	for {
+		time.Sleep(1 * time.Second)
+		select {
+		case <-timeout:
+			log.Println("GET timeout")
+			return nil
+		default:
+			if ClientProgressTracker.IsMasterCompleted(remoteFileName, t) {
+				log.Print("Done\n\n")
+				return nil
+			}
+		}
+	}
 
 }
 
@@ -149,7 +179,7 @@ func PutFile(args []string){
 
 	master := fileMetadata.Master
 
-	log.Printf("Master value: "+ master.ToString())
+
 
 	fileMasterIP := NodeIdToIP(master.NodeId)
 	port := config.RpcServerPort
@@ -158,19 +188,38 @@ func PutFile(args []string){
 	if (err != nil) {
 		log.Println("Encountered error when connecting to file master: ", err)
 	}
+
+
+
 	putArgs := &RWArgs{
 		LocalFilename: localFileName,
 		SdfsFilename: remoteFileName,
 		ClientAddr: NodeIdToIP(SelfNodeId),
 	}
-	var reply string
-	responseErr := client.Call("FileService.WriteFile", putArgs, &reply)
+	var token uint64
+	responseErr := client.Call("FileService.WriteFile", putArgs, &token)
 
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
-	} else {
-		log.Print("Done\n\n")
+		return
+	} 
+
+	// We are given a token by the scheduler, proceed with uploading files
+	SendFile(localFileName, remoteFileName, NodeIdToIP(SelfNodeId)+":"+strconv.Itoa(config.FileServerReceivePort), token)
+
+
+	
+	reply := ""
+	err2 := client.Call("FileService.CheckWriteCompleted", &token, &reply)
+
+	if err2 != nil  || reply != "ACK" {
+		log.Println("Encountered error while checking write completion", err2)
+		return
 	}
+
+	
+	log.Print("Done\n\n")
+	
 }
 
 
