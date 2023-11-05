@@ -6,7 +6,6 @@ import (
 	"log"
 	"golang.org/x/crypto/ssh"
 	"cs425-mp2/util"
-	"os"
 	"strings"
 	"os/exec"
 )
@@ -42,7 +41,7 @@ type Request struct {
 }
 
 func NewFileMaster(filename string, servants []string, sshConfig *ssh.ClientConfig, fileServerPort int, sdfsFolder string, localFileFlder string) *FileMaster {
-	selfAddr, _ := os.Hostname()
+	selfAddr  := NodeIdToIP(SelfNodeId)
 	return &FileMaster{
 		CurrentRead:  		0,
 		CurrentWrite: 		0,
