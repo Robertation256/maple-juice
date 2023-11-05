@@ -73,6 +73,25 @@ func (this *FileService) Register(){
 	rpc.Register(this)
 }
 
+
+func (fm *FileService) CheckWriteCompleted(key *string, reply *string) error {
+	
+	timeout := time.After(120 * time.Second)
+	for {
+		time.Sleep(2*time.Second)
+		select {
+		case <-timeout:
+			*reply = ""
+			return nil
+		default:
+			if FileMasterProgressTracker.IsFullCompletedByKey(*key){	// received file, send it to servants
+				*reply = "ACK"
+				return nil
+			}
+		}
+	}
+}
+
 // reroute to the corresponding file master
 func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
