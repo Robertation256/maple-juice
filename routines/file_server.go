@@ -2,15 +2,12 @@ package routines
 
 import (
 	"net/rpc"
-	"net"
 	"golang.org/x/crypto/ssh"
 	"cs425-mp2/config"
 	"cs425-mp2/util"
 	"fmt"
 	"log"
 	"os"
-	"github.com/pkg/sftp"
-	"sync"
 	"time"
 )
 
@@ -21,7 +18,6 @@ type FileService struct {
 	SdfsFolder 				string
 	LocalFileFolder			string
 	Report 					util.FileServerMetadataReport
-	SshClients				map[string]*sftp.Client
 }
 
 type CopyArgs struct {
@@ -45,11 +41,6 @@ type DeleteArgs struct {
 	Filename string
 }
 
-type clientResult struct {
-	Ip string
-	Client *sftp.Client
-}
-
 func NewFileService(port int, homedir string, serverHostnames[]string) *FileService {
 	MEMBERSHIP_SERVER_STARTED.Wait()
 
@@ -71,54 +62,9 @@ func NewFileService(port int, homedir string, serverHostnames[]string) *FileServ
 		FileEntries: make([]util.FileInfo, 0),
 	}
 
-	this.createSshClients(serverHostnames)
+	util.CreateSshClients(serverHostnames, this.SshConfig, NodeIdToIP(SelfNodeId))
 
 	return this
-}
-
-func (this *FileService) createSshClients(serverHostnames []string) {
-	this.SshClients = make(map[string]*sftp.Client)
-	resultsChan := make(chan clientResult, len(serverHostnames))
-	var wg sync.WaitGroup
-
-	for _, hostname := range serverHostnames {
-		wg.Add(1)
-		go func(hostname string){
-			
-			ips, _ := net.LookupHost(hostname)
-			ip := ips[0]
-			if ip == NodeIdToIP(SelfNodeId) {
-				wg.Done()
-				return
-			}
-			conn, connErr := ssh.Dial("tcp", ip + ":22", this.SshConfig)
-			if connErr != nil {
-				wg.Done()
-				return
-			} 
-
-			client, err := sftp.NewClient(conn)
-			if err != nil {
-				wg.Done()
-				return
-			}
-
-			resultsChan <- clientResult {
-				Ip: ip,
-				Client: client,
-			}
-			wg.Done()
-
-		}(hostname)
-	}
-
-	wg.Wait()
-	close(resultsChan)
-
-	for result := range resultsChan {
-		this.SshClients[result.Ip] = result.Client
-	}
-	//fmt.Println(this.SshClients)
 }
 
 func (this *FileService) Register(){

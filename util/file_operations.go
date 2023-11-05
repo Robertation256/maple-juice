@@ -5,25 +5,84 @@ import (
 	"io"
 	"log"
 	"os"
-
+	"sync"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"net"
 )
+
+var SshClients map[string]*sftp.Client
+
+type clientResult struct {
+	Ip string
+	Client *sftp.Client
+}
+
+func CreateSshClients(serverHostnames []string, sshConfig *ssh.ClientConfig, selfIp string) {
+	SshClients = make(map[string]*sftp.Client)
+	resultsChan := make(chan clientResult, len(serverHostnames))
+	var wg sync.WaitGroup
+
+	for _, hostname := range serverHostnames {
+		wg.Add(1)
+		go func(hostname string){
+			
+			ips, _ := net.LookupHost(hostname)
+			ip := ips[0]
+			if ip == selfIp {
+				wg.Done()
+				return
+			}
+			conn, connErr := ssh.Dial("tcp", ip + ":22", sshConfig)
+			if connErr != nil {
+				wg.Done()
+				return
+			} 
+
+			client, err := sftp.NewClient(conn)
+			if err != nil {
+				wg.Done()
+				return
+			}
+
+			resultsChan <- clientResult {
+				Ip: ip,
+				Client: client,
+			}
+			wg.Done()
+
+		}(hostname)
+	}
+
+	wg.Wait()
+	close(resultsChan)
+
+	for result := range resultsChan {
+		SshClients[result.Ip] = result.Client
+	}
+	//fmt.Println(this.SshClients)
+}
 
 // copy file to a remote location using sftp
 func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr string, sshConfig *ssh.ClientConfig) error {
 
-	conn, err := ssh.Dial("tcp", remoteAddr + ":22", sshConfig)
-	if err != nil {
-		return(err)
+	client, ok := SshClients[remoteAddr]
+
+	if (!ok) {
+		conn, err := ssh.Dial("tcp", remoteAddr + ":22", sshConfig)
+		if err != nil {
+			return(err)
+		}
+		
+		client, err = sftp.NewClient(conn)
+		if err != nil {
+			log.Printf("Failed to create SFTP client: %s", err.Error())
+			return(fmt.Errorf("Failed to create SFTP client: %w", err))
+		}
+	} else {
+		log.Println("using buffered client")
 	}
-	
-	client, err := sftp.NewClient(conn)
-	if err != nil {
-		log.Printf("Failed to create SFTP client: %s", err.Error())
-		return(fmt.Errorf("Failed to create SFTP client: %w", err))
-	}
-	
+		
 
 	localFile, err := os.Open(localFilePath)
 	if err != nil {
