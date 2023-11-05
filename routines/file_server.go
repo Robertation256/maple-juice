@@ -160,7 +160,7 @@ func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMeta
 	reply.NodeId = SelfNodeId
 	reply.FileEntries = this.Report.FileEntries
 
-	log.Printf("Node %s reported self metadata info", reply.NodeId)
+	// log.Printf("Node %s reported self metadata info", reply.NodeId)
 
 	return nil
 }
