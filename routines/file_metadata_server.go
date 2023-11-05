@@ -158,7 +158,7 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 
 	// return distribution info if found, client will contact file master if it is alive
 	ingestReply(reply, targetCluster)
-	log.Printf("Sent put response: \n " + toResponse(targetCluster).toString())
+	// log.Printf("Sent put response: \n " + toResponse(targetCluster).toString())
 	return nil
 }
 
@@ -295,7 +295,7 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMetadataReport) {
 	nodeIdToFiles, filenameToCluster := util.CompileReports(reports)
 
-	log.Printf("Collected report length : %d", len(*nodeIdToFiles))
+	// log.Printf("Collected report length : %d", len(*nodeIdToFiles))
 
 	checkAndRepair(nodeIdToFiles, filenameToCluster)
 
@@ -331,9 +331,8 @@ func informMetadata(nodeId string, metadata *util.NodeToFiles) error {
 			log.Println("File Metadata Server: Channel closed for async rpc call")
 			return errors.New("Node " + nodeId + " failed to respond to metadata update.")
 		} else {
-			log.Println(retFlag)
 			if retFlag == "ACK" {
-				log.Printf("File Metadata Server: successfully informed node %s", nodeId)
+				// log.Printf("File Metadata Server: successfully informed node %s", nodeId)
 				return nil
 			} else {
 				log.Printf("File Metadata Server: node %s failed to process metadata update", nodeId)
