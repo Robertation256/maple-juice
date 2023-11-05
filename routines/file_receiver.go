@@ -109,7 +109,8 @@ func receiveFile(conn net.Conn, targetFolder string, progressManager *ProgressMa
 			}
 
 			if bytesRemained <= 0 {
-				log.Printf("Completed receving file to %s", file.Name())
+
+				log.Printf("We hit here before a EOF!! %s", file.Name())
 				return
 			}
 
