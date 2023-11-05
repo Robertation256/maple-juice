@@ -112,14 +112,14 @@ func main() {
 
 
 	// register and start up rpc services
-	fileMetadataService :=routines.NewFileMetadataService()
-	fileMetadataService.Register()
-	grepService := routines.NewGrepService()
-	grepService.Register()
-	routines.NewDfsRemoteReader().Register()
-	fileService := routines.NewFileService(config.RpcServerPort, config.Homedir, config.ServerHostnames)
-	fileService.Register()
-	rpc.HandleHTTP()
+	// fileMetadataService :=routines.NewFileMetadataService()
+	// fileMetadataService.Register()
+	// grepService := routines.NewGrepService()
+	// grepService.Register()
+	// routines.NewDfsRemoteReader().Register()
+	// fileService := routines.NewFileService(config.RpcServerPort, config.Homedir, config.ServerHostnames)
+	// fileService.Register()
+	// rpc.HandleHTTP()
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.RpcServerPort))
 	if err != nil {
@@ -161,6 +161,7 @@ func main() {
 		// debug commands
 		"pl": "print leader",
 		"pm": "print metadata",
+		"send": "test tcp send",
 	}
 
 	for {
