@@ -21,6 +21,8 @@ var LeaderElectionQuorumSize int
 
 // file server config
 var ReplicationFactor int
+var FileServerReceivePort int 
+var DfsClientReceivePort int
 
 // distributed logging and grep configs
 var LogServerId string
@@ -130,6 +132,21 @@ func InitConfig() {
 				log.Fatal("Error loading rpc server port")
 			}
 			RpcServerPort = port
+		
+		case "FILE_SERVER_RECEIVE_PORT":
+			port, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading file server receive port")
+			}
+			FileServerReceivePort = port
+
+		case "DFS_CLIENT_RECEIVE_PORT":
+			port, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading file server receive port")
+			}
+			DfsClientReceivePort = port
+			
 		case "SSH_USERNAME":
 			SshUsername = kv[1]
 		case "SSH_PASSWORD":

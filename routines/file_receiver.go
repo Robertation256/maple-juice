@@ -2,13 +2,12 @@ package routines
 
 import (
 	"bytes"
-	// "cs425-mp2/config"
 	"encoding/binary"
-	// "io"
 	"log"
 	"net"
 	"strconv"
 	"os"
+	"io"
 	"strings"
 )
 
@@ -40,8 +39,8 @@ func (this *FilerHeader) ToPayload() []byte{
 }
 
 
-func StartFileTransferServer(receiverFileFolder string){
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(9000)) // todo: replace with config.FileTransferPort
+func StartFileReceiver(receiverFileFolder string, port int){
+	listener, err := net.Listen("tcp", ":"+strconv.Itoa(port)) 
     if err != nil {
         log.Fatal("Failed to start file transfer server", err)
     }
@@ -71,10 +70,6 @@ func receiveFile(conn net.Conn, targetFolder string){
 	bytesRemained := 0
 
 	var file *os.File
-
-
-
-
 
 	for {
 		n, err := conn.Read(buf)
@@ -112,7 +107,6 @@ func receiveFile(conn net.Conn, targetFolder string){
 // parse out file header, create local file and return file pointer,  and remaining file size
 func initializeFile(targetFolder string, buf *[]byte, size int) (*os.File, int) {
 
-	
 
 	fileSize := binary.LittleEndian.Uint64((*buf)[:8])
 	nameLength := binary.LittleEndian.Uint64((*buf)[8:16])
@@ -143,5 +137,49 @@ func initializeFile(targetFolder string, buf *[]byte, size int) (*os.File, int) 
 
 
 
-func SendFile(){}
+func SendFile(localFilePath string, remoteFileName, remoteAddr string) error {
+	localFile, err := os.Open(localFilePath)
+	if err != nil {
+		return err
+	}
+	defer localFile.Close()
+
+
+	fileInfo, err := os.Stat(localFilePath)
+    if err != nil {
+        return err
+    }
+
+    fileSize := fileInfo.Size()
+
+
+	conn, err := net.Dial("tcp", "remoteAddr")
+    if err != nil {
+		return err
+    }
+    defer conn.Close()
+
+	buf := make([]byte, FILE_TRANSFER_BUFFER_SIZE)
+
+	header := FilerHeader{
+		FileSize: uint64(fileSize),
+		FileNameLength: uint64(len([]byte(remoteFileName))),
+		FileName: remoteFileName,
+	}
+
+	conn.Write(header.ToPayload())
+
+	for {
+		n, err := localFile.Read(buf)
+
+		if err == io.EOF {
+            return nil 	// we are finished
+        }
+		if err != nil {
+			return err
+		}
+
+		conn.Write(buf[:n])
+	}	
+}
 

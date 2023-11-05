@@ -107,6 +107,9 @@ func main() {
 	go routines.StartMembershipListServer()
 	go routines.StartLeaderElectionServer()
 
+	// receiver for file server
+	go routines.StartFileReceiver(config.Homedir+"/sdfs", config.FileServerReceivePort)
+
 
 	// register and start up rpc services
 	fileMetadataService :=routines.NewFileMetadataService()
@@ -228,6 +231,9 @@ func main() {
 			fmt.Println(routines.LeaderId)
 		case "pm":
 			fmt.Println(fileMetadataService.ToString())
+		
+		case "send":
+			routines.SendFile(config.Homedir+"/local/test1.txt", "remote", config.ServerHostnames[1]+":"+strconv.Itoa(config.FileServerReceivePort))
 
 		default:
 			routines.ProcessDfsCmd(cmd, args)

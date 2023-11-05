@@ -13,6 +13,7 @@ const (
 	PENDING_FILE_UPLOAD int = 0 	// master waiting for a client upload
 	WAITING_REPLICATION int = 1		// servants waiting for replication from master
 	COMPLETE int = 2				// file is intact 
+	PENDING_DELETE int = 3 			// a file is waiting to be deleted
 )
 
 type FileNameToCluster = map[string]*ClusterInfo
