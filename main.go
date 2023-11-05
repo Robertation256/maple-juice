@@ -114,7 +114,8 @@ func main() {
 	grepService := routines.NewGrepService()
 	grepService.Register()
 	routines.NewDfsRemoteReader().Register()
-	routines.NewFileService(config.RpcServerPort, config.Homedir, config.ServerHostnames).Register()
+	fileService := routines.NewFileService(config.RpcServerPort, config.Homedir, config.ServerHostnames)
+	fileService.Register()
 	rpc.HandleHTTP()
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", config.RpcServerPort))
@@ -209,7 +210,13 @@ func main() {
 			fmt.Println(grepService.CollectLogs())
 		
 		case "store":
-			// todo: list local files
+			// todo: prunce out files that are not complete
+
+			localFiles := fileService.Report.FileEntries
+			for _, f := range localFiles{
+				fmt.Println(f.ToString())
+			}
+
 		case "help":
 			for k, v := range validCommands {
 				fmt.Printf("%s: %s\n", k, v)
