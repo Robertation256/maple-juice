@@ -235,7 +235,7 @@ func (fm *FileMaster) executeWrite(clientFilename, clientAddr string) error {
 		fromClientArgs := CopyArgs{
 			LocalFilePath: localFilePath, 
 			RemoteFilePath: remoteFilePath, 
-			RemoteAddr: clientAddr,
+			RemoteAddr: clientIp,
 		}
 		var reply string
 		initialCopyErr := client.Call("FileService.CopyFileToRemote", fromClientArgs, &reply)
