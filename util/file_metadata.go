@@ -108,6 +108,8 @@ func (this *ClusterInfo) InstateNewMaster() error {
 
 	// found a new master, remove it from servants
 	if newMaster != nil {
+		newMaster.IsMaster = true
+		this.Master = newMaster
 		servants := this.Servants
 		this.Servants = append(servants[:ti], servants[ti+1:]...)
 		return nil
