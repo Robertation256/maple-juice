@@ -160,28 +160,20 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 }
 
 // clients tries to write a file
-func (this *FileMetadataService) handleDeleteRequest(fileName string) error {
-	this.metadataLock.Lock()
-	defer this.metadataLock.Unlock()
-
+func (this *FileMetadataService) handleDeleteRequest(fileName string, reply *DfsResponse) error {
+	this.metadataLock.RLock()
 	fileToClusterInfo := *util.Convert2(&this.metadata)
+	this.metadataLock.RUnlock()
+
 
 	clusterInfo, exists := fileToClusterInfo[fileName]
 
 	if !exists {
-		// new file, allocate a new cluster
 		return errors.New("File " + fileName + " does not exists")
 	}
 
-	delete(fileToClusterInfo, fileName)
-	this.metadata = *util.Convert(&fileToClusterInfo)
-
-	var err error
-	for _, node := range *clusterInfo.Flatten() {
-		err = informMetadata(node.NodeId, &this.metadata)
-	}
-	return err
-
+	ingestReply(reply, clusterInfo)
+	return nil
 }
 
 // clients tries to write a file
