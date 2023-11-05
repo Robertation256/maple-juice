@@ -199,7 +199,7 @@ func (fm *FileMaster) executeRead(clientFilename string, clientAddr string, toke
 
 
 	localFilePath := fm.SdfsFolder + fm.Filename
-	SendFile(localFilePath, clientFilename, clientAddr+":"+strconv.Itoa(config.FileServerReceivePort) , token)
+	SendFile(localFilePath, clientFilename, clientAddr+":"+strconv.Itoa(config.DfsClientReceivePort) , token)
 
 	// util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
 
