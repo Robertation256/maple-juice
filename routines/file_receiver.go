@@ -144,6 +144,7 @@ func initializeFile(targetFolder string, buf *[]byte, size int) (*os.File, int, 
 
 
 func SendFile(localFilePath string, remoteFileName, remoteAddr string, token uint64) error {
+	log.Printf("Started sending file %s", localFilePath)
 
 	var total uint64 = 0
 
