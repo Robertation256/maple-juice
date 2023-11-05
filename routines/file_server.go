@@ -97,7 +97,7 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
 	// TODO: fix error checking and return the actual error
 	if ok {
-		fm.ReadFile(args.LocalFilename, args.ClientAddr, 0)
+		fm.ReadFile(args.LocalFilename, args.ClientAddr, args.Token)
 	} else {
 		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
 	}
