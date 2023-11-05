@@ -102,6 +102,7 @@ func (this *ClusterInfo) InstateNewMaster() error {
 
 		if newMaster == nil || (*newMaster).Version < (*servant).Version {
 			newMaster = servant
+			newMaster.IsMaster = true
 			ti = idx
 		}
 	}
