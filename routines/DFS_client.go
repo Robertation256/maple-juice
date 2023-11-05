@@ -52,6 +52,7 @@ func ProcessDfsCmd(cmd string, args []string){
 	case "ls":
 		ListFile(args)
 	case "multiread":
+		Multiread(args)
 
 	case "store":
 		// todo: handle store
@@ -62,6 +63,7 @@ func ProcessDfsCmd(cmd string, args []string){
 
 
 }
+
 
 
 func GetFile(args []string) error {
