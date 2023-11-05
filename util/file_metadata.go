@@ -230,6 +230,8 @@ func Convert(fileToCluster *Metadata) *NodeToFiles {
 
 // for a file, allocate new nodes
 func FindAvailableNodes(fileName string, nodeToFiles *NodeToFiles, nodeNum int) []string {
+	log.Printf("Metadata length: %d", len(*nodeToFiles) )
+
 	ret := make([]string, 0)
 	if nodeNum <= 0 {
 		return ret

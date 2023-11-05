@@ -188,6 +188,8 @@ func checkAndRepair(nodeIdToFiles *map[string]map[string]*util.FileInfo, fileNam
 
 func collectMetadata() *[]util.FileServerMetadataReport {
 
+	log.Printf("Collecting metdata...")
+
 	ips := LocalMembershipList.AliveMembers()
 	clients := make([]*rpc.Client, len(ips))
 	reports := make([]util.FileServerMetadataReport, len(ips))
@@ -248,6 +250,9 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 // reallocate replicas as necessary
 func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMetadataReport) {
 	nodeIdToFiles, filenameToCluster := util.CompileReports(reports)
+
+	log.Printf("Collected report length : %d", len(*nodeIdToFiles))
+	
 	checkAndRepair(nodeIdToFiles, filenameToCluster)
 
 	rpcServer.metadataLock.Lock()
