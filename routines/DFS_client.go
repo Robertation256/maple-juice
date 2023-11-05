@@ -205,7 +205,7 @@ func DeleteFile(args []string){
 		Filename: remoteFileName,
 	}
 	var reply string
-	responseErr := client.Call("FileService.ReadFile", deletArgs, &reply)
+	responseErr := client.Call("FileService.DeleteFile", deletArgs, &reply)
 
 	if responseErr != nil {
 		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
