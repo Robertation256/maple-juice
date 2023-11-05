@@ -184,7 +184,11 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 				// failure repair
 				// when master's status == PENDING_FILE_UPLOAD, it indicates a new file is uploaded to sdfs
 				// fm will handle writing to all services, so there is no need to do anything
-				if (cluster.Master.FileStatus == util.COMPLETE) {
+				if (cluster.Master == nil){
+					log.Print("Warn: master is nil. Servant cannot replicate")
+				}
+
+				if (cluster.Master != nil && cluster.Master.FileStatus == util.COMPLETE) {
 					masterIp := NodeIdToIP(cluster.Master.NodeId)
 					client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", masterIp, config.RpcServerPort))
 					if err != nil {
