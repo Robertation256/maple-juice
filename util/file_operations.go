@@ -5,10 +5,34 @@ import (
 	"io"
 	"log"
 	"os"
-
+	"path/filepath"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
+
+func EmptySdfsFolder(sdfsFolder string) error{
+	dir, err := os.Open(sdfsFolder)
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+
+	// Read all file names in the folder
+	fileNames, err := dir.Readdirnames(-1)
+	if err != nil {
+		return err
+	}
+
+	// Remove each file
+	for _, fileName := range fileNames {
+		filePath := filepath.Join(sdfsFolder, fileName)
+		err := os.Remove(filePath)
+		if err != nil {
+			return err
+		} 
+	}
+	return nil
+}
 
 // copy file to a remote location using sftp
 func CopyFileToRemote(localFilePath string, remoteFilePath string, remoteAddr string, sshConfig *ssh.ClientConfig) error {
