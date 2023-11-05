@@ -284,11 +284,11 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 	token := fm.GetNewToken()
 	*reply = token
 
-	log.Printf("FM returned write request with permission token %d", token)
+	log.Printf("FM returned write request of file name (%s)  with permission token %d", clientFilename,  token)
 	
 
 	go func(){
-		timeout := time.After(60 * time.Second)
+		timeout := time.After(20 * time.Second)
 		for {
 			time.Sleep(1*time.Second)		// check if client finished uploading every second
 			select {
@@ -296,11 +296,14 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 				log.Print("Client did not finish uploading file to master in 60s")
 				return
 			default:
-				if FileMasterProgressTracker.IsMasterCompleted(clientFilename, token){	// received file, send it to servants
+				log.Printf("Checking with file name %s and id %d", fm.Filename, token)
+				if FileMasterProgressTracker.IsMasterCompleted(fm.Filename, token){	// received file, send it to servants
 					for _, servant := range fm.Servants {
 						SendFile(config.Homedir+"/sdfs/"+fm.Filename, fm.Filename, servant, 0)
 					}
-					FileMasterProgressTracker.Complete(clientFilename, token, FULL_WRITE_COMPLETE)
+
+					log.Print("Global write completed")
+					FileMasterProgressTracker.Complete(fm.Filename, token, FULL_WRITE_COMPLETE)
 					return
 				}
 			}

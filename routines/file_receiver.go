@@ -80,7 +80,7 @@ func receiveFile(conn net.Conn, targetFolder string, progressManager *ProgressMa
 			if progressManager != nil {		
 				progressManager.Complete(fileName, token, MASTER_WRITE_COMPLETE)
 			}
-			log.Printf("Completed receving file to %s, remaining bytes size is %d", file.Name(), n)
+			log.Printf("Completed receving file with filename (%s) and token (%d)", fileName, token)
 			return
 		}
 		if err != nil {
