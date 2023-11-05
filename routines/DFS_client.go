@@ -107,8 +107,13 @@ func GetFile(args []string) error {
 		ClientAddr: NodeIdToIP(SelfNodeId),
 	}
 	var reply string
-	client.Call("FileService.ReadFile", getArgs, &reply)
+	responseErr := client.Call("FileService.ReadFile", getArgs, &reply)
 
+	if responseErr != nil {
+		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
+	} else {
+		fmt.Printf("Done")
+	}
 	return nil
 
 }
@@ -153,7 +158,13 @@ func PutFile(args []string){
 		ClientAddr: NodeIdToIP(SelfNodeId),
 	}
 	var reply string
-	client.Call("FileService.WriteFile", putArgs, &reply)
+	responseErr := client.Call("FileService.WriteFile", putArgs, &reply)
+
+	if responseErr != nil {
+		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
+	} else {
+		fmt.Printf("Done")
+	}
 }
 
 
@@ -192,7 +203,13 @@ func DeleteFile(args []string){
 		Filename: remoteFileName,
 	}
 	var reply string
-	client.Call("FileService.ReadFile", deletArgs, &reply)
+	responseErr := client.Call("FileService.ReadFile", deletArgs, &reply)
+
+	if responseErr != nil {
+		fmt.Printf("File Master responsed with error: %s", responseErr.Error())
+	} else {
+		fmt.Printf("Done")
+	}
 }
 
 
