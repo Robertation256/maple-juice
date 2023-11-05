@@ -124,6 +124,8 @@ func (cluster *ClusterInfo) RecruitServants(nodeIdToFiles *NodeToFiles, replicat
 		return
 	}
 
+	log.Printf("Current cluster node size :%d", len(*nodeIdToFiles))
+
 	for nodeId, fmap := range *nodeIdToFiles {
 		_, exists := fmap[cluster.FileName]
 		if !exists {
