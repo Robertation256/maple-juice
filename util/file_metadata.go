@@ -208,7 +208,12 @@ func (this *ClusterInfo) Flatten() *[]*FileInfo {
 	if this.Master != nil {
 		ret = append(ret, this.Master)
 	}
-	ret = append(ret, this.Servants...)
+
+	for _, serv := range this.Servants {
+		if serv != nil {
+			ret = append(ret, serv)
+		}
+	}
 	return &ret
 }
 
