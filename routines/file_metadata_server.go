@@ -101,6 +101,14 @@ func (this *FileMetadataService) HandleDfsClientRequest(request *DfsRequest, rep
 	return errors.New("Unsupported request type")
 }
 
+
+func ingestReply(reply *DfsResponse, clusterInfo *util.ClusterInfo){
+	responseVal := toResponse(clusterInfo)
+	reply.FileName = responseVal.FileName
+	reply.Master = responseVal.Master
+	reply.Servants = responseVal.Servants
+}
+
 // clients tries to fetch distribution info of a file
 func (this *FileMetadataService) handleGetRequest(fileName string, reply *DfsResponse) error {
 	this.metadataLock.RLock()
@@ -112,7 +120,9 @@ func (this *FileMetadataService) handleGetRequest(fileName string, reply *DfsRes
 	if !exists {
 		return errors.New("File " + fileName + "does not exist")
 	}
-	reply = toResponse(clusterInfo)
+	
+	ingestReply(reply, clusterInfo)
+
 	return nil
 }
 
@@ -144,10 +154,8 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 		}
 	}
 
-
-
 	// return distribution info if found, client will contact file master if it is alive
-	reply = toResponse(targetCluster)
+	ingestReply(reply, targetCluster)
 	log.Printf("Sent put response: \n " + toResponse(targetCluster).toString())
 	return nil
 }
@@ -191,7 +199,7 @@ func (this *FileMetadataService) handleListRequest(fileName string, reply *DfsRe
 		return errors.New("File " + fileName + " does not exists")
 	}
 
-	reply = toResponse(clusterInfo)
+	ingestReply(reply, clusterInfo)
 	return nil
 }
 
