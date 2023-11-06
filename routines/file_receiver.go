@@ -168,6 +168,7 @@ func SendFile(localFilePath string, remoteFileName, remoteAddr string, token uin
 
     fileSize := fileInfo.Size()
 
+	log.Printf("Sending file to remote addr: %s", remoteAddr)
 
 	conn, err := net.Dial("tcp", remoteAddr)
     if err != nil {
