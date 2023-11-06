@@ -76,7 +76,7 @@ func (this *FileService) Register(){
 
 func (fm *FileService) CheckWriteCompleted(key *string, reply *string) error {
 	
-	timeout := time.After(120 * time.Second)
+	timeout := time.After(300 * time.Second)
 	for {
 		time.Sleep(2*time.Second)
 		select {
