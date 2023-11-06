@@ -4,7 +4,7 @@ import (
 	"cs425-mp2/config"
 	"cs425-mp2/util"
 	"errors"
-	"fmt"
+	// "fmt"
 	"log"
 	"net/rpc"
 	"sync"
