@@ -336,11 +336,9 @@ func (this *FileInfo)ToString() string {
 		"File name: %s\n" +
 		"Node ID: %s\n" +
 		"Role: %s\n" +
-		"File status: %s\n" +
-		"File version: %d\n", 
+		"File status: %s\n", 
 		this.FileName,
 		this.NodeId,
 		role,
-		fileStatus,
-		this.Version)
+		fileStatus)
 }
