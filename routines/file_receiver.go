@@ -154,6 +154,7 @@ func SendFile(localFilePath string, remoteFileName, remoteAddr string, token uin
 
 	localFile, err := os.Open(localFilePath)
 	if err != nil {
+		log.Print("Error opening file", err)
 		return err
 	}
 	defer localFile.Close()
@@ -161,6 +162,7 @@ func SendFile(localFilePath string, remoteFileName, remoteAddr string, token uin
 
 	fileInfo, err := os.Stat(localFilePath)
     if err != nil {
+		log.Print("Error getting file info", err)
         return err
     }
 

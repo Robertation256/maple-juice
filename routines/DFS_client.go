@@ -338,7 +338,7 @@ func Multiread(args []string){
 
 			reply := ""
 			call := client.Go("DfsRemoteReader.Read", &remoteFileName, &reply, nil)
-			timeout := time.After(40 * time.Second)
+			timeout := time.After(300 * time.Second)
 
 			select {
 			case <-timeout:
