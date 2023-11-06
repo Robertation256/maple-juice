@@ -79,7 +79,7 @@ func receiveFile(conn net.Conn, targetFolder string, progressManager *ProgressMa
 	for {
 		n, err := conn.Read(buf)
 		total += n
-		log.Printf("Downloading file ----------- %d", total/1024)
+		log.Printf("Downloading file ----------- %d kb", total/1024)
 		if err == io.EOF {
 			if progressManager != nil {		
 				progressManager.Complete(fileName, token, MASTER_WRITE_COMPLETE)
