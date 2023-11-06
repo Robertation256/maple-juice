@@ -179,9 +179,7 @@ func handleElectionMsg(conn *net.UDPConn, msg *ElectionMessage) {
 		LeaderId = msg.NodeId
 		// log.Printf("Elected leader at %s for round %d", LeaderId, localRoundId)
 		return
-	} else {
-		log.Print("Received invalid election message type")
-	}
+	} 
 }
 
 // wait for a while before deciding who to vote

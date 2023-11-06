@@ -154,6 +154,9 @@ func InitConfig() {
 		}
 	}
 	Homedir = homeDir
+	if (FileServerReceivePort == 0 || DfsClientReceivePort == 0){
+		log.Fatal("File receive ports are not properly configured")
+	}
 
 	PrintConfig()
 }
@@ -174,7 +177,9 @@ func PrintConfig() {
 			"LOG_FILE_PATH: %s\n"+
 			"LOG_SERVER_ID: %s\n"+
 			"LOG_SERVER_HOSTNAMES: %s\n"+
-			"RPC_SERVER_PORT: %d\n",
+			"RPC_SERVER_PORT: %d\n" +
+			"FILE_SERVER_RECEIVE_PORT: %d\n" +
+			"DFS_CLIENT_RECEIVE_PORT: %d\n",
 
 		MembershipServicePort,
 		MembershipProtocol,
@@ -188,6 +193,8 @@ func PrintConfig() {
 		LogServerId,
 		strings.Join(ServerHostnames, ","),
 		RpcServerPort,
+		FileServerReceivePort,
+		DfsClientReceivePort,
 	)
 
 	log.Printf("\n---Config loaded---\n%s-------------------\n", configStr)
