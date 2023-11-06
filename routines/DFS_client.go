@@ -89,6 +89,9 @@ func GetFile(args []string) error {
 
 	log.Println("entered get command")
 
+	log.Printf("remoteFile : %s", remoteFileName)
+	log.Printf("localFIle : %s", localFileName)
+
 
 	fileMetadata := &DfsResponse{}
 	err := queryMetadataService(FILE_GET, remoteFileName, fileMetadata)
@@ -312,11 +315,16 @@ func Multiread(args []string){
 		log.Printf("Invalid parameteres for DFS multiread command")
 	}
 
+	for _, str := range args{
+		fmt.Println("Mutliread arg: %s", str)
+	}
+
 	remoteFileName := args[0]
 	machineIds := make([]int, 0)
 
 	for i:=1; i<len(args); i++ {
 		id, err := strconv.Atoi(args[i])
+		log.Printf("Id is %d", id)
 		if err != nil  || id < 1 || id > len(config.ServerHostnames) {
 			log.Printf("Invalid machine Id")
 		}
