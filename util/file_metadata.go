@@ -67,7 +67,14 @@ func CompileReports(reports *[]FileServerMetadataReport) (*NodeToFiles, *FileNam
 
 		for _, fileInfo := range report.FileEntries {
 			fileName := fileInfo.FileName
-			nodeIdToFiles[nodeId][fileName] = &fileInfo
+
+			nodeIdToFiles[nodeId][fileName] = &FileInfo{
+				NodeId: fileInfo.NodeId,
+				FileName: fileInfo.FileName,
+				IsMaster: fileInfo.IsMaster,
+				FileStatus: fileInfo.FileStatus,
+				Version: fileInfo.Version,
+			}
 
 			_, ok = fileNameToCluster[fileName]
 			if !ok {
@@ -78,15 +85,34 @@ func CompileReports(reports *[]FileServerMetadataReport) (*NodeToFiles, *FileNam
 				if fileNameToCluster[fileName].Master != nil {
 					log.Printf("Detected multiple masters for file %s", fileName)
 				}
-				entry.Master = &fileInfo
+				entry.Master = &FileInfo{
+					NodeId: fileInfo.NodeId,
+					FileName: fileInfo.FileName,
+					IsMaster: fileInfo.IsMaster,
+					FileStatus: fileInfo.FileStatus,
+					Version: fileInfo.Version,
+				}
 			} else {
 				servants := entry.Servants
-				servants = append(servants, &fileInfo)
+				servants = append(servants, &FileInfo{
+					NodeId: fileInfo.NodeId,
+					FileName: fileInfo.FileName,
+					IsMaster: fileInfo.IsMaster,
+					FileStatus: fileInfo.FileStatus,
+					Version: fileInfo.Version,
+				})
 				entry.Servants = servants
 			}
 			fileNameToCluster[fileName] = entry
 		}
 	}
+
+	// log.Print("--------------compiled report------------------")
+	// for _, fmap := range nodeIdToFiles {
+	// 	for _, fileInfo := range fmap {
+	// 		fmt.Println(fileInfo.ToString())
+	// 	}
+	// }
 
 	return &nodeIdToFiles, &fileNameToCluster
 }
