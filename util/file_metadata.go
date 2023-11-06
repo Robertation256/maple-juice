@@ -107,6 +107,13 @@ func CompileReports(reports *[]FileServerMetadataReport) (*NodeToFiles, *FileNam
 		}
 	}
 
+	log.Print("--------------compiled report------------------")
+	for _, fmap := range nodeIdToFiles {
+		for _, fileInfo := range fmap {
+			fmt.Println(fileInfo.ToString())
+		}
+	}
+
 	return &nodeIdToFiles, &fileNameToCluster
 }
 

@@ -279,13 +279,13 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 		}
 	}
 
-	fmt.Println("--------------------------------")
-	for _, r := range reports{
-		for _, fileInfo := range r.FileEntries{
-			fmt.Println(fileInfo.ToString())
-		}
-	}
-	fmt.Println("--------------------------------\n\n\n\n")
+	// fmt.Println("--------------------------------")
+	// for _, r := range reports{
+	// 	for _, fileInfo := range r.FileEntries{
+	// 		fmt.Println(fileInfo.ToString())
+	// 	}
+	// }
+	// fmt.Println("--------------------------------\n\n\n\n")
 
 	return &reports
 }
