@@ -100,6 +100,7 @@ func main() {
 		// debug commands
 		"pl": "print leader",
 		"pm": "print metadata",
+		"rp": "print local report",
 		"send": "test tcp send",
 	}
 
@@ -171,7 +172,11 @@ func main() {
 			fmt.Println(routines.LeaderId)
 		case "pm":
 			fmt.Println(fileMetadataService.ToString())
-		
+		case "rp":
+			report := fileService.Report
+			for _, report := range report.FileEntries{
+				fmt.Println(report.ToString())
+			}
 		case "send":
 			routines.SendFile(config.Homedir+"/local/500mb.txt", "500mb_tcp_sent", config.ServerHostnames[1]+":"+strconv.Itoa(config.FileServerReceivePort), 1)
 
