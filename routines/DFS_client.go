@@ -229,7 +229,13 @@ func PutFile(args []string){
 	}
 
 	
-	log.Print("Done\n\n")
+	fmt.Printf("\n\nSDFS PUT operation completed with data stored at:")
+	fmt.Printf("File Master: %s\n", fileMetadata.Master.NodeId)
+
+	for _, servant := range fileMetadata.Servants{
+		fmt.Printf("File Servant: %s\n", servant.NodeId)
+	}
+
 	
 }
 
