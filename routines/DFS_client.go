@@ -87,11 +87,6 @@ func GetFile(args []string) error {
 		return errors.New("Invalid parameteres for DFS GET command")
 	}
 
-	log.Println("entered get command")
-
-	log.Printf("remoteFile : %s", remoteFileName)
-	log.Printf("localFIle : %s", localFileName)
-
 
 	fileMetadata := &DfsResponse{}
 	err := queryMetadataService(FILE_GET, remoteFileName, fileMetadata)
@@ -252,7 +247,6 @@ func DeleteFile(args []string){
 		return
 	}
 
-	log.Println("entered delete command")
 
 	fileMetadata := &DfsResponse{}
 	err := queryMetadataService(FILE_DELETE, remoteFileName, fileMetadata)
@@ -329,8 +323,8 @@ func Multiread(args []string){
 
 
 	for _, machineId := range machineIds {
-		fmt.Printf("Instructing read for machine %d", machineId)
 		hostName := config.ServerHostnames[machineId]
+		fmt.Printf("Instructing read for host %s\n", hostName)
 		fmt.Printf("Hostname is %s", hostName)
 		go func() {
 			client := dial(hostName, config.RpcServerPort)
