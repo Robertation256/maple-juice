@@ -280,7 +280,7 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 	*reply = token
 	
 	go func(){
-		timeout := time.After(20 * time.Second)
+		timeout := time.After(60 * time.Second)
 		for {
 			time.Sleep(1 * time.Second) // check if client finished uploading every second
 			select {
