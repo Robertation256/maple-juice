@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/rpc"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -165,6 +166,13 @@ func PutFile(args []string){
 
 	if len(localFileName) == 0 || len(remoteFileName) == 0 {
 		log.Printf("Invalid parameteres for DFS GET command")
+		return
+	}
+
+
+	_, err0 := os.Stat( config.Homedir + "/local/" + localFileName)
+	if err0 != nil {
+		log.Print("Local file does not exist")
 		return
 	}
 

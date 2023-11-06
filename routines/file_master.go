@@ -278,11 +278,9 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 	// allow client to start sending file, and assign it a token corresponding to that file write
 	token := fm.GetNewToken()
 	*reply = token
-
-	log.Printf("FM returned write request of file name (%s)  with permission token %d", clientFilename, token)
-
-	go func() {
-		timeout := time.After(60 * time.Second)
+	
+	go func(){
+		timeout := time.After(20 * time.Second)
 		for {
 			time.Sleep(1 * time.Second) // check if client finished uploading every second
 			select {
@@ -290,11 +288,7 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 				log.Print("Client did not finish uploading file to master in 60s")
 				return
 			default:
-				log.Printf("Checking with file name %s and id %d", fm.Filename, token)
-				if len(fm.Servants) > 0 {
-					log.Println("Servant string is %s", fm.Servants[0])
-				}
-				if FileMasterProgressTracker.IsMasterCompleted(fm.Filename, token) { // received file, send it to servants
+				if FileMasterProgressTracker.IsMasterCompleted(fm.Filename, token){	// received file, send it to servants
 					for _, servant := range fm.Servants {
 						SendFile(config.Homedir+"/sdfs/"+fm.Filename, fm.Filename, servant+":"+strconv.Itoa(config.FileServerReceivePort), 0)
 					}
