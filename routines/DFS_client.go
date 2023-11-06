@@ -135,7 +135,7 @@ func GetFile(args []string) error {
 		return nil
 	}
 
-	timeout := time.After(60 * time.Second)
+	timeout := time.After(80 * time.Second)
 
 	for {
 		time.Sleep(1 * time.Second)
@@ -144,7 +144,6 @@ func GetFile(args []string) error {
 			log.Println("GET timeout")
 			return nil
 		default:
-			log.Printf("Checking with file name %s and token %d", localFileName, t)
 			if ClientProgressTracker.IsMasterCompleted(localFileName, t) {
 				log.Print("Done\n\n")
 				return nil
