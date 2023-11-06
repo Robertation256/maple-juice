@@ -4,6 +4,7 @@ import (
 	"cs425-mp2/config"
 	"cs425-mp2/util"
 	"errors"
+	"fmt"
 	"log"
 	"net/rpc"
 	"sync"
@@ -277,6 +278,15 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 			break
 		}
 	}
+
+	fmt.Println("--------------------------------")
+	for _, r := range reports{
+		for _, fileInfo := range r.FileEntries{
+			fmt.Println(fileInfo.ToString())
+		}
+	}
+	fmt.Println("--------------------------------\n\n\n\n")
+
 	return &reports
 }
 
