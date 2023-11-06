@@ -32,7 +32,7 @@ func StartMembershipListServer() {
 	SelfNodeId = LocalMembershipList.GetSelfNodeId()
 
 
-	log.Println("Self Node ID is %s", SelfNodeId)
+	log.Printf("Machine ID: %s", SelfNodeId)
 
 	localAddr, err := net.ResolveUDPAddr("udp4", LocalMembershipList.SelfEntry.Addr())
 	if err != nil {
