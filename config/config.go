@@ -21,24 +21,25 @@ var LeaderElectionQuorumSize int
 
 // file server config
 var ReplicationFactor int
-var FileServerReceivePort int 
-var DfsClientReceivePort int
+var FileReceivePort int
+
 
 // distributed logging and grep configs
 var LogServerId string
 var LogFilePath string
 
-
 // RPC server config
 var RpcServerPort int
-var ServerHostnames []string		
+var ServerHostnames []string
 
-
-var SshUsername string
-var SshPassword string
 // file server configs
 var Homedir string
+var SdfsFileDir string
+var LocalFileDir string
 
+// Maple Juice file directories
+var JobManagerFileDir string // for storing partitioned maple input files
+var NodeManagerFileDir string
 
 
 func InitConfig() {
@@ -125,43 +126,36 @@ func InitConfig() {
 				ret[i] = strings.Trim(hostnames[i], " \n\r")
 			}
 			ServerHostnames = ret
-		
+
 		case "RPC_SERVER_PORT":
 			port, err := strconv.Atoi(kv[1])
 			if err != nil {
 				log.Fatal("Error loading rpc server port")
 			}
 			RpcServerPort = port
-		
-		case "FILE_SERVER_RECEIVE_PORT":
-			port, err := strconv.Atoi(kv[1])
-			if err != nil {
-				log.Fatal("Error loading file server receive port")
-			}
-			FileServerReceivePort = port
 
-		case "DFS_CLIENT_RECEIVE_PORT":
+		case "FILE_RECEIVE_PORT":
 			port, err := strconv.Atoi(kv[1])
 			if err != nil {
-				log.Fatal("Error loading file server receive port")
+				log.Fatal("Error loading file receive port")
 			}
-			DfsClientReceivePort = port
-			
-		case "SSH_USERNAME":
-			SshUsername = kv[1]
-		case "SSH_PASSWORD":
-			SshPassword = kv[1]
+			FileReceivePort = port
+
 		}
 	}
 	Homedir = homeDir
-	if (FileServerReceivePort == 0 || DfsClientReceivePort == 0){
-		log.Fatal("File receive ports are not properly configured")
+	SdfsFileDir = Homedir + "/sdfs/"
+	LocalFileDir = homeDir + "/local/"
+	JobManagerFileDir = homeDir + "/mr_job_manager/"
+	NodeManagerFileDir = homeDir + "/mr_node_manager/"
+
+
+	if FileReceivePort == 0 {
+		log.Fatal("File receive port is not properly configured")
 	}
 
 	PrintConfig()
 }
-
-
 
 func PrintConfig() {
 
@@ -177,9 +171,8 @@ func PrintConfig() {
 			"LOG_FILE_PATH: %s\n"+
 			"LOG_SERVER_ID: %s\n"+
 			"LOG_SERVER_HOSTNAMES: %s\n"+
-			"RPC_SERVER_PORT: %d\n" +
-			"FILE_SERVER_RECEIVE_PORT: %d\n" +
-			"DFS_CLIENT_RECEIVE_PORT: %d\n",
+			"RPC_SERVER_PORT: %d\n"+
+			"FILE_RECEIVE_PORT: %d\n",
 
 		MembershipServicePort,
 		MembershipProtocol,
@@ -193,8 +186,7 @@ func PrintConfig() {
 		LogServerId,
 		strings.Join(ServerHostnames, ","),
 		RpcServerPort,
-		FileServerReceivePort,
-		DfsClientReceivePort,
+		FileReceivePort,
 	)
 
 	log.Printf("\n---Config loaded---\n%s-------------------\n", configStr)

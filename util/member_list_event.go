@@ -6,6 +6,12 @@ const (
 	EVENT_OFFLINE int = 1
 )
 
+// channel for notifying leader election service
+var LeaderElectionMembershipEventChan = make(chan *MembershipListEvent, MEMBERSHIP_LIST_EVENT_CHANEL_SIZE)
+
+// channel for notifying Maple Juice Job Manager
+var MRJobManagerMembershipEventChan = make(chan *MembershipListEvent, MEMBERSHIP_LIST_EVENT_CHANEL_SIZE)
+
 type MembershipListEvent struct {
 	eventType int
 	NodeId string
@@ -25,7 +31,8 @@ func NotifyOffline(e *MemberListEntry){
 		eventType: EVENT_OFFLINE,
 		NodeId: e.NodeId(),
 	}
-	MembershipListEventChan <- event
+	LeaderElectionMembershipEventChan <- event
+	MRJobManagerMembershipEventChan <- event
 }
 
 func NotifyJoin(e *MemberListEntry){
@@ -33,5 +40,6 @@ func NotifyJoin(e *MemberListEntry){
 		eventType: EVENT_JOIN,
 		NodeId: e.NodeId(),
 	}
-	MembershipListEventChan <- event
+	LeaderElectionMembershipEventChan <- event
+	MRJobManagerMembershipEventChan <- event
 }

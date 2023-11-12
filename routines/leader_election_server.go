@@ -2,8 +2,8 @@ package routines
 
 import (
 	"bytes"
-	"cs425-mp2/config"
-	"cs425-mp2/util"
+	"cs425-mp4/config"
+	"cs425-mp4/util"
 	"encoding/binary"
 	"log"
 	"net"
@@ -203,7 +203,7 @@ func waitAndVote(conn *net.UDPConn, votingRoundId uint32) {
 func monitorLeaderFailure() {
 	for len(LeaderId) > 0 {
 		select {
-		case event := <-util.MembershipListEventChan:
+		case event := <-util.LeaderElectionMembershipEventChan:
 			if event.IsOffline() && event.NodeId == LeaderId {
 				LeaderId = ""
 				return

@@ -2,7 +2,7 @@ package routines
 
 import (
 	"sync"
-	"cs425-mp2/config"
+	"cs425-mp4/config"
 )
 
 
