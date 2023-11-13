@@ -30,6 +30,7 @@ type RWArgs struct {
 	SdfsFilename 	string
 	ClientAddr 		string
 	ReceiverTag uint8
+	WriteMode uint8
 }
 
 type CreateFMArgs struct {
@@ -88,7 +89,7 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
 	// TODO: fix error checking and return the actual error
 	if ok {
-		fm.ReadFile(args.LocalFilename, args.ClientAddr, args.TransmissionId, args.ReceiverTag)
+		fm.ReadFile(args)
 	} else {
 		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
 	}

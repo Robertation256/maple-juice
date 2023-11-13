@@ -19,14 +19,28 @@ const (
 	FILE_DELETE int = 3
 	FILE_LIST int = 4 
 
-
 	FILE_METADATA_SERVICE_QUERY_TIMEOUT_SECONDS int = 10
 )
 
-// fetch file from SDFS, blocks until an error/completion/timeout is reached
+// fetch one file from SDFS and overwrite local file if one exisits
 func SDFSGetFile(remoteFileName string, localFileName string, receiverTag uint8) error {
+	return sdfsFetch(remoteFileName, localFileName, receiverTag, WRITE_MODE_TRUNCATE)
+}
 
-	if len(localFileName) == 0 || len(remoteFileName) == 0 {
+// fetch multiple files from SDFS and concat into one local file
+func SDFSFetchAndConcat(remoteFileNames []string, localFileName string, receiverTag uint8) error {
+	for _, remoteFile := range remoteFileNames {
+		err := sdfsFetch(remoteFile, localFileName, receiverTag, WRITE_MODE_APPEND)
+		if err != nil {
+			return err
+		}
+	}
+	return nil 
+}
+
+// fetch one file from SDFS, blocks until an error/completion/timeout is reached
+func sdfsFetch(remoteFileName string, localFileName string, receiverTag uint8, writeMode uint8) error {
+	if len(localFileName) == 0 || len(remoteFileName) == 0  || (writeMode != WRITE_MODE_APPEND && writeMode != WRITE_MODE_TRUNCATE) {
 		return errors.New("Invalid parameteres for DFS GET command")
 	}
 
@@ -57,6 +71,7 @@ func SDFSGetFile(remoteFileName string, localFileName string, receiverTag uint8)
 		SdfsFilename: remoteFileName,
 		ClientAddr: NodeIdToIP(SelfNodeId),
 		ReceiverTag: receiverTag,
+		WriteMode: writeMode,
 	}
 
 	var reply string
@@ -122,7 +137,7 @@ func SDFSPutFile(remoteFileName string, localFilePath string) (*DfsResponse, err
 	} 
 
 	// We are given a token by the scheduler, proceed with uploading files
-	err1 := SendFile(localFilePath, remoteFileName, fileMasterIP+":"+strconv.Itoa(config.FileReceivePort), transmissionId, RECEIVER_SDFS_FILE_SERVER)
+	err1 := SendFile(localFilePath, remoteFileName, fileMasterIP+":"+strconv.Itoa(config.FileReceivePort), transmissionId, RECEIVER_SDFS_FILE_SERVER, WRITE_MODE_TRUNCATE)
 
 	if err1 != nil {
 		return nil, err1
@@ -186,6 +201,34 @@ func SDFSListFile(remoteFileName string) (*DfsResponse, error) {
 	} 
 
 	return fileMetadata, nil
+}
+
+// return a list of SDFS file names matching regex
+func SDFSSearchFileByRegex(regex string) (*[]string, error) {
+	if len(regex) == 0 {
+		return nil, errors.New("Invalid parameteres for DFS SEARCH command")
+	}
+
+	reply := &[]string{}
+	client := dialMetadataService()
+	if client == nil {
+		return nil, errors.New("Failed to query file metadata service")
+	}
+
+
+	call := client.Go("FileMetadataService.HandleFileSearchRequest", &regex, reply, nil)
+	requestTimeout := time.After(time.Duration(FILE_METADATA_SERVICE_QUERY_TIMEOUT_SECONDS) * time.Second)
+
+	select {
+	case _, ok := <-call.Done: // check if channel has output ready
+		if !ok || reply == nil{
+			log.Println("RPC call corrupted")
+			return nil, errors.New("RPC call corrupted")
+		}
+	case <- requestTimeout:
+		return nil, errors.New("Request timeout")
+	}
+	return reply, nil
 }
 
 

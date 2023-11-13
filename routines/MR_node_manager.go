@@ -4,6 +4,7 @@ import (
 	"cs425-mp4/config"
 	"cs425-mp4/util"
 	"errors"
+	"fmt"
 	"log"
 	"net/rpc"
 	"os"
@@ -79,10 +80,10 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	responseChan := make(chan error, remainingFiles)
 
 	for _, fileName := range outputFileNames {
-		go func(){
-			_, err := SDFSPutFile(fileName, config.NodeManagerFileDir+fileName)
+		go func(file string){
+			_, err := SDFSPutFile(file, config.NodeManagerFileDir+file)
 			responseChan <- err
-		}()
+		}(fileName)
 	}
 
 	for remainingFiles > 0 {
@@ -120,8 +121,85 @@ func cleanUp(filePrefix string){
 
 
 
-func (this *MRNodeManager) StartJuiceTask(args *util.MapleTaskArg, reply *string) error {
+func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string) error {
+	// fetch executable and input key partitions from SDFS
+	executableFileName := args.ExcecutableFileName
+	parition := args.KeyToFileNames
+
+	executableFetchResChan := make(chan error, 1)
+
+
+	go func(){
+		executableFetchResChan <- SDFSGetFile(executableFileName, executableFileName, RECEIVER_MR_NODE_MANAGER)
+	}()
+
+	for key, files := range parition {
+		localFileName := fmtJuiceInputFileName(args.InputFilePrefix, key)
+		err := SDFSFetchAndConcat(files, localFileName, RECEIVER_MR_NODE_MANAGER)
+		if err != nil {
+			return err
+		}
+	}
+
+	// wait for all file's arrival
+	timeout := time.After(1 * time.Minute)
+	select{
+	case <-timeout:
+		return errors.New("Timeout fetching executable from SDFS")
+	case err := <- executableFetchResChan:
+		if err != nil {
+			return err
+		}
+	}
+
+	executionErrorChan := make(chan error, len(parition))
+	executableFilePath := config.NodeManagerFileDir + args.ExcecutableFileName
+	// execute excutable on all key partitions and send result file to SDFS
+	for key := range parition {
+		go func(k string){
+			localFilePath := config.NodeManagerFileDir + fmtJuiceInputFileName(args.InputFilePrefix, k)
+			cmdArgs := []string {"run", executableFilePath, "-in", localFilePath}
+			cmd := exec.Command("go", cmdArgs...)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				executionErrorChan <- err
+				return
+			}
+			outputFileName := string(output)
+			expectedOutputFileName := args.OutputFilePrefix + "-" + k 
+			if outputFileName != expectedOutputFileName {
+				log.Printf("WARN: Juice executable not producing file with expected name")
+			}
+
+			_, err1 := SDFSPutFile(expectedOutputFileName, config.NodeManagerFileDir + outputFileName)
+			executionErrorChan <- err1
+		}(key)
+	}
+
+
+	// track execution progress
+	remainingKey := len(parition)
+	executionTimeout := time.After(10 * time.Minute)
+
+	for remainingKey > 0 {
+		select{
+		case <- executionTimeout:
+			return errors.New("Juice task execution timeout")
+		case err := <- executionErrorChan:
+			if err != nil {
+				return err 
+			} else {
+				remainingKey -= 1
+			}
+		}
+	}
+
+	*reply = "ACK"
 	return nil
 }
 
+
+func fmtJuiceInputFileName(filePrefix string, key string) string {
+	return fmt.Sprintf("juice_input-%s-%s", filePrefix, key)
+}
 

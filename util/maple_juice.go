@@ -12,40 +12,46 @@ import (
 
 var lineCountFileBuf []byte = make([]byte, 32*1024)
 
-
 type JobRequest struct {
-	IsMaple bool
+	IsMaple      bool
 	ErrorMsgChan chan error
-	MapleJob MapleJobRequest
-	JuiceJob JuiceJobRequest
+	MapleJob     MapleJobRequest
+	JuiceJob     JuiceJobRequest
 }
 
 type MapleJobRequest struct {
 	ExcecutableFileName string
-	TaskNum int 
-	SrcSdfsFileName string 
-	OutputFilePrefix string 
+	TaskNum             int
+	SrcSdfsFileName     string
+	OutputFilePrefix    string
 }
-
 
 type JuiceJobRequest struct {
 	ExcecutableFileName string
-	TaskNum int 
-	SrcSdfsFilePrefix string 
-	OutputFileName string 
-	DeleteInput bool 
+	TaskNum             int
+	SrcSdfsFilePrefix   string
+	OutputFileName      string
+	DeleteInput         bool
+	IsHashPartition     bool 	// partition by hash or by range
 }
 
 type SimpleJobQueue struct {
-	lock sync.RWMutex
+	lock  sync.RWMutex
 	queue []JobRequest
 }
 
 type MapleTaskArg struct {
-	InputFileName string
-	TransmissionId string
+	InputFileName       string
+	TransmissionId      string
 	ExcecutableFileName string
-	OutputFilePrefix string 
+	OutputFilePrefix    string
+}
+
+type JuiceTaskArg struct {
+	InputFilePrefix string
+	KeyToFileNames      map[string][]string		// each key might have multiple file partitions
+	ExcecutableFileName string
+	OutputFilePrefix    string
 }
 
 func NewQueue() *SimpleJobQueue {
@@ -54,14 +60,14 @@ func NewQueue() *SimpleJobQueue {
 	}
 }
 
-func (this *SimpleJobQueue) Push(job *JobRequest){
+func (this *SimpleJobQueue) Push(job *JobRequest) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
 	this.queue = append(this.queue, *job)
 }
 
-func (this *SimpleJobQueue) Pop() *JobRequest{
+func (this *SimpleJobQueue) Pop() *JobRequest {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	if len(this.queue) == 0 {
@@ -72,33 +78,30 @@ func (this *SimpleJobQueue) Pop() *JobRequest{
 	return &ret
 }
 
-
-
 func GetFileLineCount(fileName string) (int, error) {
 
-	file, err := os.Open(config.LocalFileDir+fileName)
+	file, err := os.Open(config.LocalFileDir + fileName)
 	if err != nil {
 		return 0, err
 	}
 	defer file.Close()
 
-    count := 0
-    lineSep := []byte{'\n'}
+	count := 0
+	lineSep := []byte{'\n'}
 
-    for {
-        c, err := file.Read(lineCountFileBuf)
-        count += bytes.Count(lineCountFileBuf[:c], lineSep)
+	for {
+		c, err := file.Read(lineCountFileBuf)
+		count += bytes.Count(lineCountFileBuf[:c], lineSep)
 
-        switch {
-        case err == io.EOF:
-            return count, nil
+		switch {
+		case err == io.EOF:
+			return count, nil
 
-        case err != nil:
-            return count, err
-        }
-    }
+		case err != nil:
+			return count, err
+		}
+	}
 }
-
 
 // caveat: need to resize buffer with lines over 64K
 func PartitionFile(scanner *bufio.Scanner, lineNum int, outputFilePath string) error {
@@ -109,7 +112,7 @@ func PartitionFile(scanner *bufio.Scanner, lineNum int, outputFilePath string) e
 	defer outputFile.Close()
 
 	for lineNum > 0 {
-		if !scanner.Scan(){
+		if !scanner.Scan() {
 			return scanner.Err()
 		}
 		lineNum -= 1
@@ -122,8 +125,6 @@ func PartitionFile(scanner *bufio.Scanner, lineNum int, outputFilePath string) e
 	return nil
 }
 
-
-func MapleInputPartitionName(fileName string, taskId int) string {
-	return fmt.Sprintf("%s-partition-%d", fileName, taskId)
+func FmtMapleInputPartitionName(fileName string, taskId int) string {
+	return fmt.Sprintf("%s-p%d", fileName, taskId)
 }
-

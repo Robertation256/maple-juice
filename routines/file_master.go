@@ -109,14 +109,14 @@ func (fm *FileMaster) CheckQueue() {
 	}
 }
 
-func (fm *FileMaster) ReadFile(clientFilename string, clientAddr string, transmissionId string, receiverTag uint8) error {
+func (fm *FileMaster) ReadFile(args *RWArgs) error {
 	var request *Request = nil
 	for {
 		// if the request is not in queue and read condition (reader < 2 and no writer) satisfied
 		if request == nil && fm.CurrentRead < 2 && fm.CurrentWrite == 0 {
 			// no write has been waiting for more than 4 consecutive read
 			if len(fm.WriteQueue) == 0 || (len(fm.WriteQueue) > 0 && fm.WriteQueue[0].WaitRound < 4) {
-				return fm.executeRead(clientFilename, clientAddr, transmissionId, receiverTag)
+				return fm.executeRead(args)
 			}
 		} else if request == nil {
 			// initial condition to execute the read is not satifised. add to queue
@@ -127,12 +127,12 @@ func (fm *FileMaster) ReadFile(clientFilename string, clientAddr string, transmi
 			fm.Queue = append(fm.Queue, request)
 		} else if request != nil && !request.InQueue {
 			// request has been poped from queue, execute read
-			return fm.executeRead(clientFilename, clientAddr, transmissionId, receiverTag)
+			return fm.executeRead(args)
 		}
 	}
 }
 
-func (fm *FileMaster) executeRead(clientFilename string, clientAddr string, transmissionId string, receiverTag uint8) error {
+func (fm *FileMaster) executeRead(args *RWArgs) error {
 	fm.CurrentRead += 1
 	// every request in the wait queue has been forced to wait another one round because of
 	// the read that is currently executing
@@ -140,12 +140,10 @@ func (fm *FileMaster) executeRead(clientFilename string, clientAddr string, tran
 		writeRequest.WaitRound += 1
 	}
 
-	log.Printf("Sending file to client at %s", clientAddr)
+	log.Printf("Sending file to client at %s", args.ClientAddr)
 
 	localFilePath := fm.SdfsFolder + fm.Filename
-	SendFile(localFilePath, clientFilename, clientAddr+":"+strconv.Itoa(config.FileReceivePort), transmissionId, receiverTag)
-
-	// util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
+	SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
 
 	fm.CurrentRead -= 1
 	fm.CheckQueue()
@@ -190,7 +188,7 @@ func (fm *FileMaster) executeReplicate(clientAddr string) error {
 	// util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
 
 	log.Println("sending replica to ", clientAddr+":"+strconv.Itoa(config.FileReceivePort))
-	SendFile(localFilePath, fm.Filename, clientAddr+":"+strconv.Itoa(config.FileReceivePort), "ignore", RECEIVER_SDFS_FILE_SERVER)
+	SendFile(localFilePath, fm.Filename, clientAddr+":"+strconv.Itoa(config.FileReceivePort), "ignore", RECEIVER_SDFS_FILE_SERVER, WRITE_MODE_TRUNCATE)
 
 	fm.CurrentRead -= 1
 	fm.CheckQueue()
@@ -239,7 +237,7 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *string) error {
 				if FileTransmissionProgressTracker.IsLocalCompleted(transmissionId){	// received file, send it to servants
 					for _, servant := range fm.Servants {
 						// todo: add servant ack
-						SendFile(config.SdfsFileDir + fm.Filename, fm.Filename, servant+":"+strconv.Itoa(config.FileReceivePort), transmissionId, RECEIVER_SDFS_FILE_SERVER)
+						SendFile(config.SdfsFileDir + fm.Filename, fm.Filename, servant+":"+strconv.Itoa(config.FileReceivePort), transmissionId, RECEIVER_SDFS_FILE_SERVER, WRITE_MODE_TRUNCATE)
 					}
 
 					log.Print("Global write completed")

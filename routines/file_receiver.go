@@ -20,6 +20,9 @@ const (
 	RECEIVER_SDFS_CLIENT uint8 = 11
 	RECEIVER_MR_JOB_MANAGER uint8 = 12
 	RECEIVER_MR_NODE_MANAGER uint8 = 13
+
+	WRITE_MODE_APPEND uint8 = 1		// append recieved file to an existing one
+	WRITE_MODE_TRUNCATE uint8 = 0	// create or truncate file
 )
 
 var FileTransmissionProgressTracker *util.TransmissionProgressManager = util.NewTransmissionProgressManager()
@@ -30,6 +33,7 @@ type FileHeader struct {
 	FileNameLength uint64 
 	FileName string
 	ReceiverTag uint8
+	WriteMode uint8
 }
 
 
@@ -47,6 +51,7 @@ func (this *FileHeader) ToPayload() []byte{
 	buf.Write(fileNameLengthArr)
 	buf.Write([]byte(this.FileName))
 	buf.WriteByte(this.ReceiverTag)
+	buf.WriteByte(this.WriteMode)
 	return buf.Bytes()
 }
 
@@ -123,7 +128,8 @@ func initializeFile(buf *[]byte, size int) (*os.File, *string) {
 	nameLength := binary.LittleEndian.Uint64((*buf)[8 + int(transmissionIdLength): 16 + int(transmissionIdLength)])
 	fileName := string((*buf)[16 + int(transmissionIdLength): 16 + int(transmissionIdLength) + int(nameLength)])
 	receiverTag := uint8((*buf)[16 + int(transmissionIdLength) + int(nameLength)])
-	headerSize := 17 + int(transmissionIdLength) + int(nameLength)
+	writeMode := uint8((*buf)[17 + int(transmissionIdLength) + int(nameLength)])
+	headerSize := 18 + int(transmissionIdLength) + int(nameLength)
 
 	targetFolder := ""
 
@@ -142,8 +148,17 @@ func initializeFile(buf *[]byte, size int) (*os.File, *string) {
 	}
 
 
-	filePath := targetFolder + "/" + fileName
-	file, err := os.Create(strings.TrimSpace(filePath))
+	filePath := strings.TrimSpace(targetFolder + "/" + fileName)
+
+	var file *os.File
+	var err error
+	switch writeMode {
+	case WRITE_MODE_TRUNCATE:
+		file, err = os.Create(filePath)
+	case WRITE_MODE_APPEND:
+		file, err = os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	}
+	
 	if err != nil {
 		log.Printf("File transfer server: failed to create file.", err)
 		return nil, &transmissionId
@@ -162,7 +177,7 @@ func initializeFile(buf *[]byte, size int) (*os.File, *string) {
 
 
 
-func SendFile(localFilePath string, remoteFileName, remoteAddr string, transmissionId string, receiverTag uint8) error {
+func SendFile(localFilePath string, remoteFileName, remoteAddr string, transmissionId string, receiverTag uint8, writeMode uint8) error {
 	log.Printf("Started sending file %s", localFilePath)
 
 	var total uint64 = 0
@@ -191,6 +206,7 @@ func SendFile(localFilePath string, remoteFileName, remoteAddr string, transmiss
 		FileNameLength: uint64(len([]byte(remoteFileName))),
 		FileName: remoteFileName,
 		ReceiverTag: receiverTag,
+		WriteMode: writeMode,
 	}
 
 	conn.Write(header.ToPayload())
