@@ -495,18 +495,25 @@ func (this *MRJobManager) removeTask(taskId string) {
 
 func partitionByHash(keyToFiles map[string][]string, taskNum int) []map[string][]string {
 	var fnvHash hash.Hash32 = fnv.New32a()
-	result := make([]map[string][]string, taskNum)
-	for idx := range result {
-		result[idx] = make(map[string][]string)
+	buckets := make([]map[string][]string, taskNum)
+	result := make([]map[string][]string, 0)
+	for idx := range buckets {
+		buckets[idx] = make(map[string][]string)
 	}
 
 	for key, files := range keyToFiles {
 		fnvHash.Reset()
 		fnvHash.Write([]byte(key))
 		bucketId := int(fnvHash.Sum32())%taskNum
-		result[bucketId][key] = files
+		buckets[bucketId][key] = files
 	}
 
+	for _, partition := range buckets {
+		// it's possible that we miss some buckets
+		if len(partition) > 0 {
+			result = append(result, partition)
+		}
+	}
 	return result
 }
 
