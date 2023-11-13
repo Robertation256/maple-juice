@@ -135,6 +135,7 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 
 	for key, files := range parition {
 		localFileName := fmtJuiceInputFileName(args.InputFilePrefix, key)
+		os.Remove(config.NodeManagerFileDir + localFileName)
 		err := SDFSFetchAndConcat(files, localFileName, RECEIVER_MR_NODE_MANAGER)
 		if err != nil {
 			return err
@@ -165,6 +166,7 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 				executionErrorChan <- err
 				return
 			}
+			os.Remove(localFilePath)
 			outputFileName := string(output)
 			expectedOutputFileName := args.OutputFilePrefix + "-" + k 
 			if outputFileName != expectedOutputFileName {
