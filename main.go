@@ -1,9 +1,9 @@
 package main
 
 import (
-	"cs425-mp2/config"
-	"cs425-mp2/routines"
-	"cs425-mp2/util"
+	"cs425-mp4/config"
+	"cs425-mp4/routines"
+	"cs425-mp4/util"
 	"fmt"
 	"log"
 	"net"
@@ -35,16 +35,7 @@ func main() {
 	go routines.StartMembershipListServer()
 	go routines.StartLeaderElectionServer()
 
-
-	// receiver for file server
-	go routines.StartFileReceiver(config.Homedir+"/sdfs", config.FileServerReceivePort, routines.FileMasterProgressTracker)
-
-
-
-	// receiver for client
-	go routines.StartFileReceiver(config.Homedir+"/local", config.DfsClientReceivePort, routines.ClientProgressTracker)
-
-
+	go routines.StartFileReceiver(config.FileReceivePort)
 
 
 	// register and start up rpc services

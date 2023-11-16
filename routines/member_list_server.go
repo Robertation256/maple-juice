@@ -1,8 +1,8 @@
 package routines
 
 import (
-	"cs425-mp2/config"
-	"cs425-mp2/util"
+	"cs425-mp4/config"
+	"cs425-mp4/util"
 	"encoding/binary"
 	"log"
 	"math/rand"

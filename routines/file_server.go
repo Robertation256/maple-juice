@@ -2,9 +2,8 @@ package routines
 
 import (
 	"net/rpc"
-	"golang.org/x/crypto/ssh"
-	"cs425-mp2/config"
-	"cs425-mp2/util"
+	"cs425-mp4/config"
+	"cs425-mp4/util"
 	"fmt"
 	"log"
 	"os"
@@ -13,7 +12,6 @@ import (
 
 type FileService struct {
 	Port 					int
-	SshConfig 				*ssh.ClientConfig
 	Filename2FileMaster 	map[string]*FileMaster
 	SdfsFolder 				string
 	LocalFileFolder			string
@@ -27,10 +25,12 @@ type CopyArgs struct {
 }
 
 type RWArgs struct {
-	Token uint64
+	TransmissionId string
 	LocalFilename 	string
 	SdfsFilename 	string
 	ClientAddr 		string
+	ReceiverTag uint8
+	WriteMode uint8
 }
 
 type CreateFMArgs struct {
@@ -47,14 +47,6 @@ func NewFileService(port int, homedir string, serverHostnames[]string) *FileServ
 
 	this := new(FileService)
 	this.Port = port
-	this.SshConfig = &ssh.ClientConfig{
-		User: config.SshUsername,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(config.SshPassword),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout: 8 * time.Second,
-	}
 	this.Filename2FileMaster = make(map[string]*FileMaster)
 	this.SdfsFolder = homedir + "/sdfs/"
 	this.LocalFileFolder = homedir + "/local/"
@@ -74,7 +66,7 @@ func (this *FileService) Register(){
 }
 
 
-func (fm *FileService) CheckWriteCompleted(key *string, reply *string) error {
+func (fm *FileService) CheckWriteCompleted(transmissionId *string, reply *string) error {
 	
 	timeout := time.After(300 * time.Second)
 	for {
@@ -84,7 +76,7 @@ func (fm *FileService) CheckWriteCompleted(key *string, reply *string) error {
 			*reply = ""
 			return nil
 		default:
-			if FileMasterProgressTracker.IsFullCompletedByKey(*key){	// received file, send it to servants
+			if FileTransmissionProgressTracker.IsGlobalCompleted(*transmissionId) {	// received file, send it to servants
 				*reply = "ACK"
 				return nil
 			}
@@ -97,7 +89,7 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
 	// TODO: fix error checking and return the actual error
 	if ok {
-		fm.ReadFile(args.LocalFilename, args.ClientAddr, args.Token)
+		fm.ReadFile(args)
 	} else {
 		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
 	}
@@ -105,11 +97,11 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 }
 
 // reroute to the corresponding file master
-func (this *FileService) WriteFile(args *RWArgs, reply *uint64) error {
+func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
 	fm, ok := this.Filename2FileMaster[args.SdfsFilename]
 	// TODO: fix error checking and return the actual error
 	if ok {
-		fm.WriteFile(args.LocalFilename, reply)
+		fm.WriteFile(args.SdfsFilename, reply)
 	} else {
 		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
 	}
@@ -140,9 +132,6 @@ func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 	return nil
 }
 
-func (this *FileService) CopyFileToRemote(args *CopyArgs, reply *string) error {
-	return util.CopyFileToRemote(args.LocalFilePath, args.RemoteFilePath, args.RemoteAddr, this.SshConfig)
-}
 
 func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error {
 	return util.DeleteFile(args.Filename, this.SdfsFolder)

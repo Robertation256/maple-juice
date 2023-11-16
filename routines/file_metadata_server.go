@@ -1,14 +1,14 @@
 package routines
 
 import (
-	"cs425-mp2/config"
-	"cs425-mp2/util"
+	"cs425-mp4/config"
+	"cs425-mp4/util"
 	"errors"
-	// "fmt"
 	"log"
 	"net/rpc"
 	"sync"
 	"time"
+	"regexp"
 )
 
 const (
@@ -20,7 +20,7 @@ var FileMetadataServerSigTerm chan int = make(chan int)
 
 type FileMetadataService struct {
 	metadataLock sync.RWMutex
-	// fileName -> replica distribution info
+	// nodeId -> fileName -> file info
 	metadata util.NodeToFiles
 }
 
@@ -368,4 +368,32 @@ func toResponse(clusterInfo *util.ClusterInfo) *DfsResponse {
 	}
 
 	return ret
+}
+
+
+// return SDFS file names matching a regex
+func (this *FileMetadataService) HandleFileSearchRequest(regex *string, reply *[]string) error {
+	r, err := regexp.Compile(*regex)
+	if err != nil {
+		return err
+	}
+	result := make([]string, 0)
+	resultSet := make(map[string]bool)
+
+	this.metadataLock.RLock()
+	for _, fmap := range this.metadata {
+		for fileName, _ := range fmap {
+			if r.MatchString(fileName) {
+				resultSet[fileName] = true
+			}
+		}
+	}
+	this.metadataLock.RUnlock()
+
+	for fileName, _ := range resultSet{
+		result = append(result, fileName)
+	}
+
+	reply = &result
+	return nil
 }

@@ -1,22 +1,19 @@
 package routines
 
 import (
-	"cs425-mp2/config"
-	"cs425-mp2/util"
+	"cs425-mp4/config"
+	"cs425-mp4/util"
 	"fmt"
 	"log"
 	"net/rpc"
 	"strconv"
-	"sync"
 	"time"
 )
 
 const (
-	MASTER_WRITE_COMPLETE int = 1
-	FULL_WRITE_COMPLETE   int = 2
+	LOCAL_WRITE_COMPLETE int = 1
+	GLOBAL_WRITE_COMPLETE   int = 2
 )
-
-var FileMasterProgressTracker *ProgressManager = NewProgressManager()
 
 type FileMaster struct {
 	// main queue: store the requests that are waiting in the order they are received
@@ -32,65 +29,15 @@ type FileMaster struct {
 	Servants []string
 	// address of self. used to prevent errors in case fm = client
 	SelfAddr string
-	// TODO: remove this?
-	// SshConfig 	 	*ssh.ClientConfig
+
+
 	FileServerPort  int
 	SdfsFolder      string
 	LocalFileFolder string
 
-	taskToken     uint64
-	taskTokenLock sync.Mutex
+	transmissionIdGenerator *util.TransmissionIdGenerator
 }
 
-type ProgressManager struct {
-	writeTaskCompleted map[string]int // a map of token to id for tracing the progress of write tasks
-	lock               sync.RWMutex
-}
-
-func NewProgressManager() *ProgressManager {
-	return &ProgressManager{
-		writeTaskCompleted: make(map[string]int),
-	}
-}
-
-func (this *ProgressManager) IsMasterCompleted(fileName string, token uint64) bool {
-	key := fileName + "-" + strconv.Itoa(int(token))
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-	value, exists := this.writeTaskCompleted[key]
-	return exists && value == MASTER_WRITE_COMPLETE
-}
-
-func (this *ProgressManager) IsFullCompleted(fileName string, token uint64) bool {
-	key := fileName + "-" + strconv.Itoa(int(token))
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-	value, exists := this.writeTaskCompleted[key]
-	return exists && value == FULL_WRITE_COMPLETE
-}
-
-func (this *ProgressManager) IsFullCompletedByKey(key string) bool {
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-	value, exists := this.writeTaskCompleted[key]
-	return exists && value == FULL_WRITE_COMPLETE
-}
-
-func (this *ProgressManager) Complete(fileName string, token uint64, completionType int) {
-	key := fileName + "-" + strconv.Itoa(int(token))
-	this.lock.Lock()
-	defer this.lock.Unlock()
-
-	this.writeTaskCompleted[key] = completionType
-}
-
-func (this *FileMaster) GetNewToken() uint64 {
-	this.taskTokenLock.Lock()
-	this.taskToken += 1
-	token := this.taskToken
-	this.taskTokenLock.Unlock()
-	return token
-}
 
 type Request struct {
 	// type of request: read (R), write (W), delete (D)
@@ -113,6 +60,7 @@ func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsF
 		FileServerPort:  fileServerPort,
 		SdfsFolder:      sdfsFolder,
 		LocalFileFolder: localFileFlder,
+		transmissionIdGenerator: util.NewTransmissionIdGenerator("FM-"+SelfNodeId),
 	}
 }
 
@@ -161,14 +109,14 @@ func (fm *FileMaster) CheckQueue() {
 	}
 }
 
-func (fm *FileMaster) ReadFile(clientFilename string, clientAddr string, token uint64) error {
+func (fm *FileMaster) ReadFile(args *RWArgs) error {
 	var request *Request = nil
 	for {
 		// if the request is not in queue and read condition (reader < 2 and no writer) satisfied
 		if request == nil && fm.CurrentRead < 2 && fm.CurrentWrite == 0 {
 			// no write has been waiting for more than 4 consecutive read
 			if len(fm.WriteQueue) == 0 || (len(fm.WriteQueue) > 0 && fm.WriteQueue[0].WaitRound < 4) {
-				return fm.executeRead(clientFilename, clientAddr, token)
+				return fm.executeRead(args)
 			}
 		} else if request == nil {
 			// initial condition to execute the read is not satifised. add to queue
@@ -179,12 +127,12 @@ func (fm *FileMaster) ReadFile(clientFilename string, clientAddr string, token u
 			fm.Queue = append(fm.Queue, request)
 		} else if request != nil && !request.InQueue {
 			// request has been poped from queue, execute read
-			return fm.executeRead(clientFilename, clientAddr, token)
+			return fm.executeRead(args)
 		}
 	}
 }
 
-func (fm *FileMaster) executeRead(clientFilename string, clientAddr string, token uint64) error {
+func (fm *FileMaster) executeRead(args *RWArgs) error {
 	fm.CurrentRead += 1
 	// every request in the wait queue has been forced to wait another one round because of
 	// the read that is currently executing
@@ -192,12 +140,10 @@ func (fm *FileMaster) executeRead(clientFilename string, clientAddr string, toke
 		writeRequest.WaitRound += 1
 	}
 
-	log.Printf("Sending file to client at %s", clientAddr)
+	log.Printf("Sending file to client at %s", args.ClientAddr)
 
 	localFilePath := fm.SdfsFolder + fm.Filename
-	SendFile(localFilePath, clientFilename, clientAddr+":"+strconv.Itoa(config.DfsClientReceivePort), token)
-
-	// util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
+	SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
 
 	fm.CurrentRead -= 1
 	fm.CheckQueue()
@@ -241,15 +187,15 @@ func (fm *FileMaster) executeReplicate(clientAddr string) error {
 
 	// util.CopyFileToRemote(localFilePath, remoteFilePath, clientAddr, fm.SshConfig)
 
-	log.Println("sending replica to ", clientAddr+":"+strconv.Itoa(config.FileServerReceivePort))
-	SendFile(localFilePath, fm.Filename, clientAddr+":"+strconv.Itoa(config.FileServerReceivePort), 0)
+	log.Println("sending replica to ", clientAddr+":"+strconv.Itoa(config.FileReceivePort))
+	SendFile(localFilePath, fm.Filename, clientAddr+":"+strconv.Itoa(config.FileReceivePort), "ignore", RECEIVER_SDFS_FILE_SERVER, WRITE_MODE_TRUNCATE)
 
 	fm.CurrentRead -= 1
 	fm.CheckQueue()
 	return nil
 }
 
-func (fm *FileMaster) WriteFile(clientFilename string, reply *uint64) error {
+func (fm *FileMaster) WriteFile(clientFilename string, reply *string) error {
 	var request *Request = nil
 	for {
 		// requests just come in, and the condition for write is satisfied
@@ -272,12 +218,12 @@ func (fm *FileMaster) WriteFile(clientFilename string, reply *uint64) error {
 	}
 }
 
-func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
+func (fm *FileMaster) executeWrite(clientFilename string, reply *string) error {
 	fm.CurrentWrite += 1
 
 	// allow client to start sending file, and assign it a token corresponding to that file write
-	token := fm.GetNewToken()
-	*reply = token
+	transmissionId := fm.transmissionIdGenerator.NewTransmissionId(clientFilename)
+	*reply = transmissionId
 	
 	go func(){
 		timeout := time.After(60 * time.Second)
@@ -288,13 +234,14 @@ func (fm *FileMaster) executeWrite(clientFilename string, reply *uint64) error {
 				log.Print("Client did not finish uploading file to master in 60s")
 				return
 			default:
-				if FileMasterProgressTracker.IsMasterCompleted(fm.Filename, token){	// received file, send it to servants
+				if FileTransmissionProgressTracker.IsLocalCompleted(transmissionId){	// received file, send it to servants
 					for _, servant := range fm.Servants {
-						SendFile(config.Homedir+"/sdfs/"+fm.Filename, fm.Filename, servant+":"+strconv.Itoa(config.FileServerReceivePort), 0)
+						// todo: add servant ack
+						SendFile(config.SdfsFileDir + fm.Filename, fm.Filename, servant+":"+strconv.Itoa(config.FileReceivePort), transmissionId, RECEIVER_SDFS_FILE_SERVER, WRITE_MODE_TRUNCATE)
 					}
 
 					log.Print("Global write completed")
-					FileMasterProgressTracker.Complete(fm.Filename, token, FULL_WRITE_COMPLETE)
+					FileTransmissionProgressTracker.GlobalComplete(transmissionId)
 					return
 				}
 			}
@@ -331,7 +278,7 @@ func (fm *FileMaster) DeleteFile() error {
 }
 
 func (fm *FileMaster) executeDelete() error {
-	fmt.Println("delete" + fm.Filename)
+
 	util.DeleteFile(fm.Filename, fm.SdfsFolder)
 	for _, servant := range fm.Servants {
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))

@@ -1,7 +1,9 @@
 cd ~
 
-mkdir sdfs
-mkdir local
+mkdir -p sdfs
+mkdir -p local
+mkdir -p mr_job_manager
+mkdir -p mr_node_manager
 touch config.txt
 
 echo "MEMBERSHIP_SERVICE_PORT=8001" > config.txt
@@ -18,8 +20,7 @@ echo "LEADER_ELECTION_QUORUM_SIZE=6" >> config.txt
 echo "REPLICATION_FACTOR=4" >> config.txt
 
 echo "RPC_SERVER_PORT=8004" >> config.txt
-echo "FILE_SERVER_RECEIVE_PORT=8005" >> config.txt
-echo "DFS_CLIENT_RECEIVE_PORT=8006" >> config.txt
+echo "FILE_RECEIVE_PORT=8005" >> config.txt
 
 echo "LOG_FILE_NAME=log" >> config.txt
 echo "LOG_SERVER_ID=vm$1" >> config.txt

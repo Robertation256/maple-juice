@@ -1,6 +1,8 @@
 package routines
 
-import "net/rpc"
+import (
+	"net/rpc"
+)
 
 // rpc for facilitating DFS mutliread command from DFS client
 
@@ -21,8 +23,8 @@ func (this *DfsRemoteReader) Register(){
 
 func (this *DfsRemoteReader) Read(fileName *string, reply *string) error {
 	localFileName := "remoted_initiated_" + *fileName 
-	args := []string {*fileName, localFileName}
-	err := GetFile(args)
+
+	err := SDFSGetFile(*fileName, localFileName, RECEIVER_SDFS_CLIENT)
 
 	if err == nil {
 		*reply = "DONE"

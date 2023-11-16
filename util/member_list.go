@@ -29,8 +29,7 @@ const (
 	MEMBERSHIP_LIST_EVENT_CHANEL_SIZE int = 100
 )
 
-// channel for notifying leader election service
-var MembershipListEventChan = make(chan *MembershipListEvent, MEMBERSHIP_LIST_EVENT_CHANEL_SIZE)
+
 
 // read write lock
 var memberListLock sync.Mutex // todo: change this to read-write lock
