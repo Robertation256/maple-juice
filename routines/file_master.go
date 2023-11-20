@@ -34,6 +34,7 @@ type FileMaster struct {
 	FileServerPort  int
 	SdfsFolder      string
 	LocalFileFolder string
+	FileServer      *FileService
 
 	transmissionIdGenerator *util.TransmissionIdGenerator
 }
@@ -48,7 +49,7 @@ type Request struct {
 	WaitRound int
 }
 
-func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsFolder string, localFileFlder string) *FileMaster {
+func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsFolder string, localFileFlder string, fileServer *FileService) *FileMaster {
 	//FileMasterProgressTracker = NewProgressManager()
 	selfAddr := NodeIdToIP(SelfNodeId)
 	return &FileMaster{
@@ -60,6 +61,7 @@ func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsF
 		FileServerPort:  fileServerPort,
 		SdfsFolder:      sdfsFolder,
 		LocalFileFolder: localFileFlder,
+		FileServer:      fileServer,
 		transmissionIdGenerator: util.NewTransmissionIdGenerator("FM-"+SelfNodeId),
 	}
 }
@@ -280,6 +282,7 @@ func (fm *FileMaster) DeleteFile() error {
 func (fm *FileMaster) executeDelete() error {
 
 	util.DeleteFile(fm.Filename, fm.SdfsFolder)
+	fm.FileServer.ChangeReportStatusPendingDelete(fm.Filename)
 	for _, servant := range fm.Servants {
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
 		if err != nil {
@@ -293,5 +296,8 @@ func (fm *FileMaster) executeDelete() error {
 		client.Call("FileService.DeleteLocalFile", deleteArgs, &reply)
 		client.Close()
 	}
+	fm.FileServer.RemoveFromReport(fm.Filename)
+	log.Println("Global delete completed")
 	return nil
+
 }
