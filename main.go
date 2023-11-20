@@ -62,6 +62,7 @@ func main() {
 	// don't allow commands until all servers properly started
 	fmt.Println("Starting servers...\n")
 	routines.WaitAllServerStart()
+	routines.InitializeClient()
 
 	if config.IsIntroducer {
 		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%d\n", routines.LocalMembershipList.SelfEntry.Ip[0],
