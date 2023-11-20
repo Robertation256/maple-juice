@@ -134,7 +134,13 @@ func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 
 
 func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error {
-	return util.DeleteFile(args.Filename, this.SdfsFolder)
+	err := util.DeleteFile(args.Filename, this.SdfsFolder)
+	if err != nil {
+		return err
+	}
+	this.RemoveFromReport(args.Filename)
+	return nil
+
 }
 
 func (this *FileService) RemoveFromReport(filename string) {
@@ -240,6 +246,7 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 					var reply string
 					client.Go("FileService.ReplicateFile", args, &reply, nil)
 				} else if cluster.Master != nil && cluster.Master.FileStatus == util.PENDING_DELETE {
+					log.Println("here in delete")
 					// if master is in the process of executing a delete, do not add to self report
 					addToReport = false
 				}
