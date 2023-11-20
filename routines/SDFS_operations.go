@@ -255,6 +255,10 @@ func queryMetadataService(requestType int, fileName string, reply *DfsResponse) 
 			log.Println("RPC call corrupted")
 			return errors.New("RPC call corrupted")
 		}
+		if call.Error != nil{
+			// call returned error
+			return call.Error
+		}
 	case <- requestTimeout:
 		return errors.New("Request timeout")
 	}
