@@ -170,7 +170,7 @@ func (this *FileMetadataService) handleDeleteRequest(fileName string, reply *Dfs
 	clusterInfo, exists := fileToClusterInfo[fileName]
 
 	if !exists {
-		return errors.New("File " + fileName + " does not exists")
+		return errors.New("File " + fileName + " does not exist")
 	}
 
 	ingestReply(reply, clusterInfo)
@@ -188,7 +188,7 @@ func (this *FileMetadataService) handleListRequest(fileName string, reply *DfsRe
 
 	if !exists {
 		// new file, allocate a new cluster
-		return errors.New("File " + fileName + " does not exists")
+		return errors.New("File " + fileName + " does not exist")
 	}
 
 	ingestReply(reply, clusterInfo)
