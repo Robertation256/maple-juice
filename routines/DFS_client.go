@@ -75,6 +75,15 @@ func getFile(args []string) error {
 	remoteFileName := args[0]
 	localFileName := args[1]
 
+	if util.FileInSdfsFolder(remoteFileName) {
+		// if file is on local machine's sdfs folder, simply execute a cp command
+		err := util.CopyFileFromSdfsToLocal(remoteFileName, localFileName)
+		if err == nil {
+			log.Print("Done\n\n")
+		}
+		return err
+	}
+
 	return SDFSGetFile(remoteFileName, localFileName, RECEIVER_SDFS_CLIENT)
 }
 
@@ -201,7 +210,7 @@ func outputStore(args []string) {
 	sdfsFolder := config.SdfsFileDir
 	files, err := ioutil.ReadDir(sdfsFolder)
 	if err != nil {
-		fmt.Println("Error reading sdfs folder :", err)
+		fmt.Println("Error reading sdfs folder: ", err)
 		return
 	}
 	for _, file := range files {

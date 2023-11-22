@@ -295,7 +295,6 @@ func (fm *FileMaster) executeDelete() error {
 			Filename: fm.Filename,
 		}
 		var reply string
-		// TODO: change this to async
 		calls[idx] = client.Go("FileService.DeleteLocalFile", deleteArgs, &reply, nil)
 		client.Close()
 	}
