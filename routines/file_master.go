@@ -283,7 +283,10 @@ func (fm *FileMaster) executeDelete() error {
 
 	util.DeleteFile(fm.Filename, fm.SdfsFolder)
 	fm.FileServer.ChangeReportStatusPendingDelete(fm.Filename)
-	for _, servant := range fm.Servants {
+
+	calls := make([]*rpc.Call, len(fm.Servants))
+
+	for idx, servant := range fm.Servants {
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
 		if err != nil {
 			log.Fatal("Error dialing servant:", err)
@@ -293,9 +296,34 @@ func (fm *FileMaster) executeDelete() error {
 		}
 		var reply string
 		// TODO: change this to async
-		client.Call("FileService.DeleteLocalFile", deleteArgs, &reply)
+		calls[idx] = client.Go("FileService.DeleteLocalFile", deleteArgs, &reply, nil)
 		client.Close()
 	}
+
+	// iterate and look for completed rpc calls
+	for {
+		complete := true
+		for i, call := range calls {
+			if call != nil {
+				select {
+				case _, ok := <-call.Done: // check if channel has output ready
+					if !ok {
+						log.Println("Channel closed for async rpc call")
+					}
+					calls[i] = nil
+				case <-time.After(3 * time.Second):
+					log.Println("Rpc call timed out")
+					calls[i] = nil
+				default:
+					complete = false
+				}
+			}
+		}
+		if complete {
+			break
+		}
+	}
+
 	fm.FileServer.RemoveFromReport(fm.Filename)
 	log.Println("Global delete completed")
 	return nil
