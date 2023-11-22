@@ -162,7 +162,7 @@ func (fm *FileMaster) executeRead(args *RWArgs) error {
 
 	numServants := len(fm.Servants)
 	// select a random servant to send client the file
-	servant := fm.Servants[rand.Intn(numServants + 1)]
+	servant := fm.Servants[rand.Intn(numServants)]
 
 	needToResend := false
 	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
