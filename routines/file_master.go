@@ -8,6 +8,7 @@ import (
 	"net/rpc"
 	"strconv"
 	"time"
+	"math/rand"
 )
 
 const (
@@ -145,7 +146,43 @@ func (fm *FileMaster) executeRead(args *RWArgs) error {
 	log.Printf("Sending file to client at %s", args.ClientAddr)
 
 	localFilePath := fm.SdfsFolder + fm.Filename
-	SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
+
+	// SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
+
+	sendArgs := &SendArgs{
+		LocalFilePath: localFilePath,
+		RemoteFileName: args.LocalFilename,
+		RemoteAddr: args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort),
+		TransmissionId: args.TransmissionId,
+		ReceiverTag: args.ReceiverTag,
+		WriteMode: args.WriteMode,
+	}
+
+	var reply string
+
+	numServants := len(fm.Servants)
+	// select a random servant to send client the file
+	servant := fm.Servants[rand.Intn(numServants + 1)]
+
+	needToResend := false
+	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
+	if err != nil {
+		log.Println("Error dialing servant:", err)
+		needToResend = true
+	}
+	err = client.Call("FileService.SendFileToClient", sendArgs, &reply)
+	if err != nil {
+		// some error occured, this might be casued by servant doesn't have the replica yet, etc.
+		log.Println("Servant failed to send file: ", err)
+		needToResend = true
+	}
+	if needToResend {
+		// if the servant failed to send the file for some reason, the file master will do it instead
+		SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
+	}
+
+	// TODO: check if sendfile returned any error?
+
 
 	fm.CurrentRead -= 1
 	fm.CheckQueue()
@@ -289,7 +326,8 @@ func (fm *FileMaster) executeDelete() error {
 	for idx, servant := range fm.Servants {
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
 		if err != nil {
-			log.Fatal("Error dialing servant:", err)
+			log.Println("Error dialing servant:", err)
+			return err
 		}
 		deleteArgs := DeleteArgs{
 			Filename: fm.Filename,

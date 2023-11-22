@@ -25,12 +25,12 @@ type CopyArgs struct {
 }
 
 type RWArgs struct {
-	TransmissionId string
+	TransmissionId 	string
 	LocalFilename 	string
 	SdfsFilename 	string
 	ClientAddr 		string
-	ReceiverTag uint8
-	WriteMode uint8
+	ReceiverTag 	uint8
+	WriteMode 		uint8
 }
 
 type CreateFMArgs struct {
@@ -40,6 +40,15 @@ type CreateFMArgs struct {
 
 type DeleteArgs struct {
 	Filename string
+}
+
+type SendArgs struct {
+	LocalFilePath 	string
+	RemoteFileName 	string
+	RemoteAddr 		string
+	TransmissionId 	string
+	ReceiverTag 	uint8
+	WriteMode 		uint8
 }
 
 func NewFileService(port int, homedir string, serverHostnames[]string) *FileService {
@@ -273,4 +282,8 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 
 	*reply = "ACK"
 	return nil
+}
+
+func (this *FileService) SendFileToClient(args *SendArgs, reply *string) error {
+	return SendFile(args.LocalFilePath, args.RemoteFileName, args.RemoteAddr, args.TransmissionId, args.ReceiverTag, args.WriteMode)
 }
