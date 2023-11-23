@@ -8,6 +8,7 @@ import (
 	"net/rpc"
 	"strconv"
 	"time"
+	"math/rand"
 )
 
 const (
@@ -34,6 +35,7 @@ type FileMaster struct {
 	FileServerPort  int
 	SdfsFolder      string
 	LocalFileFolder string
+	FileServer      *FileService
 
 	transmissionIdGenerator *util.TransmissionIdGenerator
 }
@@ -48,7 +50,7 @@ type Request struct {
 	WaitRound int
 }
 
-func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsFolder string, localFileFlder string) *FileMaster {
+func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsFolder string, localFileFlder string, fileServer *FileService) *FileMaster {
 	//FileMasterProgressTracker = NewProgressManager()
 	selfAddr := NodeIdToIP(SelfNodeId)
 	return &FileMaster{
@@ -60,6 +62,7 @@ func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsF
 		FileServerPort:  fileServerPort,
 		SdfsFolder:      sdfsFolder,
 		LocalFileFolder: localFileFlder,
+		FileServer:      fileServer,
 		transmissionIdGenerator: util.NewTransmissionIdGenerator("FM-"+SelfNodeId),
 	}
 }
@@ -143,7 +146,43 @@ func (fm *FileMaster) executeRead(args *RWArgs) error {
 	log.Printf("Sending file to client at %s", args.ClientAddr)
 
 	localFilePath := fm.SdfsFolder + fm.Filename
-	SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
+
+	// SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
+
+	sendArgs := &SendArgs{
+		LocalFilePath: localFilePath,
+		RemoteFileName: args.LocalFilename,
+		RemoteAddr: args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort),
+		TransmissionId: args.TransmissionId,
+		ReceiverTag: args.ReceiverTag,
+		WriteMode: args.WriteMode,
+	}
+
+	var reply string
+
+	numServants := len(fm.Servants)
+	// select a random servant to send client the file
+	servant := fm.Servants[rand.Intn(numServants)]
+
+	needToResend := false
+	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
+	if err != nil {
+		log.Println("Error dialing servant:", err)
+		needToResend = true
+	}
+	err = client.Call("FileService.SendFileToClient", sendArgs, &reply)
+	if err != nil {
+		// some error occured, this might be casued by servant doesn't have the replica yet, etc.
+		log.Println("Servant failed to send file: ", err)
+		needToResend = true
+	}
+	if needToResend {
+		// if the servant failed to send the file for some reason, the file master will do it instead
+		SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
+	}
+
+	// TODO: check if sendfile returned any error?
+
 
 	fm.CurrentRead -= 1
 	fm.CheckQueue()
@@ -280,18 +319,50 @@ func (fm *FileMaster) DeleteFile() error {
 func (fm *FileMaster) executeDelete() error {
 
 	util.DeleteFile(fm.Filename, fm.SdfsFolder)
-	for _, servant := range fm.Servants {
+	fm.FileServer.ChangeReportStatusPendingDelete(fm.Filename)
+
+	calls := make([]*rpc.Call, len(fm.Servants))
+
+	for idx, servant := range fm.Servants {
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
 		if err != nil {
-			log.Fatal("Error dialing servant:", err)
+			log.Println("Error dialing servant:", err)
+			return err
 		}
 		deleteArgs := DeleteArgs{
 			Filename: fm.Filename,
 		}
 		var reply string
-		// TODO: change this to async
-		client.Call("FileService.DeleteLocalFile", deleteArgs, &reply)
+		calls[idx] = client.Go("FileService.DeleteLocalFile", deleteArgs, &reply, nil)
 		client.Close()
 	}
+
+	// iterate and look for completed rpc calls
+	for {
+		complete := true
+		for i, call := range calls {
+			if call != nil {
+				select {
+				case _, ok := <-call.Done: // check if channel has output ready
+					if !ok {
+						log.Println("Channel closed for async rpc call")
+					}
+					calls[i] = nil
+				case <-time.After(3 * time.Second):
+					log.Println("Rpc call timed out")
+					calls[i] = nil
+				default:
+					complete = false
+				}
+			}
+		}
+		if complete {
+			break
+		}
+	}
+
+	fm.FileServer.RemoveFromReport(fm.Filename)
+	log.Println("Global delete completed")
 	return nil
+
 }

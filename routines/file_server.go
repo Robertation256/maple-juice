@@ -25,12 +25,12 @@ type CopyArgs struct {
 }
 
 type RWArgs struct {
-	TransmissionId string
+	TransmissionId 	string
 	LocalFilename 	string
 	SdfsFilename 	string
 	ClientAddr 		string
-	ReceiverTag uint8
-	WriteMode uint8
+	ReceiverTag 	uint8
+	WriteMode 		uint8
 }
 
 type CreateFMArgs struct {
@@ -40,6 +40,15 @@ type CreateFMArgs struct {
 
 type DeleteArgs struct {
 	Filename string
+}
+
+type SendArgs struct {
+	LocalFilePath 	string
+	RemoteFileName 	string
+	RemoteAddr 		string
+	TransmissionId 	string
+	ReceiverTag 	uint8
+	WriteMode 		uint8
 }
 
 func NewFileService(port int, homedir string, serverHostnames[]string) *FileService {
@@ -134,11 +143,37 @@ func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 
 
 func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error {
-	return util.DeleteFile(args.Filename, this.SdfsFolder)
+	err := util.DeleteFile(args.Filename, this.SdfsFolder)
+	if err != nil {
+		return err
+	}
+	this.RemoveFromReport(args.Filename)
+	return nil
+
 }
 
+func (this *FileService) RemoveFromReport(filename string) {
+	currEntries := this.Report.FileEntries
+	for i, fileinfo := range currEntries {
+		if fileinfo.FileName == filename {
+			log.Println("found, removing")
+			this.Report.FileEntries = append(currEntries[:i], currEntries[i+1:]...)
+		}
+	}
+}
+
+func (this *FileService) ChangeReportStatusPendingDelete(filename string) {
+	for i, fileinfo := range this.Report.FileEntries  {
+		if fileinfo.FileName == filename {
+			log.Println("found, changing status")
+			this.Report.FileEntries[i].FileStatus = util.PENDING_DELETE
+		}
+	}
+}
+
+
 func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error{
-	fm := NewFileMaster(args.Filename, args.Servants, this.Port, this.SdfsFolder, this.LocalFileFolder)
+	fm := NewFileMaster(args.Filename, args.Servants, this.Port, this.SdfsFolder, this.LocalFileFolder, this)
 	this.Filename2FileMaster[args.Filename] = fm
 	return nil
 }
@@ -192,18 +227,20 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 			}
 		} else {
 			// new file
-			if (updatedFileInfo.IsMaster) {
+			addToReport := true
+			if updatedFileInfo.IsMaster {
 				needToCreateFm = true
-			} else if (updatedFileInfo.FileStatus == util.WAITING_REPLICATION) {
+			} else if updatedFileInfo.FileStatus == util.WAITING_REPLICATION {
 				cluster := (*fileToClusters)[updatedFileInfo.FileName]
+
+				if cluster.Master == nil {
+					log.Print("Warn: master is nil. Servant cannot replicate")
+				}
+				
 				// failure repair
 				// when master's status == PENDING_FILE_UPLOAD, it indicates a new file is uploaded to sdfs
 				// fm will handle writing to all services, so there is no need to do anything
-				if (cluster.Master == nil){
-					log.Print("Warn: master is nil. Servant cannot replicate")
-				}
-
-				if (cluster.Master != nil && cluster.Master.FileStatus == util.COMPLETE) {
+				if cluster.Master != nil && cluster.Master.FileStatus == util.COMPLETE {
 					masterIp := NodeIdToIP(cluster.Master.NodeId)
 					client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", masterIp, config.RpcServerPort))
 					if err != nil {
@@ -217,9 +254,16 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 					}
 					var reply string
 					client.Go("FileService.ReplicateFile", args, &reply, nil)
+				} else if cluster.Master != nil && cluster.Master.FileStatus == util.PENDING_DELETE {
+					log.Println("here in delete")
+					// if master is in the process of executing a delete, do not add to self report
+					addToReport = false
 				}
+				
 			}
-			this.Report.FileEntries = append(this.Report.FileEntries, *updatedFileInfo)
+			if (addToReport) {
+				this.Report.FileEntries = append(this.Report.FileEntries, *updatedFileInfo)
+			}
 		}
 
 		if (needToCreateFm) {
@@ -238,4 +282,8 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 
 	*reply = "ACK"
 	return nil
+}
+
+func (this *FileService) SendFileToClient(args *SendArgs, reply *string) error {
+	return SendFile(args.LocalFilePath, args.RemoteFileName, args.RemoteAddr, args.TransmissionId, args.ReceiverTag, args.WriteMode)
 }

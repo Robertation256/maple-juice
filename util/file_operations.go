@@ -3,6 +3,10 @@ package util
 import (
 	"os"
 	"path/filepath"
+	"cs425-mp4/config"
+	"log"
+	"errors"
+	"os/exec"
 )
 
 
@@ -40,4 +44,32 @@ func DeleteFile(filename string, sdfsFolder string) error{
         return err
     }
     return nil
+}
+
+func FileInSdfsFolder(filename string) bool{
+	filePath := config.SdfsFileDir + filename
+	_, err := os.Stat(filePath)
+    if err == nil {
+        return true
+    }
+    if errors.Is(err, os.ErrNotExist) {
+        return false
+    }
+	// some other errors occured, like permission denined
+	log.Println("Error checking if file is in sdfs folder: ", err)
+    return false
+}
+
+func CopyFileFromSdfsToLocal(sdfsName, localName string) error {
+	sdfsPath := config.SdfsFileDir + sdfsName
+	localPath := config.LocalFileDir + localName
+	cmd := exec.Command("cp", sdfsPath, localPath)
+
+	_, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Println("Error while copying from /sdfs to /local:", err)
+	}
+
+	return err
 }
