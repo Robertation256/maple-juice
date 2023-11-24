@@ -43,7 +43,7 @@ func main() {
 		log.Fatal("Usage: go run yourprogram.go -col <column_index> -in <inputfile> -prefix <sdfs_intermediate_filename_prefix>")
 	}
 
-	output := make(map[string][]string)
+	output := make(map[string]*os.File)
 
 	file, err := os.Open(*inputFileFlag)
 	if err != nil {
@@ -58,6 +58,8 @@ func main() {
 		log.Fatal("Could not parse column index", conversionErr)
 	}
 
+	outputFiles := []string{}
+
 	// process the lines
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -65,8 +67,27 @@ func main() {
 
 		// check if the line has enough columns
 		if columnIdx < len(values) {
+			key := values[columnIdx]
+			key = strings.TrimSpace(key)
+
+			// create or retrieve file descriptor for the key
+			outputFile, exists := output[key]
+			if !exists {
+				outputFileName := fmt.Sprintf("%s-%s.txt", *prefixFlag, key)
+				outputFiles = append(outputFiles, outputFileName)
+				var err error
+				outputFile, err = os.Create(nodeManagerFileDir + outputFileName)
+				if err != nil {
+					log.Fatal("Error creating output file:", err)
+				}
+				output[key] = outputFile
+			}
+
 			formattedValue := fmt.Sprintf("%s @ %s", *inputFileFlag, line)
-			output[values[columnIdx]] = append(output[values[columnIdx]], formattedValue)
+			_, err := outputFile.WriteString(formattedValue + "\n")
+			if err != nil {
+				log.Fatal("Error writing to output file:", err)
+			}
 		} else {
 			log.Fatalf("Column index %d out of bounds in line: %s\n", columnIdx, line)
 		}
@@ -76,26 +97,9 @@ func main() {
 		log.Fatal("Error reading input file:", err)
 	}
 
-	outputFiles := []string{}
-	// write the value for each key to a file
-	for key, values := range output {
-		outputFileName := fmt.Sprintf("%s-%s.txt", *prefixFlag, key)
-		outputFile, err := os.Create(nodeManagerFileDir + outputFileName)
-		if err != nil {
-			log.Fatal("Error creating output file:", err)
-			continue
-		}
-		defer outputFile.Close()
-
-		for _, value := range values {
-			_, err := outputFile.WriteString(value + "\n")
-			if err != nil {
-				log.Fatal("Error writing to output file:", err)
-				continue
-			}
-		}
-
-		outputFiles = append(outputFiles, outputFileName)
+	// close all file descriptors
+	for _, file := range output {
+		file.Close()
 	}
 
 	fmt.Println(strings.Join(outputFiles, ","))

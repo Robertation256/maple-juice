@@ -42,7 +42,7 @@ func main() {
 		return
 	}
 
-	output := make(map[string][]string)
+	output := make(map[string]*os.File)
 
 	file, err := os.Open(*inputFileFlag)
 	if err != nil {
@@ -53,12 +53,33 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 
+	outputFiles := []string{}
+
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		// check if the line matches the regular expression
 		if regexpPattern.MatchString(line) {
-			output["1"] = append(output["1"], line)
+			key := "1"
+
+			// create or retrieve file descriptor for the key
+			outputFile, exists := output[key]
+			if !exists {
+				outputFileName := fmt.Sprintf("%s-%s.txt", *prefixFlag, key)
+				var err error
+				outputFile, err = os.Create(nodeManagerFileDir + outputFileName)
+				if err != nil {
+					log.Fatal("Error creating output file:", err)
+				}
+				output[key] = outputFile
+				outputFiles = append(outputFiles, outputFileName)
+			}
+
+			// write directly to the file descriptor
+			_, err := outputFile.WriteString(line + "\n")
+			if err != nil {
+				log.Fatal("Error writing to output file:", err)
+			}
 		}
 	}
 
@@ -67,26 +88,8 @@ func main() {
 		return
 	}
 
-	outputFiles := []string{}
-	// write the value for each key to a file
-	for key, values := range output {
-		outputFileName := fmt.Sprintf("%s-%s.txt", *prefixFlag, key)
-		outputFile, err := os.Create(nodeManagerFileDir + outputFileName)
-		if err != nil {
-			log.Fatal("Error creating output file:", err)
-			continue
-		}
-		defer outputFile.Close()
-
-		for _, value := range values {
-			_, err := outputFile.WriteString(value + "\n")
-			if err != nil {
-				log.Fatal("Error writing to output file:", err)
-				continue
-			}
-		}
-
-		outputFiles = append(outputFiles, outputFileName)
+	for _, file := range output {
+		file.Close()
 	}
 
 	fmt.Println(strings.Join(outputFiles, ","))

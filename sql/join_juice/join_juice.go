@@ -94,15 +94,6 @@ func main() {
 	}
 	d1, d2 := keys[0], keys[1]
 
-	var output []string
-
-	// combine lines from d1 and d2
-	for _, i1 := range datasetToLines[d1] {
-		for _, i2 := range datasetToLines[d2] {
-			output = append(output, i1 + ", " + i2)
-		}
-	}
-
 	// write output to file
 	outputFile, err := os.Create(nodeManagerFileDir + *outputFileFlag)
 	if err != nil {
@@ -110,10 +101,13 @@ func main() {
 	}
 	defer outputFile.Close()
 
-	for _, line := range output {
-		_, err := outputFile.WriteString(line + "\n")
-		if err != nil {
-			log.Fatal("Error writing to output file:", err)
+	// combine lines from d1 and d2
+	for _, i1 := range datasetToLines[d1] {
+		for _, i2 := range datasetToLines[d2] {
+			_, err := outputFile.WriteString(i1 + ", " + i2 + "\n")
+			if err != nil {
+				log.Fatal("Error writing to output file:", err)
+			}
 		}
 	}
 
