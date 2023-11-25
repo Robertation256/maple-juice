@@ -93,7 +93,7 @@ func receiveFile(conn net.Conn){
 		log.Printf("Downloading file ----------- %d kb", total/1024)
 		if err == io.EOF {
 			FileTransmissionProgressTracker.Complete(*transmissionId, LOCAL_WRITE_COMPLETE)
-			log.Printf("Completed receving file with transmission ID: %s", transmissionId)
+			log.Printf("Completed receving file: %s", file.Name())
 			return
 		}
 		if err != nil {

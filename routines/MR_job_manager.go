@@ -117,6 +117,8 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 		return
 	}
 
+	log.Printf("Maple input file %s contains %d lines", inputFileName, lineCount)
+
 	// this should never happen
 	if lineCount < job.TaskNum {
 		log.Print("WARN: Maple input file contains less lines than the number of tasks, auto reducing task number...")
@@ -206,7 +208,8 @@ func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobReq
 	// send parition to worker
 	taskArg.TransmissionId = this.transmissionIdGenerator.NewTransmissionId(taskArg.InputFileName)
 	partitionFilePath := taskArg.InputFileName
-	err := SendFile(partitionFilePath, partitionFilePath, workerIp, taskArg.TransmissionId, RECEIVER_MR_NODE_MANAGER, WRITE_MODE_TRUNCATE)
+	err := SendFile(config.JobManagerFileDir+partitionFilePath,
+		 partitionFilePath, workerIp, taskArg.TransmissionId, RECEIVER_MR_NODE_MANAGER, WRITE_MODE_TRUNCATE)
 	if err != nil {
 		*resultChan <- err
 		return
