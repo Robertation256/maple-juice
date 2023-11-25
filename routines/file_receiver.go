@@ -90,7 +90,9 @@ func receiveFile(conn net.Conn){
 	for {
 		n, err := conn.Read(buf)
 		total += n
-		log.Printf("Downloading file ----------- %d kb", total/1024)
+		if (file != nil){
+			log.Printf("Downloading file %s ----------- %d kb", file.Name(), total/1024)
+		}
 		if err == io.EOF {
 			FileTransmissionProgressTracker.Complete(*transmissionId, LOCAL_WRITE_COMPLETE)
 			log.Printf("Completed receving file: %s", file.Name())
@@ -123,6 +125,10 @@ func receiveFile(conn net.Conn){
 // parse out file header, create local file and return file pointer and transmission id
 func initializeFile(buf *[]byte, size int) (*os.File, *string) {
 	transmissionIdLength := binary.LittleEndian.Uint64((*buf)[:8])
+	if transmissionIdLength > 50 {
+		log.Printf("Corrupted file header")
+		return nil, nil
+	}
 	transmissionId := string((*buf)[8:8+int(transmissionIdLength)])
 
 	nameLength := binary.LittleEndian.Uint64((*buf)[8 + int(transmissionIdLength): 16 + int(transmissionIdLength)])
