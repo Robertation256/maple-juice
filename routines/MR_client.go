@@ -3,12 +3,8 @@ package routines
 import (
 	"cs425-mp4/config"
 	"cs425-mp4/util"
-	"errors"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"strconv"
-	"time"
 	"net/rpc"
 )
 
