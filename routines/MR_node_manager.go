@@ -40,12 +40,15 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	}
 
 	// wait for input file's arrival
+	log.Print("Waiting for input file...")
 	for {
 		if MRNodeManagerFileProgressTracker.IsLocalCompleted(transmissionId) {
 			break
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
+
+	log.Print("Start running maple executatble...")
 
 
 	// execute executable on input file
