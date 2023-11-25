@@ -110,6 +110,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 		*errorMsgChan <- err
 		return
 	}
+	log.Printf("Finished fetching input file")
 
 	// stage 2: profile input file
 	lineCount, err := util.GetFileLineCount(config.JobManagerFileDir + inputFileName)
