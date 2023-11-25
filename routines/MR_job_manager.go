@@ -6,16 +6,17 @@ import (
 	"cs425-mp4/util"
 	"errors"
 	"fmt"
+	"hash"
+	"hash/fnv"
 	"log"
 	"net/rpc"
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"hash"
-	"hash/fnv"
 )
 
 const (
@@ -42,11 +43,12 @@ func NewMRJobManager() *MRJobManager {
 	return &MRJobManager{
 		jobQueue:                make(chan *util.JobRequest, 100),
 		filePartitionBuf:        make([]byte, FILE_PARTITION_BUF_SIZE),
+		workerNode2Tasks:        make(map[string][]string),	
 		transmissionIdGenerator: util.NewTransmissionIdGenerator("MR-JM-" + SelfNodeId),
 	}
 }
 
-func (this *MRJobManager) SubmitJob(jobRequest *util.JobRequest) error {
+func (this *MRJobManager) SubmitJob(jobRequest *util.JobRequest, reply *string) error {
 	if SelfNodeId != LeaderId {
 		return errors.New("Please contact leader for Maple Juice job submission")
 	}
@@ -65,6 +67,7 @@ func (this *MRJobManager) SubmitJob(jobRequest *util.JobRequest) error {
 			if err != nil {
 				return err
 			}
+			*reply = "ACK"
 			return nil
 		}
 	}
@@ -107,13 +110,16 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 		*errorMsgChan <- err
 		return
 	}
+	log.Printf("Finished fetching input file")
 
 	// stage 2: profile input file
-	lineCount, err := util.GetFileLineCount(inputFileName)
+	lineCount, err := util.GetFileLineCount(config.JobManagerFileDir + inputFileName)
 	if err != nil {
 		*errorMsgChan <- err
 		return
 	}
+
+	log.Printf("Maple input file %s contains %d lines", inputFileName, lineCount)
 
 	// this should never happen
 	if lineCount < job.TaskNum {
@@ -151,7 +157,8 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 			*errorMsgChan <- err
 			return
 		}
-
+		log.Printf("Starting initial maple task %d", taskNumber)
+		
 		go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
 	}
 
@@ -172,6 +179,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 				this.removeTask(taskId)
 				if err != nil {
 					// task failed, reschedule
+					log.Print("Maple task completed with error: ", err)
 					jobCompleted = false
 					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
 				} else {
@@ -203,8 +211,11 @@ func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobReq
 
 	// send parition to worker
 	taskArg.TransmissionId = this.transmissionIdGenerator.NewTransmissionId(taskArg.InputFileName)
-	partitionFilePath := taskArg.InputFileName
-	err := SendFile(partitionFilePath, partitionFilePath, workerIp, taskArg.TransmissionId, RECEIVER_MR_NODE_MANAGER, WRITE_MODE_TRUNCATE)
+	partitionFileName := taskArg.InputFileName
+	workerAddr := workerIp + ":" + strconv.Itoa(config.FileReceivePort)
+	log.Printf("Send out partition %s with transmission id %s", partitionFileName, taskArg.TransmissionId)
+	err := SendFile(config.JobManagerFileDir+partitionFileName,
+		partitionFileName, workerAddr, taskArg.TransmissionId, RECEIVER_MR_NODE_MANAGER, WRITE_MODE_TRUNCATE)
 	if err != nil {
 		*resultChan <- err
 		return
@@ -471,6 +482,12 @@ func (this *MRJobManager) assignTask(taskId string) string {
 			assigneeIP = nodeIp
 			taskNum = len(tasks)
 		}
+	}
+
+	taskList, exists := this.workerNode2Tasks[assigneeIP]
+	if exists {
+		taskList = append(taskList, taskId)
+		this.workerNode2Tasks[assigneeIP] = taskList
 	}
 
 	return assigneeIP

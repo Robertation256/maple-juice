@@ -90,10 +90,12 @@ func receiveFile(conn net.Conn){
 	for {
 		n, err := conn.Read(buf)
 		total += n
-		log.Printf("Downloading file ----------- %d kb", total/1024)
+		if (file != nil){
+			log.Printf("Downloading file %s ----------- %d kb", file.Name(), total/1024)
+		}
 		if err == io.EOF {
 			FileTransmissionProgressTracker.Complete(*transmissionId, LOCAL_WRITE_COMPLETE)
-			log.Printf("Completed receving file with transmission ID: %s", transmissionId)
+			log.Printf("Completed receving file: %s", file.Name())
 			return
 		}
 		if err != nil {
