@@ -55,7 +55,7 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	inputFilePath := config.NodeManagerFileDir + inputFileName
 
 	// go run executable.go -in <input_file_path>
-	cmdArgs := []string {"run", executableFilePath, "-in", inputFilePath}
+	cmdArgs := []string {"run", executableFilePath, "-in", inputFilePath, "-prefix", args.OutputFilePrefix}
 
 	cmd := exec.Command("go", cmdArgs...)
 	output, err := cmd.CombinedOutput()
@@ -161,7 +161,7 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 	for key := range parition {
 		go func(k string){
 			localFilePath := config.NodeManagerFileDir + fmtJuiceInputFileName(args.InputFilePrefix, k)
-			cmdArgs := []string {"run", executableFilePath, "-in", localFilePath}
+			cmdArgs := []string {"run", executableFilePath, "-in", localFilePath, "-dest", args.OutputFilePrefix + "-" + k}
 			cmd := exec.Command("go", cmdArgs...)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
