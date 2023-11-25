@@ -123,6 +123,13 @@ func receiveFile(conn net.Conn){
 // parse out file header, create local file and return file pointer and transmission id
 func initializeFile(buf *[]byte, size int) (*os.File, *string) {
 	transmissionIdLength := binary.LittleEndian.Uint64((*buf)[:8])
+<<<<<<< Updated upstream
+=======
+	if int(transmissionIdLength) > 200 {
+		log.Printf("Corrupted file header: transmissionId length exceed 200 characters with size: %d", int(transmissionIdLength))
+		return nil, nil
+	}
+>>>>>>> Stashed changes
 	transmissionId := string((*buf)[8:8+int(transmissionIdLength)])
 
 	nameLength := binary.LittleEndian.Uint64((*buf)[8 + int(transmissionIdLength): 16 + int(transmissionIdLength)])
@@ -160,14 +167,14 @@ func initializeFile(buf *[]byte, size int) (*os.File, *string) {
 	}
 	
 	if err != nil {
-		log.Printf("File transfer server: failed to create file.", err)
+		log.Print("File transfer server: failed to create file.", err)
 		return nil, &transmissionId
 	}
 
 	_, fileWriteErr := file.Write((*buf)[headerSize:size])
 
 	if fileWriteErr != nil {
-		log.Printf("File transfer server: failed to complete initial write to file.", fileWriteErr)
+		log.Print("File transfer server: failed to complete initial write to file.", fileWriteErr)
 		return nil, &transmissionId
 	}
 
