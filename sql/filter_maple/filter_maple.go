@@ -24,19 +24,19 @@ func main() {
 	nodeManagerFileDir := homedir + "/mr_node_manager/"
 
 	// define flags
-	regexFlag := flag.String("E", "", "Regular expression")
+	regexFlag := "A.*"
 	inputFileFlag := flag.String("in", "", "Input filename")
 	prefixFlag := flag.String("prefix", "", "SDFS intermediate filename prefix")
 	flag.Parse()
 
 	// check if required flags are provided
-	if *regexFlag == "" || *inputFileFlag == "" || *prefixFlag == "" {
+	if regexFlag == "" || *inputFileFlag == "" || *prefixFlag == "" {
 		log.Fatal("Usage: go run filter_maple.go -E <regex> -in <inputfile> -prefix <sdfs_intermediate_filename_prefix>")
 		return
 	}
 
 	// compile the regular expression
-	regexpPattern, err := regexp.Compile(*regexFlag)
+	regexpPattern, err := regexp.Compile(regexFlag)
 	if err != nil {
 		log.Fatal("Error compiling regular expression:", err)
 		return
