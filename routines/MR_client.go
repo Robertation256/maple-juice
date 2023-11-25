@@ -52,7 +52,7 @@ func ProcessMapleCmd(args []string){
 	responseErr := client.Call("MRJobManager.SubmitJob", jobRequest, &reply)
 
 	if responseErr != nil {
-		log.Printf("Encountered error while executing Maple job", responseErr)
+		log.Print("Encountered error while executing Maple job", responseErr)
 	} else {
 		log.Print("Finished executing Maple job")
 	}
