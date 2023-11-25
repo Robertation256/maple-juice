@@ -46,7 +46,7 @@ func NewMRJobManager() *MRJobManager {
 	}
 }
 
-func (this *MRJobManager) SubmitJob(jobRequest *util.JobRequest) error {
+func (this *MRJobManager) SubmitJob(jobRequest *util.JobRequest, reply *string) error {
 	if SelfNodeId != LeaderId {
 		return errors.New("Please contact leader for Maple Juice job submission")
 	}
@@ -65,6 +65,7 @@ func (this *MRJobManager) SubmitJob(jobRequest *util.JobRequest) error {
 			if err != nil {
 				return err
 			}
+			*reply = "ACK"
 			return nil
 		}
 	}

@@ -46,7 +46,9 @@ func main() {
 	routines.NewDfsRemoteReader().Register()
 	fileService := routines.NewFileService(config.RpcServerPort, config.Homedir, config.ServerHostnames)
 	fileService.Register()
-
+	mrNodeManager := new(routines.MRNodeManager);
+	mrNodeManager.Register();
+	routines.NewMRJobManager().Register();
 
 
 	rpc.HandleHTTP()
@@ -93,6 +95,9 @@ func main() {
 		"pl": "print leader",
 		"pm": "print metadata",
 		"rp": "print local report",
+
+		"maple": "test maple",
+		"juice": "test juice",
 	}
 
 	for {
@@ -157,6 +162,13 @@ func main() {
 				fmt.Printf("%s: %s\n", k, v)
 			}
 			fmt.Println()
+		
+		case "maple":
+			routines.ProcessMapleCmd(args)
+		
+		case "juice":
+			routines.ProcessJuiceCmd(args)
+
 
 		// debug commands
 		case "pl":
