@@ -6,16 +6,17 @@ import (
 	"cs425-mp4/util"
 	"errors"
 	"fmt"
+	"hash"
+	"hash/fnv"
 	"log"
 	"net/rpc"
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"hash"
-	"hash/fnv"
 )
 
 const (
@@ -210,8 +211,9 @@ func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobReq
 	// send parition to worker
 	taskArg.TransmissionId = this.transmissionIdGenerator.NewTransmissionId(taskArg.InputFileName)
 	partitionFilePath := taskArg.InputFileName
+	workerAddr := workerIp + ":" + strconv.Itoa(config.FileReceivePort)
 	err := SendFile(config.JobManagerFileDir+partitionFilePath,
-		 partitionFilePath, workerIp, taskArg.TransmissionId, RECEIVER_MR_NODE_MANAGER, WRITE_MODE_TRUNCATE)
+		 partitionFilePath, workerAddr, taskArg.TransmissionId, RECEIVER_MR_NODE_MANAGER, WRITE_MODE_TRUNCATE)
 	if err != nil {
 		*resultChan <- err
 		return
