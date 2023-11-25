@@ -3,7 +3,6 @@ package util
 import (
 	"bufio"
 	"bytes"
-	"cs425-mp4/config"
 	"fmt"
 	"io"
 	"os"
