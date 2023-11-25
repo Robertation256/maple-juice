@@ -210,10 +210,11 @@ func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobReq
 
 	// send parition to worker
 	taskArg.TransmissionId = this.transmissionIdGenerator.NewTransmissionId(taskArg.InputFileName)
-	partitionFilePath := taskArg.InputFileName
+	partitionFileName := taskArg.InputFileName
 	workerAddr := workerIp + ":" + strconv.Itoa(config.FileReceivePort)
-	err := SendFile(config.JobManagerFileDir+partitionFilePath,
-		 partitionFilePath, workerAddr, taskArg.TransmissionId, RECEIVER_MR_NODE_MANAGER, WRITE_MODE_TRUNCATE)
+	log.Printf("Send out partition %s with transmission id %s", partitionFileName, taskArg.TransmissionId)
+	err := SendFile(config.JobManagerFileDir+partitionFileName,
+		partitionFileName, workerAddr, taskArg.TransmissionId, RECEIVER_MR_NODE_MANAGER, WRITE_MODE_TRUNCATE)
 	if err != nil {
 		*resultChan <- err
 		return

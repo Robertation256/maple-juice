@@ -40,7 +40,7 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	}
 
 	// wait for input file's arrival
-	log.Print("Waiting for input file...")
+	log.Printf("Waiting for input file %s with transmission id %s", inputFileName, transmissionId)
 	for {
 		if MRNodeManagerFileProgressTracker.IsLocalCompleted(transmissionId) {
 			break
