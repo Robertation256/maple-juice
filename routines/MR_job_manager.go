@@ -42,6 +42,7 @@ func NewMRJobManager() *MRJobManager {
 	return &MRJobManager{
 		jobQueue:                make(chan *util.JobRequest, 100),
 		filePartitionBuf:        make([]byte, FILE_PARTITION_BUF_SIZE),
+		workerNode2Tasks:        make(map[string][]string),	
 		transmissionIdGenerator: util.NewTransmissionIdGenerator("MR-JM-" + SelfNodeId),
 	}
 }
