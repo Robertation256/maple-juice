@@ -30,6 +30,6 @@ echo "SERVER_HOSTNAMES=fa23-cs425-3801.cs.illinois.edu,fa23-cs425-3802.cs.illino
 
 cd local
 touch test_maple_input
-echo "Oliver\nEmma\nLiam\nAva\nNoah\nSophia\nJackson\nIsabella\nLucas\nMia\nAiden\nAmelia\nEthan\nHarper\nLogan\nEvelyn\nMason\nAbigail\nCaleb\nGrace" > test_maple_input
+echo -e "Oliver\nEmma\nLiam\nAva\nNoah\nSophia\nJackson\nIsabella\nLucas\nMia\nAiden\nAmelia\nEthan\nHarper\nLogan\nEvelyn\nMason\nAbigail\nCaleb\nGrace" > test_maple_input
 
 
