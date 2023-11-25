@@ -115,7 +115,7 @@ func PartitionFile(scanner *bufio.Scanner, lineNum int, outputFilePath string) e
 			return scanner.Err()
 		}
 		lineNum -= 1
-		line := scanner.Text()
+		line := scanner.Text() + "\n"
 		_, err := outputFile.Write([]byte(line))
 		if err != nil {
 			return err

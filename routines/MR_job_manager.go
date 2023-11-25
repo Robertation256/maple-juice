@@ -482,6 +482,12 @@ func (this *MRJobManager) assignTask(taskId string) string {
 		}
 	}
 
+	taskList, exists := this.workerNode2Tasks[assigneeIP]
+	if exists {
+		taskList = append(taskList, taskId)
+		this.workerNode2Tasks[assigneeIP] = taskList
+	}
+
 	return assigneeIP
 }
 
