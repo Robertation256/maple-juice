@@ -13,7 +13,6 @@ import (
 	"time"
 )
 
-var MRNodeManagerFileProgressTracker *util.TransmissionProgressManager = util.NewTransmissionProgressManager()
 
 // responsible for locally executing Maple / Juice task as instructed by the MR Job Manager
 
@@ -42,7 +41,7 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	// wait for input file's arrival
 	log.Printf("Waiting for input file %s with transmission id %s", inputFileName, transmissionId)
 	for {
-		if MRNodeManagerFileProgressTracker.IsLocalCompleted(transmissionId) {
+		if FileTransmissionProgressTracker.IsLocalCompleted(transmissionId) {
 			break
 		}
 		time.Sleep(200 * time.Millisecond)
