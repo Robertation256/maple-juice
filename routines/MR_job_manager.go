@@ -111,7 +111,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	}
 
 	// stage 2: profile input file
-	lineCount, err := util.GetFileLineCount(inputFileName)
+	lineCount, err := util.GetFileLineCount(config.JobManagerFileDir + inputFileName)
 	if err != nil {
 		*errorMsgChan <- err
 		return
@@ -155,7 +155,8 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 			*errorMsgChan <- err
 			return
 		}
-
+		log.Printf("Starting initial maple task %d", taskNumber)
+		
 		go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
 	}
 
@@ -176,6 +177,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 				this.removeTask(taskId)
 				if err != nil {
 					// task failed, reschedule
+					log.Print("Maple task completed with error: ", err)
 					jobCompleted = false
 					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
 				} else {

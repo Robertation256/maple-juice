@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-var lineCountFileBuf []byte = make([]byte, 32*1024)
+var lineCountFileBuf []byte = make([]byte, 1024)
 
 type JobRequest struct {
 	IsMaple      bool
@@ -78,9 +78,9 @@ func (this *SimpleJobQueue) Pop() *JobRequest {
 	return &ret
 }
 
-func GetFileLineCount(fileName string) (int, error) {
+func GetFileLineCount(filePath string) (int, error) {
 
-	file, err := os.Open(config.LocalFileDir + fileName)
+	file, err := os.Open(filePath)
 	if err != nil {
 		return 0, err
 	}
