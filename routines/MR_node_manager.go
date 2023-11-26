@@ -188,11 +188,12 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 				executionErrorChan <- err
 				return
 			}
-			os.Remove(localFilePath)
-			outputFileName := string(output)
+			// todo add this back
+			// os.Remove(localFilePath)
+			outputFileName := strings.Trim(string(output), " \n\r")
 			expectedOutputFileName := args.OutputFilePrefix + "-" + k 
 			if outputFileName != expectedOutputFileName {
-				log.Printf("WARN: Juice executable not producing file with expected name: %s", outputFileName)
+				log.Printf("WARN: Juice executable not producing file with expected name: output name %s, expected name: %s", outputFileName, expectedOutputFileName)
 			}
 
 			_, err1 := SDFSPutFile(expectedOutputFileName, config.NodeManagerFileDir + outputFileName)
