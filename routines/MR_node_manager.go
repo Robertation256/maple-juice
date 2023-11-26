@@ -188,8 +188,8 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 				executionErrorChan <- err
 				return
 			}
-			// todo add this back
-			// os.Remove(localFilePath)
+
+			os.Remove(localFilePath)
 			outputFileName := strings.Trim(string(output), " \n\r")
 			expectedOutputFileName := args.OutputFilePrefix + "-" + k 
 			if outputFileName != expectedOutputFileName {

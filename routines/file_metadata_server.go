@@ -160,7 +160,7 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 	return nil
 }
 
-// clients tries to write a file
+// clients tries to delete a file, check if it exists, if so return cluster info
 func (this *FileMetadataService) handleDeleteRequest(fileName string, reply *DfsResponse) error {
 	this.metadataLock.RLock()
 	fileToClusterInfo := *util.Convert2(&this.metadata)
