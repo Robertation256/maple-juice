@@ -30,7 +30,7 @@ func main() {
 	flag.Parse()
 
 	// check if required flags are provided
-	if regexFlag == "" || *inputFileFlag == "" || *prefixFlag == "" {
+	if *inputFileFlag == "" || *prefixFlag == "" {
 		log.Fatal("Usage: go run filter_maple.go -E <regex> -in <inputfile> -prefix <sdfs_intermediate_filename_prefix>")
 		return
 	}
@@ -65,7 +65,7 @@ func main() {
 			// create or retrieve file descriptor for the key
 			outputFile, exists := output[key]
 			if !exists {
-				outputFileName := fmt.Sprintf("%s-%s.txt", *prefixFlag, key)
+				outputFileName := fmt.Sprintf("%s-%s-%s", *prefixFlag, extractPartitionNumber(*inputFileFlag), key)
 				var err error
 				outputFile, err = os.Create(nodeManagerFileDir + outputFileName)
 				if err != nil {
@@ -92,5 +92,16 @@ func main() {
 		file.Close()
 	}
 
+
+	log.Print("Maple executable completed")
 	fmt.Println(strings.Join(outputFiles, ","))
+}
+
+func extractPartitionNumber(inputFileName string) string {
+	splitted := strings.Split(inputFileName, "-")
+	if (len(splitted)!=2){
+		log.Printf("WARN: invalid maple input file name format for %s", inputFileName)
+		return ""
+	}
+	return splitted[1]
 }

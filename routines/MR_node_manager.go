@@ -65,6 +65,7 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 		return errors.New("Error executing Maple executable")
 	} 
 
+
 	// executable output should be a comma separated list of output files
 	splitted := strings.Split(string(output), ",")
 	outputFileNames := make([]string, len(splitted))
