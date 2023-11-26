@@ -117,7 +117,7 @@ func ProcessJuiceCmd(args []string){
 	responseErr := client.Call("MRJobManager.SubmitJob", jobRequest, &reply)
 
 	if responseErr != nil {
-		log.Printf("Encountered error while executing Juice job", responseErr)
+		log.Print("Encountered error while executing Juice job", responseErr)
 	} else {
 		log.Print("Finished executing Juice job")
 	}
