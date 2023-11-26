@@ -1,41 +1,41 @@
 package routines
 
 import (
-	"net/rpc"
 	"cs425-mp4/config"
 	"cs425-mp4/util"
 	"fmt"
 	"log"
+	"net/rpc"
 	"os"
 	"time"
 )
 
 type FileService struct {
-	Port 					int
-	Filename2FileMaster 	map[string]*FileMaster
-	SdfsFolder 				string
-	LocalFileFolder			string
-	Report 					util.FileServerMetadataReport
+	Port                int
+	Filename2FileMaster map[string]*FileMaster
+	SdfsFolder          string
+	LocalFileFolder     string
+	Report              util.FileServerMetadataReport
 }
 
 type CopyArgs struct {
-	LocalFilePath 	string
-	RemoteFilePath 	string
-	RemoteAddr 		string
+	LocalFilePath  string
+	RemoteFilePath string
+	RemoteAddr     string
 }
 
 type RWArgs struct {
-	TransmissionId 	string
-	LocalFilename 	string
-	SdfsFilename 	string
-	ClientAddr 		string
-	ReceiverTag 	uint8
-	WriteMode 		uint8
+	TransmissionId string
+	LocalFilename  string
+	SdfsFilename   string
+	ClientAddr     string
+	ReceiverTag    uint8
+	WriteMode      uint8
 }
 
 type CreateFMArgs struct {
-	Filename 	string
-	Servants 	[]string
+	Filename string
+	Servants []string
 }
 
 type DeleteArgs struct {
@@ -43,15 +43,15 @@ type DeleteArgs struct {
 }
 
 type SendArgs struct {
-	LocalFilePath 	string
-	RemoteFileName 	string
-	RemoteAddr 		string
-	TransmissionId 	string
-	ReceiverTag 	uint8
-	WriteMode 		uint8
+	LocalFilePath  string
+	RemoteFileName string
+	RemoteAddr     string
+	TransmissionId string
+	ReceiverTag    uint8
+	WriteMode      uint8
 }
 
-func NewFileService(port int, homedir string, serverHostnames[]string) *FileService {
+func NewFileService(port int, homedir string, serverHostnames []string) *FileService {
 	MEMBERSHIP_SERVER_STARTED.Wait()
 
 	this := new(FileService)
@@ -59,33 +59,32 @@ func NewFileService(port int, homedir string, serverHostnames[]string) *FileServ
 	this.Filename2FileMaster = make(map[string]*FileMaster)
 	this.SdfsFolder = homedir + "/sdfs/"
 	this.LocalFileFolder = homedir + "/local/"
-	this.Report =  util.FileServerMetadataReport{
-		NodeId: SelfNodeId,
+	this.Report = util.FileServerMetadataReport{
+		NodeId:      SelfNodeId,
 		FileEntries: make([]util.FileInfo, 0),
 	}
 
 	// util.CreateSshClients(serverHostnames, this.SshConfig, NodeIdToIP(SelfNodeId))
-	util.EmptySdfsFolder(this.SdfsFolder)
+	util.EmptyFolder(this.SdfsFolder)
 
 	return this
 }
 
-func (this *FileService) Register(){
+func (this *FileService) Register() {
 	rpc.Register(this)
 }
 
-
 func (fm *FileService) CheckWriteCompleted(transmissionId *string, reply *string) error {
-	
+
 	timeout := time.After(300 * time.Second)
 	for {
-		time.Sleep(2*time.Second)
+		time.Sleep(2 * time.Second)
 		select {
 		case <-timeout:
 			*reply = ""
 			return nil
 		default:
-			if FileTransmissionProgressTracker.IsGlobalCompleted(*transmissionId) {	// received file, send it to servants
+			if FileTransmissionProgressTracker.IsGlobalCompleted(*transmissionId) { // received file, send it to servants
 				*reply = "ACK"
 				return nil
 			}
@@ -141,7 +140,6 @@ func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 	return nil
 }
 
-
 func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error {
 	err := util.DeleteFile(args.Filename, this.SdfsFolder)
 	if err != nil {
@@ -163,7 +161,7 @@ func (this *FileService) RemoveFromReport(filename string) {
 }
 
 func (this *FileService) ChangeReportStatusPendingDelete(filename string) {
-	for i, fileinfo := range this.Report.FileEntries  {
+	for i, fileinfo := range this.Report.FileEntries {
 		if fileinfo.FileName == filename {
 			log.Println("found, changing status")
 			this.Report.FileEntries[i].FileStatus = util.PENDING_DELETE
@@ -171,14 +169,13 @@ func (this *FileService) ChangeReportStatusPendingDelete(filename string) {
 	}
 }
 
-
-func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error{
+func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error {
 	fm := NewFileMaster(args.Filename, args.Servants, this.Port, this.SdfsFolder, this.LocalFileFolder, this)
 	this.Filename2FileMaster[args.Filename] = fm
 	return nil
 }
 
-func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMetadataReport) error{
+func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMetadataReport) error {
 	// TODO: check all files that are pending and change status
 
 	for i, fileInfo := range this.Report.FileEntries {
@@ -236,7 +233,7 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 				if cluster.Master == nil {
 					log.Print("Warn: master is nil. Servant cannot replicate")
 				}
-				
+
 				// failure repair
 				// when master's status == PENDING_FILE_UPLOAD, it indicates a new file is uploaded to sdfs
 				// fm will handle writing to all services, so there is no need to do anything
@@ -247,10 +244,10 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 						log.Println("Error dailing master when trying to retrieve replica", err)
 						return err
 					}
-					args := &RWArgs {
+					args := &RWArgs{
 						LocalFilename: updatedFileInfo.FileName,
-						SdfsFilename: updatedFileInfo.FileName,
-						ClientAddr: NodeIdToIP(SelfNodeId),
+						SdfsFilename:  updatedFileInfo.FileName,
+						ClientAddr:    NodeIdToIP(SelfNodeId),
 					}
 					var reply string
 					client.Go("FileService.ReplicateFile", args, &reply, nil)
@@ -259,14 +256,14 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 					// if master is in the process of executing a delete, do not add to self report
 					addToReport = false
 				}
-				
+
 			}
-			if (addToReport) {
+			if addToReport {
 				this.Report.FileEntries = append(this.Report.FileEntries, *updatedFileInfo)
 			}
 		}
 
-		if (needToCreateFm) {
+		if needToCreateFm {
 			createArgs := &CreateFMArgs{
 				Filename: updatedFileInfo.FileName,
 				Servants: util.GetServantIps(fileToClusters, updatedFileInfo.FileName),

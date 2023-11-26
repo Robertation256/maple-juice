@@ -112,4 +112,5 @@ func main() {
 	}
 
 	fmt.Println(*outputFileFlag)
+	os.Exit(0)
 }

@@ -40,4 +40,5 @@ func main() {
 
 	// print the output filename to stdout
 	fmt.Println(*outputFileFlag)
+	os.Exit(0)
 }

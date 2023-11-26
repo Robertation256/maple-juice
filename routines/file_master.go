@@ -323,6 +323,7 @@ func (fm *FileMaster) executeDelete() error {
 
 	calls := make([]*rpc.Call, len(fm.Servants))
 
+	// todo: close clients after completion
 	for idx, servant := range fm.Servants {
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
 		if err != nil {
@@ -334,7 +335,6 @@ func (fm *FileMaster) executeDelete() error {
 		}
 		var reply string
 		calls[idx] = client.Go("FileService.DeleteLocalFile", deleteArgs, &reply, nil)
-		client.Close()
 	}
 
 	// iterate and look for completed rpc calls
@@ -362,7 +362,7 @@ func (fm *FileMaster) executeDelete() error {
 	}
 
 	fm.FileServer.RemoveFromReport(fm.Filename)
-	log.Println("Global delete completed")
+	log.Printf("Global delete completed for file %s", fm.Filename)
 	return nil
 
 }

@@ -103,4 +103,5 @@ func main() {
 	}
 
 	fmt.Println(strings.Join(outputFiles, ","))
+	os.Exit(0)
 }

@@ -63,13 +63,13 @@ func ProcessMapleCmd(args []string){
 // delete_input={0,1} is_hash={0,1}}
 func ProcessJuiceCmd(args []string){
 	if (len(args) != 6){
-		log.Print("Invalid maple command")
+		log.Print("Invalid juice command")
 		return
 	}
 
 	taskNum, err := strconv.Atoi(args[1]);
 	if (err != nil){
-		log.Print("Invalid maple task number")
+		log.Print("Invalid juice task number")
 		return
 	}
 
@@ -117,7 +117,7 @@ func ProcessJuiceCmd(args []string){
 	responseErr := client.Call("MRJobManager.SubmitJob", jobRequest, &reply)
 
 	if responseErr != nil {
-		log.Printf("Encountered error while executing Juice job", responseErr)
+		log.Print("Encountered error while executing Juice job", responseErr)
 	} else {
 		log.Print("Finished executing Juice job")
 	}

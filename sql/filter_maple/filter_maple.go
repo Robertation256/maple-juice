@@ -24,19 +24,19 @@ func main() {
 	nodeManagerFileDir := homedir + "/mr_node_manager/"
 
 	// define flags
-	regexFlag := flag.String("E", "", "Regular expression")
+	regexFlag := "A.*"
 	inputFileFlag := flag.String("in", "", "Input filename")
 	prefixFlag := flag.String("prefix", "", "SDFS intermediate filename prefix")
 	flag.Parse()
 
 	// check if required flags are provided
-	if *regexFlag == "" || *inputFileFlag == "" || *prefixFlag == "" {
+	if *inputFileFlag == "" || *prefixFlag == "" {
 		log.Fatal("Usage: go run filter_maple.go -E <regex> -in <inputfile> -prefix <sdfs_intermediate_filename_prefix>")
 		return
 	}
 
 	// compile the regular expression
-	regexpPattern, err := regexp.Compile(*regexFlag)
+	regexpPattern, err := regexp.Compile(regexFlag)
 	if err != nil {
 		log.Fatal("Error compiling regular expression:", err)
 		return
@@ -65,7 +65,7 @@ func main() {
 			// create or retrieve file descriptor for the key
 			outputFile, exists := output[key]
 			if !exists {
-				outputFileName := fmt.Sprintf("%s-%s.txt", *prefixFlag, key)
+				outputFileName := fmt.Sprintf("%s-%s-%s", *prefixFlag, extractPartitionNumber(*inputFileFlag), key)
 				var err error
 				outputFile, err = os.Create(nodeManagerFileDir + outputFileName)
 				if err != nil {
@@ -93,4 +93,14 @@ func main() {
 	}
 
 	fmt.Println(strings.Join(outputFiles, ","))
+	os.Exit(0)
+}
+
+func extractPartitionNumber(inputFileName string) string {
+	splitted := strings.Split(inputFileName, "-")
+	if (len(splitted)!=2){
+		log.Printf("WARN: invalid maple input file name format for %s", inputFileName)
+		return ""
+	}
+	return splitted[1]
 }

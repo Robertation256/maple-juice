@@ -21,6 +21,10 @@ type MRNodeManager struct {}
 
 func (this *MRNodeManager) Register() {
 	rpc.Register(this)
+	err := util.EmptyFolder(config.NodeManagerFileDir)
+	if err != nil {
+		log.Print("Failed to clean up node manager file folder", err)
+	}
 }
 
 //execute a Maple task locally
@@ -55,27 +59,39 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	inputFilePath := config.NodeManagerFileDir + inputFileName
 
 	// go run executable.go -in <input_file_path>
-	cmdArgs := []string {"run", executableFilePath, "-in", inputFilePath}
+	cmdArgs := []string {"run", executableFilePath, "-in", inputFilePath, "-prefix", args.OutputFilePrefix}
 
 	cmd := exec.Command("go", cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	
-	if err != nil || cmd.ProcessState.ExitCode() != 1 {
-		log.Println("Error while executing Maple executable", err)
-		return errors.New("Error executing Maple executable")
+	if err != nil {
+		errMsg := fmt.Sprintf("Error while executing Maple executable %s", err.Error())
+		log.Print(errMsg)
+		return errors.New(errMsg)
 	} 
 
-	// executable output should be a comma separated list of output files
+	if cmd.ProcessState.ExitCode() != 0 {
+		log.Print("Maple executable finished with non zero exit code")
+		return errors.New("Executable finished with non zero exit code")
+	}
+	log.Printf("Executable finished with output: %s", string(output))
+
+
+	//executable output should be a comma separated list of output files
 	splitted := strings.Split(string(output), ",")
-	outputFileNames := make([]string, len(splitted))
-	for idx, outputFileName := range splitted {
-		outputFileName = strings.Trim(outputFileName, " \n\r")
-		outputFileNames[idx] = outputFileName
-		_, err1 := os.Stat(config.NodeManagerFileDir + outputFileName)
-		if err1 != nil {
-			return errors.New("Executable failed to produce valid output")
+	outputFileNames := make([]string, 0)
+	for _, fileName := range splitted {
+		fileName = strings.Trim(fileName, " \n\r")
+		if len(fileName) > 0 {
+			_, err1 := os.Stat(config.NodeManagerFileDir + fileName)
+			if err1 != nil {
+				return errors.New("Maple executable failed to produce valid output")
+			}
+			outputFileNames = append(outputFileNames, fileName)
 		}
 	}
+
+
 
 	uploadTimeout := time.After(300 * time.Second)
 	remainingFiles := len(outputFileNames)
@@ -96,7 +112,7 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 		case err := <- responseChan:
 			if err != nil {
 				// todo: clean up files uploaded to SDFS
-				log.Print("Encounterd error uploading Maple output to SDFS")
+				log.Print("Encounterd error uploading Maple output to SDFS", err)
 				return err 
 			} else {
 				remainingFiles -= 1
@@ -135,6 +151,7 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 		executableFetchResChan <- SDFSGetFile(executableFileName, executableFileName, RECEIVER_MR_NODE_MANAGER)
 	}()
 
+	// make this async
 	for key, files := range parition {
 		localFileName := fmtJuiceInputFileName(args.InputFilePrefix, key)
 		os.Remove(config.NodeManagerFileDir + localFileName)
@@ -142,6 +159,8 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 		if err != nil {
 			return err
 		}
+
+		log.Printf("Fetch and concated file at %s", localFileName)
 	}
 
 	// wait for all file's arrival
@@ -160,19 +179,21 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 	// execute excutable on all key partitions and send result file to SDFS
 	for key := range parition {
 		go func(k string){
+			log.Printf("Running juice executable on key: %s", k)
 			localFilePath := config.NodeManagerFileDir + fmtJuiceInputFileName(args.InputFilePrefix, k)
-			cmdArgs := []string {"run", executableFilePath, "-in", localFilePath}
+			cmdArgs := []string {"run", executableFilePath, "-in", localFilePath, "-dest", args.OutputFilePrefix + "-" + k}
 			cmd := exec.Command("go", cmdArgs...)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				executionErrorChan <- err
 				return
 			}
+
 			os.Remove(localFilePath)
-			outputFileName := string(output)
+			outputFileName := strings.Trim(string(output), " \n\r")
 			expectedOutputFileName := args.OutputFilePrefix + "-" + k 
 			if outputFileName != expectedOutputFileName {
-				log.Printf("WARN: Juice executable not producing file with expected name")
+				log.Printf("WARN: Juice executable not producing file with expected name: output name %s, expected name: %s", outputFileName, expectedOutputFileName)
 			}
 
 			_, err1 := SDFSPutFile(expectedOutputFileName, config.NodeManagerFileDir + outputFileName)

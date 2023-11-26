@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	TASK_MAX_RETY_NUM int = 3 // maximum number of retry for each maple/juice sub task
+
+
 	FILE_PARTITION_BUF_SIZE    int = 32 * 1024
 	MAPLE_TASK_TIMEOUT_MINUTES int = 5
 	JUICE_TASK_TIMEOUT_MINUTES int = 5
@@ -59,7 +62,6 @@ func (this *MRJobManager) SubmitJob(jobRequest *util.JobRequest, reply *string) 
 	timeout := time.After(10 * time.Minute)
 
 	for {
-		time.Sleep(2 * time.Second) // check every 2 seconds
 		select {
 		case <-timeout:
 			return errors.New("Job execution times out")
@@ -76,6 +78,10 @@ func (this *MRJobManager) SubmitJob(jobRequest *util.JobRequest, reply *string) 
 // register this rpc service and start main thread
 func (this *MRJobManager) Register() {
 	rpc.Register(this)
+	err := util.EmptyFolder(config.JobManagerFileDir)
+	if err != nil {
+		log.Print("Failed to clean up job manager file folder", err)
+	}
 
 	go this.listenForMembershipChange()
 
@@ -138,9 +144,11 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	defer file.Close()
 
 	isTaskCompleted := make([]bool, job.TaskNum)
+	retryNum := make([]int, job.TaskNum)
 	taskResultChans := make([]chan error, job.TaskNum)
-	for idx := range taskResultChans {
+	for idx := 0; idx<job.TaskNum; idx++ {
 		taskResultChans[idx] = make(chan error, 1)
+		retryNum[idx] = 0
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -166,7 +174,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	jobCompleted := false
 
 	for !jobCompleted {
-		time.Sleep(1 * time.Second) // lets check for every second
+		time.Sleep(1 * time.Second) // check every second
 		jobCompleted = true
 		for taskNumber := 0; taskNumber < job.TaskNum; taskNumber++ {
 			if isTaskCompleted[taskNumber] {
@@ -178,13 +186,20 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 			case err := <-taskResultChans[taskNumber]:
 				this.removeTask(taskId)
 				if err != nil {
-					// task failed, reschedule
-					log.Print("Maple task completed with error: ", err)
+					log.Print(fmt.Sprintf("Maple task %d completed with error: ", taskNumber), err)
+					if (retryNum[taskNumber] >= TASK_MAX_RETY_NUM){
+						*errorMsgChan <- errors.New(fmt.Sprintf("Failing Maple task:  task %d failed after %d retries", taskNumber, retryNum[taskNumber]))
+						return
+					}
+					// reschedule
+					
 					jobCompleted = false
+					retryNum[taskNumber]++
 					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
 				} else {
 					// task completed
 					isTaskCompleted[taskNumber] = true
+					log.Printf("Maple sub task %d completed", taskNumber)
 				}
 			default:
 				jobCompleted = false
@@ -279,16 +294,18 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 		return
 	}
 
-
 	matchedFiles, err := SDFSSearchFileByRegex(regexStr)
 	if err != nil {
 		*errorMsgChan <- err 
 		return
 	}
 
+	log.Printf("Matched %d files", len(*matchedFiles))
+
 	// group file names by key
 	keyToFiles := make(map[string][]string) 
 	for _, fileName := range *matchedFiles{
+		log.Printf("Matched files: %s", fileName)
 		splitted := strings.Split(fileName, "-")
 		if len(splitted) > 0 {
 			key := splitted[len(splitted)-1]
@@ -306,11 +323,20 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 		keys = append(keys, k)
 	}
 
+	
 	// stage 2: assign keys to worker nodes
+	if len(keys) == 0 {
+		log.Print("Juice input files not found")
+		*errorMsgChan <- errors.New("Juice input files not found")
+		return
+	}
+
 	if len(keys) < job.TaskNum {
 		log.Print("WARN: Juice input contains less keys than the number of tasks, auto reducing task number... ")
 		job.TaskNum = len(keys)
 	}
+
+	
 
 	var partitions []map[string][]string 
 	if job.IsHashPartition {
@@ -322,8 +348,10 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 	// stage 3: start juice workers
 	isTaskCompleted := make([]bool, job.TaskNum)
 	taskResultChans := make([]chan error, job.TaskNum)
+	retryNum := make([]int, job.TaskNum)
 	for idx := range taskResultChans {
 		taskResultChans[idx] = make(chan error, 1)
+		retryNum[idx] = 0
 	}
 	for taskNumber, partition := range partitions {
 		go this.startJuiceWorker(taskNumber, partition, job, &taskResultChans[taskNumber])
@@ -343,9 +371,15 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 			case err := <-taskResultChans[taskNumber]:
 				this.removeTask(taskId)
 				if err != nil {
-					// task failed, reschedule
+					log.Print(fmt.Sprintf("Juice task %d completed with error: ", taskNumber), err)
+					if (retryNum[taskNumber] >= TASK_MAX_RETY_NUM){
+						*errorMsgChan <- errors.New(fmt.Sprintf("Failing Juice task:  task %d failed after %d retries", taskNumber, retryNum[taskNumber]))
+						return
+					}
+					// reschedule
 					log.Print("Juice task " + taskId + " failed, rescheduling ...", err)
 					jobCompleted = false
+					retryNum[taskNumber]++
 					go this.startJuiceWorker(taskNumber, partitions[taskNumber], job, &taskResultChans[taskNumber])
 				} else {
 					// task completed
