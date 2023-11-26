@@ -382,7 +382,7 @@ func (this *FileMetadataService) HandleFileSearchRequest(regex *string, reply *[
 
 	this.metadataLock.RLock()
 	for _, fmap := range this.metadata {
-		for fileName, _ := range fmap {
+		for fileName := range fmap {
 			if r.MatchString(fileName) {
 				resultSet[fileName] = true
 			}
@@ -390,10 +390,10 @@ func (this *FileMetadataService) HandleFileSearchRequest(regex *string, reply *[
 	}
 	this.metadataLock.RUnlock()
 
-	for fileName, _ := range resultSet{
+	for fileName := range resultSet{
 		result = append(result, fileName)
 	}
 
-	reply = &result
+	*reply = result
 	return nil
 }
