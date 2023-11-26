@@ -73,24 +73,27 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	log.Printf("Executable finished with output: %s", string(output))
 
 
-	// executable output should be a comma separated list of output files
+	//executable output should be a comma separated list of output files
 	splitted := strings.Split(string(output), ",")
-	outputFileNames := make([]string, len(splitted))
-	for idx, outputFileName := range splitted {
-		outputFileName = strings.Trim(outputFileName, " \n\r")
-		outputFileNames[idx] = outputFileName
-		_, err1 := os.Stat(config.NodeManagerFileDir + outputFileName)
-		if err1 != nil {
-			return errors.New("Executable failed to produce valid output")
+	outputFileNames := make([]string, 0)
+	for _, fileName := range splitted {
+		fileName = strings.Trim(fileName, " \n\r")
+		if len(fileName) > 0 {
+			_, err1 := os.Stat(config.NodeManagerFileDir + fileName)
+			if err1 != nil {
+				return errors.New("Maple executable failed to produce valid output")
+			}
+			outputFileNames = append(outputFileNames, fileName)
 		}
 	}
+
+
 
 	uploadTimeout := time.After(300 * time.Second)
 	remainingFiles := len(outputFileNames)
 	responseChan := make(chan error, remainingFiles)
 
 	for _, fileName := range outputFileNames {
-		log.Printf("Uploading local file at %s to SDFS at %s", config.NodeManagerFileDir+fileName, fileName)
 		go func(file string){
 			_, err := SDFSPutFile(file, config.NodeManagerFileDir+file)
 			responseChan <- err
