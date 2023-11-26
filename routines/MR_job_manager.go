@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	TASK_MAX_RETY_NUM int = 2 // maximum number of retry for each maple/juice sub task
+
+
 	FILE_PARTITION_BUF_SIZE    int = 32 * 1024
 	MAPLE_TASK_TIMEOUT_MINUTES int = 5
 	JUICE_TASK_TIMEOUT_MINUTES int = 5
@@ -138,9 +141,11 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	defer file.Close()
 
 	isTaskCompleted := make([]bool, job.TaskNum)
+	retryNum := make([]int, job.TaskNum)
 	taskResultChans := make([]chan error, job.TaskNum)
-	for idx := range taskResultChans {
+	for idx := 0; idx<job.TaskNum; idx++ {
 		taskResultChans[idx] = make(chan error, 1)
+		retryNum[idx] = 0
 	}
 
 	scanner := bufio.NewScanner(file)
@@ -166,7 +171,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	jobCompleted := false
 
 	for !jobCompleted {
-		time.Sleep(1 * time.Second) // lets check for every second
+		time.Sleep(1 * time.Second) // check every second
 		jobCompleted = true
 		for taskNumber := 0; taskNumber < job.TaskNum; taskNumber++ {
 			if isTaskCompleted[taskNumber] {
@@ -178,9 +183,15 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 			case err := <-taskResultChans[taskNumber]:
 				this.removeTask(taskId)
 				if err != nil {
-					// task failed, reschedule
-					log.Print("Maple task completed with error: ", err)
+					log.Print(fmt.Sprintf("Maple task %d completed with error: ", taskNumber), err)
+					if (retryNum[taskNumber] >= TASK_MAX_RETY_NUM){
+						*errorMsgChan <- errors.New(fmt.Sprintf("Failing Maple task:  task %d failed after %d retries", taskNumber, retryNum[taskNumber]))
+						return
+					}
+					// reschedule
+					
 					jobCompleted = false
+					retryNum[taskNumber]++
 					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
 				} else {
 					// task completed

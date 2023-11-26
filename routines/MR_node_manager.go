@@ -103,7 +103,7 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 		case err := <- responseChan:
 			if err != nil {
 				// todo: clean up files uploaded to SDFS
-				log.Print("Encounterd error uploading Maple output to SDFS")
+				log.Print("Encounterd error uploading Maple output to SDFS", err)
 				return err 
 			} else {
 				remainingFiles -= 1
