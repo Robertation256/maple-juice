@@ -1,19 +1,16 @@
 package util
 
 import (
-	"os"
-	"path/filepath"
 	"cs425-mp4/config"
-	"log"
 	"errors"
+	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
 )
 
-
-
-
-func EmptySdfsFolder(sdfsFolder string) error{
-	dir, err := os.Open(sdfsFolder)
+func EmptyFolder(folderPath string) error {
+	dir, err := os.Open(folderPath)
 	if err != nil {
 		return err
 	}
@@ -27,37 +24,36 @@ func EmptySdfsFolder(sdfsFolder string) error{
 
 	// Remove each file
 	for _, fileName := range fileNames {
-		filePath := filepath.Join(sdfsFolder, fileName)
+		filePath := filepath.Join(folderPath, fileName)
 		err := os.Remove(filePath)
 		if err != nil {
 			return err
-		} 
+		}
 	}
 	return nil
 }
 
-
-func DeleteFile(filename string, sdfsFolder string) error{
+func DeleteFile(filename string, sdfsFolder string) error {
 	filePath := sdfsFolder + filename
 	err := os.Remove(filePath)
-    if err != nil {
-        return err
-    }
-    return nil
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func FileInSdfsFolder(filename string) bool{
+func FileInSdfsFolder(filename string) bool {
 	filePath := config.SdfsFileDir + filename
 	_, err := os.Stat(filePath)
-    if err == nil {
-        return true
-    }
-    if errors.Is(err, os.ErrNotExist) {
-        return false
-    }
+	if err == nil {
+		return true
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false
+	}
 	// some other errors occured, like permission denined
 	log.Println("Error checking if file is in sdfs folder: ", err)
-    return false
+	return false
 }
 
 func CopyFileFromSdfsToLocal(sdfsName, localName string) error {

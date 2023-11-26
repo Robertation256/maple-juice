@@ -79,6 +79,10 @@ func (this *MRJobManager) SubmitJob(jobRequest *util.JobRequest, reply *string) 
 // register this rpc service and start main thread
 func (this *MRJobManager) Register() {
 	rpc.Register(this)
+	err := util.EmptyFolder(config.JobManagerFileDir)
+	if err != nil {
+		log.Print("Failed to clean up job manager file folder", err)
+	}
 
 	go this.listenForMembershipChange()
 

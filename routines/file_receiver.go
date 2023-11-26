@@ -91,11 +91,11 @@ func receiveFile(conn net.Conn){
 		n, err := conn.Read(buf)
 		total += n
 		if (file != nil){
-			log.Printf("Downloading file %s ----------- %d kb", file.Name(), total/1024)
+			// log.Printf("Downloading file %s ----------- %d kb", file.Name(), total/1024)
 		}
 		if err == io.EOF {
 			FileTransmissionProgressTracker.Complete(*transmissionId, LOCAL_WRITE_COMPLETE)
-			log.Printf("Completed receving file: %s", file.Name())
+			// log.Printf("Completed receving file: %s", file.Name())
 			return
 		}
 		if err != nil {
@@ -184,7 +184,6 @@ func initializeFile(buf *[]byte, size int) (*os.File, *string) {
 
 
 func SendFile(localFilePath string, remoteFileName, remoteAddr string, transmissionId string, receiverTag uint8, writeMode uint8) error {
-	log.Printf("Started sending file %s", localFilePath)
 
 	var total uint64 = 0
 
@@ -194,9 +193,6 @@ func SendFile(localFilePath string, remoteFileName, remoteAddr string, transmiss
 		return err
 	}
 	defer localFile.Close()
-
-
-	log.Printf("Sending file to remote addr: %s", remoteAddr)
 
 	conn, err := net.Dial("tcp", remoteAddr)
     if err != nil {
@@ -223,14 +219,14 @@ func SendFile(localFilePath string, remoteFileName, remoteAddr string, transmiss
 
 		if err == io.EOF {
 
-			log.Printf("Finished sending file, remaining bytes is %d", n)
+			// log.Printf("Finished sending file, remaining bytes is %d", n)
             return nil 	// we are finished
         }
 		if err != nil {
 			return err
 		}
 
-		log.Printf("Writing file  %d kb written", total/1024)
+		// log.Printf("Writing file  %d kb written", total/1024)
 		conn.Write(buf[:n])
 	}	
 }

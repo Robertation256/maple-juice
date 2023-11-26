@@ -21,6 +21,10 @@ type MRNodeManager struct {}
 
 func (this *MRNodeManager) Register() {
 	rpc.Register(this)
+	err := util.EmptyFolder(config.NodeManagerFileDir)
+	if err != nil {
+		log.Print("Failed to clean up node manager file folder", err)
+	}
 }
 
 //execute a Maple task locally
