@@ -62,8 +62,12 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	
 	if err != nil || cmd.ProcessState.ExitCode() != 1 {
 		log.Println("Error while executing Maple executable", err)
-		return errors.New("Error executing Maple executable")
+		return err
 	} 
+
+	if cmd.ProcessState.ExitCode() != 1 {
+		log.Printf("Maple executable finished with non zero exit code: %s", string(output))
+	}
 
 
 	// executable output should be a comma separated list of output files
