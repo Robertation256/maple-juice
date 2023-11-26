@@ -151,6 +151,7 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 		executableFetchResChan <- SDFSGetFile(executableFileName, executableFileName, RECEIVER_MR_NODE_MANAGER)
 	}()
 
+	// make this async
 	for key, files := range parition {
 		localFileName := fmtJuiceInputFileName(args.InputFilePrefix, key)
 		os.Remove(config.NodeManagerFileDir + localFileName)
@@ -158,6 +159,8 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 		if err != nil {
 			return err
 		}
+
+		log.Printf("Fetch and concated file at %s", localFileName)
 	}
 
 	// wait for all file's arrival
@@ -176,6 +179,7 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 	// execute excutable on all key partitions and send result file to SDFS
 	for key := range parition {
 		go func(k string){
+			log.Printf("Running juice executable on key: %s", k)
 			localFilePath := config.NodeManagerFileDir + fmtJuiceInputFileName(args.InputFilePrefix, k)
 			cmdArgs := []string {"run", executableFilePath, "-in", localFilePath, "-dest", args.OutputFilePrefix + "-" + k}
 			cmd := exec.Command("go", cmdArgs...)
@@ -188,7 +192,7 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 			outputFileName := string(output)
 			expectedOutputFileName := args.OutputFilePrefix + "-" + k 
 			if outputFileName != expectedOutputFileName {
-				log.Printf("WARN: Juice executable not producing file with expected name")
+				log.Printf("WARN: Juice executable not producing file with expected name: %s", outputFileName)
 			}
 
 			_, err1 := SDFSPutFile(expectedOutputFileName, config.NodeManagerFileDir + outputFileName)
