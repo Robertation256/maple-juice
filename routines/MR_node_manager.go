@@ -60,8 +60,8 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	cmd := exec.Command("go", cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	
-	if err != nil || cmd.ProcessState.ExitCode() != 1 {
-		log.Println("Error while executing Maple executable", err)
+	if err != nil {
+		log.Print("Error while executing Maple executable", err)
 		return err
 	} 
 
