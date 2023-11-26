@@ -70,6 +70,7 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 		log.Print("Maple executable finished with non zero exit code")
 		return errors.New("Executable finished with non zero exit code")
 	}
+	log.Printf("Executable finished with output: %s", string(output))
 
 
 	// executable output should be a comma separated list of output files
@@ -89,6 +90,7 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	responseChan := make(chan error, remainingFiles)
 
 	for _, fileName := range outputFileNames {
+		log.Printf("Uploading local file at %s to SDFS at %s", config.NodeManagerFileDir+fileName, fileName)
 		go func(file string){
 			_, err := SDFSPutFile(file, config.NodeManagerFileDir+file)
 			responseChan <- err
