@@ -92,9 +92,8 @@ func main() {
 		file.Close()
 	}
 
-
-	log.Print("Maple executable completed")
 	fmt.Println(strings.Join(outputFiles, ","))
+	os.Exit(0)
 }
 
 func extractPartitionNumber(inputFileName string) string {

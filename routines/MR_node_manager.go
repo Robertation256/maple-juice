@@ -61,12 +61,14 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		log.Print("Error while executing Maple executable", err)
-		return err
+		errMsg := fmt.Sprintf("Error while executing Maple executable %s", err.Error())
+		log.Print(errMsg)
+		return errors.New(errMsg)
 	} 
 
 	if cmd.ProcessState.ExitCode() != 1 {
-		log.Printf("Maple executable finished with non zero exit code: %s", string(output))
+		log.Print("Maple executable finished with non zero exit code")
+		return errors.New("Executable finished with non zero exit code")
 	}
 
 
