@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/rpc"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -16,6 +17,7 @@ type FileService struct {
 	SdfsFolder          string
 	LocalFileFolder     string
 	Report              util.FileServerMetadataReport
+	reportLock 		    sync.RWMutex
 }
 
 type CopyArgs struct {
@@ -141,6 +143,7 @@ func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 }
 
 func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error {
+	this.ChangeReportStatusPendingDelete(args.Filename)
 	err := util.DeleteFile(args.Filename, this.SdfsFolder)
 	if err != nil {
 		return err
@@ -151,6 +154,9 @@ func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error 
 }
 
 func (this *FileService) RemoveFromReport(filename string) {
+	this.reportLock.Lock()
+	defer this.reportLock.Unlock()
+
 	currEntries := this.Report.FileEntries
 	for i, fileinfo := range currEntries {
 		if fileinfo.FileName == filename {
@@ -161,9 +167,12 @@ func (this *FileService) RemoveFromReport(filename string) {
 }
 
 func (this *FileService) ChangeReportStatusPendingDelete(filename string) {
+	this.reportLock.Lock()
+	defer this.reportLock.Unlock()
+	
 	for i, fileinfo := range this.Report.FileEntries {
 		if fileinfo.FileName == filename {
-			log.Println("found, changing status")
+			log.Printf("changed status to pending delete for file %s", fileinfo.FileName)
 			this.Report.FileEntries[i].FileStatus = util.PENDING_DELETE
 		}
 	}
@@ -177,6 +186,8 @@ func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) err
 
 func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMetadataReport) error {
 	// TODO: check all files that are pending and change status
+	this.reportLock.RLock()
+	defer this.reportLock.RUnlock()
 
 	for i, fileInfo := range this.Report.FileEntries {
 		if fileInfo.FileStatus == util.PENDING_FILE_UPLOAD || fileInfo.FileStatus == util.WAITING_REPLICATION {
@@ -193,14 +204,16 @@ func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMeta
 	reply.NodeId = SelfNodeId
 	reply.FileEntries = this.Report.FileEntries
 
-	// log.Printf("Node %s reported self metadata info", reply.NodeId)
-
 	return nil
 }
 
 func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *string) error {
 	updatedFileEntries := (*nodeToFiles)[SelfNodeId]
 	fileToClusters := util.Convert2(nodeToFiles)
+
+
+	this.reportLock.Lock()
+	
 
 	filename2fileInfo := make(map[string]util.FileInfo)
 	for _, fileInfo := range this.Report.FileEntries {
@@ -262,6 +275,8 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 				this.Report.FileEntries = append(this.Report.FileEntries, *updatedFileInfo)
 			}
 		}
+
+		this.reportLock.Unlock()
 
 		if needToCreateFm {
 			createArgs := &CreateFMArgs{
