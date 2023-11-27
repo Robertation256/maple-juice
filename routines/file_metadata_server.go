@@ -298,8 +298,6 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMetadataReport) {
 	nodeIdToFiles, filenameToCluster := util.CompileReports(reports)
 
-	// log.Printf("Collected report length : %d", len(*nodeIdToFiles))
-
 	checkAndRepair(nodeIdToFiles, filenameToCluster)
 
 	rpcServer.metadataLock.Lock()
@@ -307,13 +305,20 @@ func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMe
 	rpcServer.metadataLock.Unlock()
 
 	nodeIdToFiles = util.Convert(filenameToCluster)
+	var remainingNodes sync.WaitGroup
 	for nodeId := range *nodeIdToFiles {
-		go informMetadata(nodeId, nodeIdToFiles)
+		remainingNodes.Add(1)
+		go func(nodeId string){
+			informMetadata(nodeId, nodeIdToFiles)
+			remainingNodes.Done()
+		}(nodeId)
 	}
+
+	remainingNodes.Wait()
 }
 
 func informMetadata(nodeId string, metadata *util.NodeToFiles) error {
-	timeout := time.After(30 * time.Second)
+	timeout := time.After(60 * time.Second)
 	ip := NodeIdToIP(nodeId)
 	client := dial(ip, config.RpcServerPort)
 	if client == nil {
@@ -339,7 +344,6 @@ func informMetadata(nodeId string, metadata *util.NodeToFiles) error {
 			return errors.New("Node " + nodeId + " failed to respond to metadata update.")
 		} else {
 			if retFlag == "ACK" {
-				// log.Printf("File Metadata Server: successfully informed node %s", nodeId)
 				return nil
 			} else {
 				log.Printf("File Metadata Server: node %s failed to process metadata update", nodeId)

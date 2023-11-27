@@ -5,10 +5,10 @@ import (
 	"cs425-mp4/util"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/rpc"
 	"strconv"
 	"time"
-	"math/rand"
 )
 
 const (
@@ -68,6 +68,7 @@ func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsF
 }
 
 func (fm *FileMaster) CheckQueue() {
+
 	if len(fm.Queue) > 0 {
 		if !fm.Queue[0].InQueue {
 			// if head of queue has InQueue = false. pop it and move on to the next one
@@ -143,11 +144,7 @@ func (fm *FileMaster) executeRead(args *RWArgs) error {
 		writeRequest.WaitRound += 1
 	}
 
-	log.Printf("Sending file to client at %s", args.ClientAddr)
-
 	localFilePath := fm.SdfsFolder + fm.Filename
-
-	// SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
 
 	sendArgs := &SendArgs{
 		LocalFilePath: localFilePath,
