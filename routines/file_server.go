@@ -3,6 +3,7 @@ package routines
 import (
 	"cs425-mp4/config"
 	"cs425-mp4/util"
+	"errors"
 	"fmt"
 	"log"
 	"net/rpc"
@@ -160,7 +161,6 @@ func (this *FileService) RemoveFromReport(filename string) {
 	currEntries := this.Report.FileEntries
 	for i, fileinfo := range currEntries {
 		if fileinfo.FileName == filename {
-			log.Println("found, removing")
 			this.Report.FileEntries = append(currEntries[:i], currEntries[i+1:]...)
 		}
 	}
@@ -211,14 +211,15 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 	updatedFileEntries := (*nodeToFiles)[SelfNodeId]
 	fileToClusters := util.Convert2(nodeToFiles)
 
-
 	this.reportLock.Lock()
 	
-
 	filename2fileInfo := make(map[string]util.FileInfo)
 	for _, fileInfo := range this.Report.FileEntries {
 		filename2fileInfo[fileInfo.FileName] = fileInfo
 	}
+
+	// replication instructed by metadata service
+	filesToPair := make([]string, 0)
 
 	for _, updatedFileInfo := range updatedFileEntries {
 		currFileInfo, ok := filename2fileInfo[updatedFileInfo.FileName]
@@ -251,19 +252,7 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 				// when master's status == PENDING_FILE_UPLOAD, it indicates a new file is uploaded to sdfs
 				// fm will handle writing to all services, so there is no need to do anything
 				if cluster.Master != nil && cluster.Master.FileStatus == util.COMPLETE {
-					masterIp := NodeIdToIP(cluster.Master.NodeId)
-					client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", masterIp, config.RpcServerPort))
-					if err != nil {
-						log.Println("Error dailing master when trying to retrieve replica", err)
-						return err
-					}
-					args := &RWArgs{
-						LocalFilename: updatedFileInfo.FileName,
-						SdfsFilename:  updatedFileInfo.FileName,
-						ClientAddr:    NodeIdToIP(SelfNodeId),
-					}
-					var reply string
-					client.Go("FileService.ReplicateFile", args, &reply, nil)
+					filesToPair = append(filesToPair, updatedFileInfo.FileName)
 				} else if cluster.Master != nil && cluster.Master.FileStatus == util.PENDING_DELETE {
 					log.Println("here in delete")
 					// if master is in the process of executing a delete, do not add to self report
@@ -276,8 +265,6 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 			}
 		}
 
-		this.reportLock.Unlock()
-
 		if needToCreateFm {
 			createArgs := &CreateFMArgs{
 				Filename: updatedFileInfo.FileName,
@@ -289,6 +276,60 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 				log.Println("Error when creating file master ", err)
 				return err
 			}
+		}
+	}
+
+	this.reportLock.Unlock()
+
+
+	calls := make([]*rpc.Call, 0)
+	for _, fileName := range filesToPair {
+		cluster, exists := (*fileToClusters)[fileName]
+		if !exists || cluster == nil || cluster.Master == nil{
+			log.Printf("Failed to look up file master while repairing for file: %s", fileName)
+			continue
+		}
+		args := &RWArgs{
+			LocalFilename: fileName,
+			SdfsFilename:  fileName,
+			ClientAddr:    NodeIdToIP(SelfNodeId),
+		}
+		masterIp := NodeIdToIP(cluster.Master.NodeId)
+		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", masterIp, config.RpcServerPort))
+		if err != nil {
+			log.Println("Error dailing master when trying to retrieve replica", err)
+			return err
+		}
+		var reply string
+		call := client.Go("FileService.ReplicateFile", args, &reply, nil)
+		calls = append(calls, call)
+	}
+
+	replicationTimeout := time.After(60 * time.Second)
+	for {
+		complete := true
+		for i, call := range calls {
+			select {
+			case <-replicationTimeout:
+				*reply = "FAILED"
+				log.Print("Timeout repairing files")
+				return errors.New("Timeout repairing files")
+			default:
+				if call != nil {
+					select {
+					case _, ok := <-call.Done: // check if channel has output ready
+						if !ok {
+							log.Println("Channel closed for async rpc call")
+						}
+						calls[i] = nil
+					default:
+						complete = false
+					}
+				}
+			}
+		}
+		if complete {
+			break
 		}
 	}
 
