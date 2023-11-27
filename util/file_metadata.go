@@ -313,6 +313,19 @@ func FindAvailableNodes(fileName string, nodeToFiles *NodeToFiles, nodeNum int) 
 	return ret
 }
 
+func (this *ClusterInfo) IsClusterPendingDelete() bool {
+	if this.Master != nil && this.Master.FileStatus == PENDING_DELETE {
+		return true
+	}
+
+	for _, servant := range this.Servants {
+		if servant != nil && servant.FileStatus == PENDING_DELETE {
+			return true
+		}
+	}
+	return false
+}
+
 
 func (this *FileInfo)ToString() string {
 	role := "servant"

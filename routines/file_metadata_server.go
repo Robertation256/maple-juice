@@ -202,6 +202,10 @@ func (this *FileMetadataService) handleListRequest(fileName string, reply *DfsRe
 // for each file, examine the hosting replicas and make necessary repairs
 func checkAndRepair(nodeIdToFiles *map[string]map[string]*util.FileInfo, fileNameToReplicaInfo *map[string]*util.ClusterInfo) {
 	for _, clusterInfo := range *fileNameToReplicaInfo {
+		// refrain from repairing a file cluster that is pending delete
+		if clusterInfo.IsClusterPendingDelete(){
+			continue
+		}
 		if clusterInfo.Master == nil {
 			// Master dead, try elect from servants
 			err := clusterInfo.InstateNewMaster()
@@ -303,7 +307,7 @@ func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMe
 	rpcServer.metadataLock.Unlock()
 
 	nodeIdToFiles = util.Convert(filenameToCluster)
-	for nodeId, _ := range *nodeIdToFiles {
+	for nodeId := range *nodeIdToFiles {
 		go informMetadata(nodeId, nodeIdToFiles)
 	}
 }
