@@ -13,7 +13,7 @@ import (
 
 const (
 	REPORT_COLLECTION_TIMEOUT_SECONDS = 2
-	RECONCILIATION_PERIOD_MILLIS      = 10000 // period for a cycle of collect, repair and inform file metadata
+	RECONCILIATION_PERIOD_MILLIS      = 2000 // period for a cycle of collect, repair and inform file metadata
 )
 
 var FileMetadataServerSigTerm chan int = make(chan int)
