@@ -113,7 +113,7 @@ func (fm *FileMaster) CheckQueue() {
 	}
 }
 
-func (fm *FileMaster) ReadFile(args *RWArgs) error {
+func (fm *FileMaster) ReadFile(args *util.RWArgs) error {
 	var request *Request = nil
 	for {
 		// if the request is not in queue and read condition (reader < 2 and no writer) satisfied
