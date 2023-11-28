@@ -129,8 +129,6 @@ func (this *FileMetadataService) handlePutRequest(fileName string, reply *DfsRes
 	this.metadataLock.Lock()
 	defer this.metadataLock.Unlock()
 
-	log.Println("handling request")
-
 	fileToClusterInfo := util.Convert2(&this.metadata)
 
 	targetCluster, exists := (*fileToClusterInfo)[fileName]

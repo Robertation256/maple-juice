@@ -3,6 +3,7 @@ package routines
 import (
 	"cs425-mp4/config"
 	"cs425-mp4/util"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -254,15 +255,23 @@ func (fm *FileMaster) executeReplicate(clientAddr string) error {
 }
 
 func (fm *FileMaster) WriteFile(clientFilename string, reply *string) error {
+	transmissionId := fm.transmissionIdGenerator.NewTransmissionId(clientFilename)
+	*reply = transmissionId
+
 	timeout := time.Duration(FILE_WRITE_TIMEOUT_SECONDS)*time.Second
+	startSig := make(chan struct{}, 1)
 	operation := func() error {
-		return fm.executeWrite(clientFilename, reply)
+		startSig <- struct{}{}
+		return fm.executeWrite(transmissionId)
 	}
 
 	task := util.NewFileOperation(util.FILE_OP_WRITE, operation, &timeout)
 	fm.scheduler.AddTask(task)
 
-	return <- task.ResponseChan
+	//block until write task is started
+	<-startSig
+	return nil
+
 	// var request *Request = nil
 	// for {
 	// 	// requests just come in, and the condition for write is satisfied
@@ -285,40 +294,34 @@ func (fm *FileMaster) WriteFile(clientFilename string, reply *string) error {
 	// }
 }
 
-func (fm *FileMaster) executeWrite(clientFilename string, reply *string) error {
+func (fm *FileMaster) executeWrite(transmissionId string) error {
 	// fm.CurrentWrite += 1
 
-	// allow client to start sending file, and assign it a token corresponding to that file write
-	transmissionId := fm.transmissionIdGenerator.NewTransmissionId(clientFilename)
-	*reply = transmissionId
-	
-	go func(){
-		timeout := time.After(60 * time.Second)
-		for {
-			time.Sleep(1 * time.Second) // check if client finished uploading every second
-			select {
-			case <-timeout:
-				log.Print("Client did not finish uploading file to master in 60s")
-				return
-			default:
-				if FileTransmissionProgressTracker.IsLocalCompleted(transmissionId){	// received file, send it to servants
-					for _, servant := range fm.Servants {
-						// todo: add servant ack
-						SendFile(config.SdfsFileDir + fm.Filename, fm.Filename, servant+":"+strconv.Itoa(config.FileReceivePort), transmissionId, RECEIVER_SDFS_FILE_SERVER, WRITE_MODE_TRUNCATE)
-					}
-
-					log.Print("Global write completed")
-					FileTransmissionProgressTracker.GlobalComplete(transmissionId)
-					return
+	timeout := time.After(120 * time.Second)
+	for {
+		select {
+		case <-timeout:
+			log.Print("Client did not finish uploading file to master in 120s")
+			// note: we need expire a transmission id token in future work
+			return errors.New("Client did not finish uploading file to master in 120s")
+		default:
+			if FileTransmissionProgressTracker.IsLocalCompleted(transmissionId){	// received file, send it to servants
+				for _, servant := range fm.Servants {
+					// todo: add servant ack
+					SendFile(config.SdfsFileDir + fm.Filename, fm.Filename, servant+":"+strconv.Itoa(config.FileReceivePort), transmissionId, RECEIVER_SDFS_FILE_SERVER, WRITE_MODE_TRUNCATE)
 				}
+
+				log.Print("Global write completed")
+				FileTransmissionProgressTracker.GlobalComplete(transmissionId)
+				return nil
 			}
 		}
+		time.Sleep(500 * time.Millisecond) // check if client finished uploading every 0.5 second
+	}
 
-	}()
 
 	// fm.CurrentWrite -= 1
 	// fm.CheckQueue()
-	return nil
 }
 
 func (fm *FileMaster) DeleteFile() error {

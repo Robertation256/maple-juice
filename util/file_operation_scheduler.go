@@ -111,7 +111,7 @@ func (this *opQueue) Peek() *FileOperation {
 
 // scheduler for operations on a single file
 type FileOperationScheduler struct {
-	queue          opQueue
+	queue          *opQueue
 	preemptedRound uint32 // number of rounds the head of the op queue gets preempted
 	maxPreemptedRounds uint32
 	fileLock	*CapacityRWLock
@@ -120,7 +120,7 @@ type FileOperationScheduler struct {
 
 func NewFileOperationScheduler(maxPreemptedRounds uint32) *FileOperationScheduler {
 	return &FileOperationScheduler{
-		queue:              *newOpQueue(),
+		queue:              newOpQueue(),
 		maxPreemptedRounds: maxPreemptedRounds,
 		fileLock: NewCapacityRWLock(MAX_CONCURRENT_READ),
 		wakeUpSignals:      make(chan struct{}, MAX_TASK_QUEUE_SIZE),
@@ -153,6 +153,7 @@ func (this *FileOperationScheduler) schedule() {
 		task = this.queue.Pop()
 
 		// execute the actuall task
+		log.Printf("Read task scheduled")
 		go func() {
 			defer this.fileLock.RUnlock()
 			execute(task)
@@ -183,6 +184,7 @@ func (this *FileOperationScheduler) schedule() {
 			if (this.fileLock.TryWLock()){
 				task = this.queue.Pop()
 				this.preemptedRound = 0
+				log.Printf("Write task scheduled")
 				go func() {
 					defer this.fileLock.WUnlock()
 					execute(task)
