@@ -215,5 +215,6 @@ func (this *FileOperationScheduler) AddTask(task *FileOperation) error {
 		return err
 	}
 	this.wakeUpSignals <- struct{}{}
+	log.Print("Added task to scheduler")
 	return nil
 }

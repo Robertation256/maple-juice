@@ -180,6 +180,7 @@ func (this *FileService) ChangeReportStatusPendingDelete(filename string) {
 
 func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error {
 	fm := NewFileMaster(args.Filename, args.Servants, this.Port, this.SdfsFolder, this.LocalFileFolder, this)
+	go fm.scheduler.StartScheduling()
 	this.Filename2FileMaster[args.Filename] = fm
 	return nil
 }
