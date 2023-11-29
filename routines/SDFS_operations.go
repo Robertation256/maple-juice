@@ -274,7 +274,7 @@ func dialMetadataService() *rpc.Client {
 		return nil
 	}
 
-	leaderIp := util.(leaderId)
+	leaderIp := util.NodeIdToIP(leaderId)
 	client := dial(leaderIp, config.RpcServerPort)
 	if client == nil {
 		log.Printf("Failed to establish connection with DFS metadata service at %s:%d", leaderId, config.RpcServerPort)
