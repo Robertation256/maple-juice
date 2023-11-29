@@ -479,7 +479,7 @@ func (this *MRJobManager) listenForMembershipChange() {
 	for {
 		select {
 		case event := <-util.MRJobManagerMembershipEventChan:
-			nodeIp := NodeIdToIP(event.NodeId)
+			nodeIp := util.NodeIdToIP(event.NodeId)
 			if event.IsNewJoin() {
 				this.mapLock.Lock()
 				this.workerNode2Tasks[nodeIp] = make([]string, 0)

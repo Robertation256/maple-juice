@@ -67,7 +67,6 @@ func NewFileService(port int, homedir string, serverHostnames []string) *FileSer
 		FileEntries: make([]util.FileInfo, 0),
 	}
 
-	// util.CreateSshClients(serverHostnames, this.SshConfig, NodeIdToIP(SelfNodeId))
 	util.EmptyFolder(this.SdfsFolder)
 
 	return this
@@ -226,14 +225,15 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 		currFileInfo, ok := filename2fileInfo[updatedFileInfo.FileName]
 		needToCreateFm := false
 		if ok {
-
 			if currFileInfo.IsMaster {
-				// todo: handle potential servant list change
-				
-			}
-
-			// promoted to master
-			if !currFileInfo.IsMaster && updatedFileInfo.IsMaster {
+				// is master of this file, update servant list
+				fileMaster, exists1 := this.Filename2FileMaster[updatedFileInfo.FileName]
+				cluster, exists2 := (*fileToClusters)[updatedFileInfo.FileName]
+				if exists1 && exists2{
+					fileMaster.UpdateServantIps(cluster.GetServantIps())
+				}
+			} else if !currFileInfo.IsMaster && updatedFileInfo.IsMaster {
+				// promoted to master
 				// set is Master to true and create a new filemaster
 				for idx, fileInfo := range this.Report.FileEntries {
 					if fileInfo.FileName == currFileInfo.FileName {
@@ -299,9 +299,9 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 		args := &RWArgs{
 			LocalFilename: fileName,
 			SdfsFilename:  fileName,
-			ClientAddr:    NodeIdToIP(SelfNodeId),
+			ClientAddr:    util.NodeIdToIP(SelfNodeId),
 		}
-		masterIp := NodeIdToIP(cluster.Master.NodeId)
+		masterIp := util.NodeIdToIP(cluster.Master.NodeId)
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", masterIp, config.RpcServerPort))
 		if err != nil {
 			log.Println("Error dailing master when trying to retrieve replica", err)

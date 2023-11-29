@@ -55,7 +55,7 @@ func sdfsFetch(remoteFileName string, localFileName string, receiverTag uint8, w
 		return errors.New("File master is not ready: file upload in progress")
 	}
 
-	fileMasterIP := NodeIdToIP(master.NodeId)
+	fileMasterIP := util.NodeIdToIP(master.NodeId)
 	port := config.RpcServerPort
 
 	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", fileMasterIP, port))
@@ -69,7 +69,7 @@ func sdfsFetch(remoteFileName string, localFileName string, receiverTag uint8, w
 		TransmissionId: transmissionId,
 		LocalFilename: localFileName,
 		SdfsFilename: remoteFileName,
-		ClientAddr: NodeIdToIP(SelfNodeId),
+		ClientAddr: util.NodeIdToIP(SelfNodeId),
 		ReceiverTag: receiverTag,
 		WriteMode: writeMode,
 	}
@@ -115,7 +115,7 @@ func SDFSPutFile(remoteFileName string, localFilePath string) (*DfsResponse, err
 
 	master := fileMetadata.Master
 
-	fileMasterIP := NodeIdToIP(master.NodeId)
+	fileMasterIP := util.NodeIdToIP(master.NodeId)
 	port := config.RpcServerPort
 
 	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", fileMasterIP, port))
@@ -125,7 +125,7 @@ func SDFSPutFile(remoteFileName string, localFilePath string) (*DfsResponse, err
 
 	putArgs := &RWArgs{
 		SdfsFilename: remoteFileName,
-		ClientAddr: NodeIdToIP(SelfNodeId),
+		ClientAddr: util.NodeIdToIP(SelfNodeId),
 	}
 
 	transmissionId := "" 
@@ -169,7 +169,7 @@ func SDFSDeleteFile(remoteFileName string) error {
 
 
 	master := fileMetadata.Master
-	fileMasterIP := NodeIdToIP(master.NodeId)
+	fileMasterIP := util.NodeIdToIP(master.NodeId)
 	port := config.RpcServerPort
 
 
@@ -274,7 +274,7 @@ func dialMetadataService() *rpc.Client {
 		return nil
 	}
 
-	leaderIp := NodeIdToIP(leaderId)
+	leaderIp := util.(leaderId)
 	client := dial(leaderIp, config.RpcServerPort)
 	if client == nil {
 		log.Printf("Failed to establish connection with DFS metadata service at %s:%d", leaderId, config.RpcServerPort)

@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/rpc"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -35,7 +36,8 @@ type FileMaster struct {
 	scheduler *util.FileOperationScheduler
 	Filename     string
 	// list of servant ip addresses
-	Servants []string			// todo add lock protection 
+	servants []string			
+	servantsLock sync.RWMutex
 	// address of self. used to prevent errors in case fm = client
 	SelfAddr string
 
@@ -60,13 +62,13 @@ type Request struct {
 
 func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsFolder string, localFileFlder string, fileServer *FileService) *FileMaster {
 	//FileMasterProgressTracker = NewProgressManager()
-	selfAddr := NodeIdToIP(SelfNodeId)
+	selfAddr := util.NodeIdToIP(SelfNodeId)
 	return &FileMaster{
 		// CurrentRead:     0,
 		// CurrentWrite:    0,
 		scheduler: util.NewFileOperationScheduler(MAX_TASK_PREEMPTION_NUM),
 		Filename:        filename,
-		Servants:        servants,
+		servants:        servants,
 		SelfAddr:        selfAddr,
 		FileServerPort:  fileServerPort,
 		SdfsFolder:      sdfsFolder,
@@ -75,6 +77,20 @@ func NewFileMaster(filename string, servants []string, fileServerPort int, sdfsF
 		transmissionIdGenerator: util.NewTransmissionIdGenerator("FM-"+SelfNodeId),
 	}
 }
+
+func (this *FileMaster) GetServantIps() []string {
+	this.servantsLock.RLock()
+	defer this.servantsLock.RUnlock()
+	return this.servants
+}
+
+func (this *FileMaster) UpdateServantIps(ips []string) {
+	this.servantsLock.Lock()
+	defer this.servantsLock.Unlock()
+	this.servants = ips
+}
+
+
 
 // func (fm *FileMaster) CheckQueue() {
 
@@ -175,26 +191,29 @@ func (fm *FileMaster) executeRead(args *RWArgs) error {
 	}
 
 	var reply string
+	servants := fm.GetServantIps()
 
-	numServants := len(fm.Servants)
+	numServants := len(servants)
 	// select a random servant to send client the file
-	servant := fm.Servants[rand.Intn(numServants)]
-
+	servant := servants[rand.Intn(numServants)]
+	var err error
 	needToResend := false
-	client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
-	if err != nil {
-		log.Println("Error dialing servant:", err)
+	client := dial(servant, fm.FileServerPort)
+	if client == nil {
+		log.Println("Error dialing servant:")
 		needToResend = true
+	} else {
+		err = client.Call("FileService.SendFileToClient", sendArgs, &reply)
+		if err != nil {
+			// some error occured, this might be casued by servant doesn't have the replica yet, etc.
+			log.Println("Servant failed to send file: ", err)
+			needToResend = true
+		}
 	}
-	err = client.Call("FileService.SendFileToClient", sendArgs, &reply)
-	if err != nil {
-		// some error occured, this might be casued by servant doesn't have the replica yet, etc.
-		log.Println("Servant failed to send file: ", err)
-		needToResend = true
-	}
+
 	if needToResend {
 		// if the servant failed to send the file for some reason, the file master will do it instead
-		SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
+		err = SendFile(localFilePath, args.LocalFilename, args.ClientAddr+":"+strconv.Itoa(config.FileReceivePort), args.TransmissionId, args.ReceiverTag, args.WriteMode)
 	}
 
 	// TODO: check if sendfile returned any error?
@@ -202,7 +221,7 @@ func (fm *FileMaster) executeRead(args *RWArgs) error {
 
 	// fm.CurrentRead -= 1
 	// fm.CheckQueue()
-	return nil
+	return err
 }
 
 func (fm *FileMaster) ReplicateFile(clientAddr string) error {
@@ -296,8 +315,9 @@ func (fm *FileMaster) WriteFile(clientFilename string, reply *string) error {
 
 func (fm *FileMaster) executeWrite(transmissionId string) error {
 	// fm.CurrentWrite += 1
-
+	servants := fm.GetServantIps()
 	timeout := time.After(120 * time.Second)
+	var response error
 	for {
 		select {
 		case <-timeout:
@@ -306,17 +326,31 @@ func (fm *FileMaster) executeWrite(transmissionId string) error {
 			return errors.New("Client did not finish uploading file to master in 120s")
 		default:
 			if FileTransmissionProgressTracker.IsLocalCompleted(transmissionId){	// received file, send it to servants
-				for _, servant := range fm.Servants {
-					// todo: add servant ack
-					SendFile(config.SdfsFileDir + fm.Filename, fm.Filename, servant+":"+strconv.Itoa(config.FileReceivePort), transmissionId, RECEIVER_SDFS_FILE_SERVER, WRITE_MODE_TRUNCATE)
+				remainingServants := len(servants)
+				resChan := make(chan error, remainingServants)
+				for _, servant := range servants {
+					// todo: add resolution when a servant failed
+					go func(servantIp string){
+						resChan <- SendFile(config.SdfsFileDir + fm.Filename, fm.Filename, servantIp+":"+strconv.Itoa(config.FileReceivePort), transmissionId, RECEIVER_SDFS_FILE_SERVER, WRITE_MODE_TRUNCATE)
+					}(servant)
+				}
+
+				for remainingServants > 0 {
+					select {
+					case err := <-resChan:
+						if err != nil {
+							response = err
+						}
+						remainingServants--;
+					}
 				}
 
 				log.Print("Global write completed")
 				FileTransmissionProgressTracker.GlobalComplete(transmissionId)
-				return nil
+				return response
 			}
 		}
-		time.Sleep(500 * time.Millisecond) // check if client finished uploading every 0.5 second
+		time.Sleep(100 * time.Millisecond) // check if client finished uploading every 100ms
 	}
 
 
@@ -358,14 +392,15 @@ func (fm *FileMaster) DeleteFile() error {
 }
 
 func (fm *FileMaster) executeDelete() error {
+	servants := fm.GetServantIps()
 
 	util.DeleteFile(fm.Filename, fm.SdfsFolder)
 	fm.FileServer.ChangeReportStatusPendingDelete(fm.Filename)
 
-	calls := make([]*rpc.Call, len(fm.Servants))
+	calls := make([]*rpc.Call, len(servants))
 
 	// todo: close clients after completion
-	for idx, servant := range fm.Servants {
+	for idx, servant := range servants {
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
 		if err != nil {
 			log.Println("Error dialing servant:", err)

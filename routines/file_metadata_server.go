@@ -223,7 +223,7 @@ func checkAndRepair(nodeIdToFiles *map[string]map[string]*util.FileInfo, fileNam
 func collectMetadata() *[]util.FileServerMetadataReport {
 
 	ips := LocalMembershipList.AliveMembers()
-	ips = append(ips, NodeIdToIP(SelfNodeId))
+	ips = append(ips, util.NodeIdToIP(SelfNodeId))
 	clients := make([]*rpc.Client, len(ips))
 	reports := make([]util.FileServerMetadataReport, len(ips))
 
@@ -317,7 +317,7 @@ func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMe
 
 func informMetadata(nodeId string, metadata *util.NodeToFiles) error {
 	timeout := time.After(60 * time.Second)
-	ip := NodeIdToIP(nodeId)
+	ip := util.NodeIdToIP(nodeId)
 	client := dial(ip, config.RpcServerPort)
 	if client == nil {
 		log.Printf("Cannot connect to node %s while informing metadata", nodeId)
