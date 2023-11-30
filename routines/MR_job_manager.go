@@ -171,7 +171,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 		}
 		log.Printf("Starting initial maple task %d", taskNumber)
 		
-		go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
+		go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber], jobId)
 	}
 
 	// stage 4: track Maple worker progress and reschedule for failed tasks
@@ -199,7 +199,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 					
 					jobCompleted = false
 					retryNum[taskNumber]++
-					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
+					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber], jobId)
 				} else {
 					// task completed
 					isTaskCompleted[taskNumber] = true
@@ -358,7 +358,7 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 		retryNum[idx] = 0
 	}
 	for taskNumber, partition := range partitions {
-		go this.startJuiceWorker(taskNumber, partition, job, &taskResultChans[taskNumber])
+		go this.startJuiceWorker(taskNumber, partition, job, &taskResultChans[taskNumber], jobId)
 	}
 
 	// stage 4: track Juice worker progress and reschedule for failed tasks
@@ -384,7 +384,7 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 					log.Print("Juice task " + taskId + " failed, rescheduling ...", err)
 					jobCompleted = false
 					retryNum[taskNumber]++
-					go this.startJuiceWorker(taskNumber, partitions[taskNumber], job, &taskResultChans[taskNumber])
+					go this.startJuiceWorker(taskNumber, partitions[taskNumber], job, &taskResultChans[taskNumber], jobId)
 				} else {
 					// task completed
 					isTaskCompleted[taskNumber] = true
