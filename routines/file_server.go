@@ -101,7 +101,7 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	if ok {
 		fm.ReadFile(args)
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
+		return errors.New("No corresponding filemaster for " + args.SdfsFilename)
 	}
 	return nil
 }
@@ -113,7 +113,7 @@ func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
 	if ok {
 		fm.WriteFile(args.SdfsFilename, reply)
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
+		return errors.New("No corresponding filemaster for " + args.SdfsFilename)
 	}
 	return nil
 }
@@ -125,7 +125,7 @@ func (this *FileService) ReplicateFile(args *RWArgs, reply *string) error {
 	if ok {
 		fm.ReplicateFile(args.ClientAddr)
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
+		return errors.New("No corresponding filemaster for " + args.SdfsFilename)
 	}
 	return nil
 }
@@ -137,7 +137,7 @@ func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 	if ok {
 		fm.DeleteFile()
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.Filename)
+		return errors.New("No corresponding filemaster for " + args.Filename)
 	}
 	return nil
 }
