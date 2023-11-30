@@ -114,3 +114,13 @@ func GetServantIps(fileToClusters *FileNameToCluster, fileName string) []string{
 	}
 	return servantIps
 }
+
+
+func NodeIdToIP(nodeId string) string {
+	splitted := strings.Split(nodeId, ":")
+	if len(splitted) != 2 {
+		log.Printf("Error parsing node id (%s) to udp address", nodeId)
+		return ""
+	}
+	return splitted[0]
+}

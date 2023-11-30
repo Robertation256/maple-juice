@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -40,6 +41,7 @@ type MRJobManager struct {
 	workerNode2Tasks        map[string][]string // worker node ip -> task ids
 	mapLock                 sync.Mutex
 	transmissionIdGenerator *util.TransmissionIdGenerator
+	jobUuid					atomic.Int32
 }
 
 func NewMRJobManager() *MRJobManager {
@@ -101,14 +103,16 @@ func (this *MRJobManager) executeJob(job *util.JobRequest) {
 		return
 	}
 
+	jobId := this.jobUuid.Add(1)
+
 	if job.IsMaple {
-		this.executeMapleJob(&job.MapleJob, &job.ErrorMsgChan)
+		this.executeMapleJob(&job.MapleJob, &job.ErrorMsgChan, jobId)
 	} else {
-		this.executeJuiceJob(&job.JuiceJob, &job.ErrorMsgChan)
+		this.executeJuiceJob(&job.JuiceJob, &job.ErrorMsgChan, jobId)
 	}
 }
 
-func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgChan *chan error) {
+func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgChan *chan error, jobId int32) {
 	// stage 1: fetch input file to local
 	inputFileName := job.SrcSdfsFileName
 	err := SDFSGetFile(inputFileName, inputFileName, RECEIVER_MR_JOB_MANAGER)
@@ -167,7 +171,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 		}
 		log.Printf("Starting initial maple task %d", taskNumber)
 		
-		go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
+		go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber], jobId)
 	}
 
 	// stage 4: track Maple worker progress and reschedule for failed tasks
@@ -180,7 +184,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 			if isTaskCompleted[taskNumber] {
 				continue
 			}
-			taskId := fmtTaskId(job.SrcSdfsFileName, true, taskNumber)
+			taskId := fmtTaskId(job.SrcSdfsFileName, true, taskNumber, jobId)
 
 			select {
 			case err := <-taskResultChans[taskNumber]:
@@ -195,7 +199,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 					
 					jobCompleted = false
 					retryNum[taskNumber]++
-					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber])
+					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber], jobId)
 				} else {
 					// task completed
 					isTaskCompleted[taskNumber] = true
@@ -210,9 +214,9 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	*errorMsgChan <- nil
 }
 
-func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobRequest, resultChan *chan error) {
+func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobRequest, resultChan *chan error, jobId int32) {
 
-	taskId := fmtTaskId(job.SrcSdfsFileName, true, taskNumber)
+	taskId := fmtTaskId(job.SrcSdfsFileName, true, taskNumber, jobId)
 	workerIp := this.assignTask(taskId)
 	if len(workerIp) == 0 {
 		*resultChan <- errors.New("Cannot find free worker") // this should never happen unless all worker nodes died
@@ -279,7 +283,7 @@ func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobReq
 	}
 }
 
-func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgChan *chan error) {
+func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgChan *chan error, jobId int32) {
 
 	// stage 1: list all files related to each key
 	filePrefix := job.SrcSdfsFilePrefix
@@ -354,7 +358,7 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 		retryNum[idx] = 0
 	}
 	for taskNumber, partition := range partitions {
-		go this.startJuiceWorker(taskNumber, partition, job, &taskResultChans[taskNumber])
+		go this.startJuiceWorker(taskNumber, partition, job, &taskResultChans[taskNumber], jobId)
 	}
 
 	// stage 4: track Juice worker progress and reschedule for failed tasks
@@ -365,7 +369,7 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 			if isTaskCompleted[taskNumber] {
 				continue
 			}
-			taskId := fmtTaskId(job.SrcSdfsFilePrefix, false, taskNumber)
+			taskId := fmtTaskId(job.SrcSdfsFilePrefix, false, taskNumber, jobId)
 
 			select {
 			case err := <-taskResultChans[taskNumber]:
@@ -380,7 +384,7 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 					log.Print("Juice task " + taskId + " failed, rescheduling ...", err)
 					jobCompleted = false
 					retryNum[taskNumber]++
-					go this.startJuiceWorker(taskNumber, partitions[taskNumber], job, &taskResultChans[taskNumber])
+					go this.startJuiceWorker(taskNumber, partitions[taskNumber], job, &taskResultChans[taskNumber], jobId)
 				} else {
 					// task completed
 					isTaskCompleted[taskNumber] = true
@@ -415,9 +419,9 @@ func cleanUpJuiceInput(filePrefix string) error {
 	return err1
 }
 
-func (this *MRJobManager) startJuiceWorker(taskNumber int, parition map[string][]string, job *util.JuiceJobRequest, resultChan *chan error) {
+func (this *MRJobManager) startJuiceWorker(taskNumber int, parition map[string][]string, job *util.JuiceJobRequest, resultChan *chan error, jobId int32) {
 
-	taskId := fmtTaskId(job.SrcSdfsFilePrefix, false, taskNumber)
+	taskId := fmtTaskId(job.SrcSdfsFilePrefix, false, taskNumber, jobId)
 	workerIp := this.assignTask(taskId)
 	if len(workerIp) == 0 {
 		*resultChan <- errors.New("Cannot find free worker") // this should never happen unless all worker nodes died
@@ -479,7 +483,7 @@ func (this *MRJobManager) listenForMembershipChange() {
 	for {
 		select {
 		case event := <-util.MRJobManagerMembershipEventChan:
-			nodeIp := NodeIdToIP(event.NodeId)
+			nodeIp := util.NodeIdToIP(event.NodeId)
 			if event.IsNewJoin() {
 				this.mapLock.Lock()
 				this.workerNode2Tasks[nodeIp] = make([]string, 0)
@@ -496,12 +500,12 @@ func (this *MRJobManager) listenForMembershipChange() {
 	}
 }
 
-func fmtTaskId(fileName string, isMaple bool, taskNumber int) string {
-	taskName := "maple-task"
+func fmtTaskId(fileName string, isMaple bool, taskNumber int, jobId int32) string {
+	taskName := "maple"
 	if !isMaple {
-		taskName = "juice-task"
+		taskName = "juice"
 	}
-	return fmt.Sprintf("%s-%s-%d", fileName, taskName, taskNumber)
+	return fmt.Sprintf("%s-%s-job%d-task%d", fileName, taskName, jobId, taskNumber)
 }
 
 // find the least busy worker to assign the task, return worker ip

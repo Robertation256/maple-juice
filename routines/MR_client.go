@@ -132,7 +132,7 @@ func dialMRJobManager() *rpc.Client {
 		return nil
 	}
 
-	leaderIp := NodeIdToIP(leaderId)
+	leaderIp := util.NodeIdToIP(leaderId)
 	client := dial(leaderIp, config.RpcServerPort)
 	if client == nil {
 		log.Printf("Failed to establish connection with Maple Juice Job Manager at %s:%d", leaderId, config.RpcServerPort)

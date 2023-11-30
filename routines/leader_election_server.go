@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -196,7 +195,7 @@ func waitAndVote(conn *net.UDPConn, votingRoundId uint32) {
 		RoundId:     votingRoundId,
 		NodeId:      SelfNodeId,
 	}
-	addr := NodeIdToIP(candidateId) + ":" + leaderElectionPort
+	addr := util.NodeIdToIP(candidateId) + ":" + leaderElectionPort
 	unicast(conn, addr, msg.ToPayload())
 }
 
@@ -224,7 +223,7 @@ func monitorNewElectionRound(conn *net.UDPConn) {
 					RoundId:     localRoundId,
 					NodeId:      SelfNodeId,
 				}
-				addr := NodeIdToIP(msg.NodeId) + ":" + leaderElectionPort
+				addr := util.NodeIdToIP(msg.NodeId) + ":" + leaderElectionPort
 				unicast(conn, addr, outMsg.ToPayload())
 				// some node requested new election
 			} else if msg.RoundId > localRoundId {
@@ -266,10 +265,3 @@ func multicast(conn *net.UDPConn, payload []byte) {
 	}
 }
 
-func NodeIdToIP(nodeId string) string {
-	splitted := strings.Split(nodeId, ":")
-	if len(splitted) != 2 {
-		log.Printf("Error parsing node id (%s) to udp address", nodeId)
-	}
-	return splitted[0]
-}

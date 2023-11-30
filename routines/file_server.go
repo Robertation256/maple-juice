@@ -67,7 +67,6 @@ func NewFileService(port int, homedir string, serverHostnames []string) *FileSer
 		FileEntries: make([]util.FileInfo, 0),
 	}
 
-	// util.CreateSshClients(serverHostnames, this.SshConfig, NodeIdToIP(SelfNodeId))
 	util.EmptyFolder(this.SdfsFolder)
 
 	return this
@@ -102,7 +101,7 @@ func (this *FileService) ReadFile(args *RWArgs, reply *string) error {
 	if ok {
 		fm.ReadFile(args)
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
+		return errors.New("No corresponding filemaster for " + args.SdfsFilename)
 	}
 	return nil
 }
@@ -114,7 +113,7 @@ func (this *FileService) WriteFile(args *RWArgs, reply *string) error {
 	if ok {
 		fm.WriteFile(args.SdfsFilename, reply)
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
+		return errors.New("No corresponding filemaster for " + args.SdfsFilename)
 	}
 	return nil
 }
@@ -126,7 +125,7 @@ func (this *FileService) ReplicateFile(args *RWArgs, reply *string) error {
 	if ok {
 		fm.ReplicateFile(args.ClientAddr)
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.SdfsFilename)
+		return errors.New("No corresponding filemaster for " + args.SdfsFilename)
 	}
 	return nil
 }
@@ -138,7 +137,7 @@ func (this *FileService) DeleteFile(args *DeleteArgs, reply *string) error {
 	if ok {
 		fm.DeleteFile()
 	} else {
-		log.Fatal("No corresponding filemaster for " + args.Filename)
+		return errors.New("No corresponding filemaster for " + args.Filename)
 	}
 	return nil
 }
@@ -180,6 +179,7 @@ func (this *FileService) ChangeReportStatusPendingDelete(filename string) {
 
 func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) error {
 	fm := NewFileMaster(args.Filename, args.Servants, this.Port, this.SdfsFolder, this.LocalFileFolder, this)
+	go fm.scheduler.StartScheduling()
 	this.Filename2FileMaster[args.Filename] = fm
 	return nil
 }
@@ -219,14 +219,21 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 	}
 
 	// replication instructed by metadata service
-	filesToPair := make([]string, 0)
+	filesToRepair := make([]string, 0)
 
 	for _, updatedFileInfo := range updatedFileEntries {
 		currFileInfo, ok := filename2fileInfo[updatedFileInfo.FileName]
 		needToCreateFm := false
 		if ok {
-			// promoted to master
-			if !currFileInfo.IsMaster && updatedFileInfo.IsMaster {
+			if currFileInfo.IsMaster {
+				// is master of this file, update servant list
+				fileMaster, exists1 := this.Filename2FileMaster[updatedFileInfo.FileName]
+				cluster, exists2 := (*fileToClusters)[updatedFileInfo.FileName]
+				if exists1 && exists2{
+					fileMaster.UpdateServantIps(cluster.GetServantIps())
+				}
+			} else if !currFileInfo.IsMaster && updatedFileInfo.IsMaster {
+				// promoted to master
 				// set is Master to true and create a new filemaster
 				for idx, fileInfo := range this.Report.FileEntries {
 					if fileInfo.FileName == currFileInfo.FileName {
@@ -252,7 +259,7 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 				// when master's status == PENDING_FILE_UPLOAD, it indicates a new file is uploaded to sdfs
 				// fm will handle writing to all services, so there is no need to do anything
 				if cluster.Master != nil && cluster.Master.FileStatus == util.COMPLETE {
-					filesToPair = append(filesToPair, updatedFileInfo.FileName)
+					filesToRepair = append(filesToRepair, updatedFileInfo.FileName)
 				} else if cluster.Master != nil && cluster.Master.FileStatus == util.PENDING_DELETE {
 					log.Println("here in delete")
 					// if master is in the process of executing a delete, do not add to self report
@@ -283,7 +290,7 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 
 
 	calls := make([]*rpc.Call, 0)
-	for _, fileName := range filesToPair {
+	for _, fileName := range filesToRepair {
 		cluster, exists := (*fileToClusters)[fileName]
 		if !exists || cluster == nil || cluster.Master == nil{
 			log.Printf("Failed to look up file master while repairing for file: %s", fileName)
@@ -292,9 +299,9 @@ func (this *FileService) UpdateMetadata(nodeToFiles *util.NodeToFiles, reply *st
 		args := &RWArgs{
 			LocalFilename: fileName,
 			SdfsFilename:  fileName,
-			ClientAddr:    NodeIdToIP(SelfNodeId),
+			ClientAddr:    util.NodeIdToIP(SelfNodeId),
 		}
-		masterIp := NodeIdToIP(cluster.Master.NodeId)
+		masterIp := util.NodeIdToIP(cluster.Master.NodeId)
 		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", masterIp, config.RpcServerPort))
 		if err != nil {
 			log.Println("Error dailing master when trying to retrieve replica", err)

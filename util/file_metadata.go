@@ -49,6 +49,17 @@ func NewClusterInfo(fileName string) *ClusterInfo {
 	return &ret
 }
 
+func (this *ClusterInfo) GetServantIps() []string {
+	ret := make([]string, 0)
+	for _, s := range this.Servants{
+		ip := NodeIdToIP(s.NodeId)
+		if len(ip) > 0 {
+			ret = append(ret, ip)
+		}
+	}
+	return ret
+}
+
 
 
 // compile reports into map of nodeId -> fileName -> FileInfo and a map of fileName -> replicaInfo
