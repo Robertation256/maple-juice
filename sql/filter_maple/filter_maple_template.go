@@ -70,7 +70,7 @@ func main() {
 		line := scanner.Text()
 
 		// check if the field matches the regular expression
-		if  (!filterByColumn && regexpPattern.MatchString(line)) || (regexpPattern.MatchString(getFieldByIndex(line, filterColumnIdx))) {
+		if  (!filterByColumn && regexpPattern.MatchString(line)) || (filterByColumn && regexpPattern.MatchString(getFieldByIndex(line, filterColumnIdx))) {
 
 			// create or retrieve file descriptor for the key
 			outputFile, exists := output[key]
