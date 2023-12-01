@@ -139,7 +139,7 @@ func executeFilterQuery(inputFile string, columnName string, regex string){
 		return 
 	}
 	// submit juice job
-	err = ProcessJuiceCmd([]string{"filter_juice.go", strconv.Itoa(config.JuiceTaskNum), prefix, sdfsDestFileName})
+	err = ProcessJuiceCmd([]string{"filter_juice.go", strconv.Itoa(config.JuiceTaskNum), prefix, sdfsDestFileName, "0", "0"})
 	if err != nil {
 		log.Println("Error executing Juice job for query", err)
 		return
