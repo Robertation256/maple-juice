@@ -103,12 +103,13 @@ func GetFileLineCount(filePath string) (int, error) {
 }
 
 // caveat: need to resize buffer with lines over 64K
-func PartitionFile(scanner *bufio.Scanner, lineNum int, outputFilePath string) error {
+func PartitionFile(scanner *bufio.Scanner, lineNum int, outputFilePath string, header string) error {
 	outputFile, err := os.Create(outputFilePath)
 	if err != nil {
 		return err
 	}
 	defer outputFile.Close()
+	outputFile.WriteString(header)
 
 	for lineNum > 0 {
 		if !scanner.Scan() {
@@ -116,7 +117,7 @@ func PartitionFile(scanner *bufio.Scanner, lineNum int, outputFilePath string) e
 		}
 		lineNum -= 1
 		line := scanner.Text() + "\n"
-		_, err := outputFile.Write([]byte(line))
+		_, err := outputFile.WriteString(line)
 		if err != nil {
 			return err
 		}

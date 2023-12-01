@@ -7,24 +7,8 @@ import (
 	"os"
 	"strings"
 	"fmt"
-	"strconv"
 )
 
-/*
-
-assumpations about the input
-1. user is aware of the schema, hence can specify the index of the column to perform join on
-2. columns in the input file are separated by comma, i.e. each line in the data is a comma-separated string
-
-example input: (if the schema is name, age, year)
-someone, 18, freshman
-
-if the join is d1.name = d2.id and the current maple is reading d1 
-
-Maple (line):
-	output(name, d1 @ line)
-
-*/
 
 func main() {
 	log.SetOutput(os.Stderr)
@@ -32,7 +16,7 @@ func main() {
 	nodeManagerFileDir := homedir + "/mr_node_manager/"
 
 	// define flags
-	columnIdxFlag := "{{ .Col }}"
+	joinColumn := "{{ .JoinColumn }}"
 	inputFileFlag := flag.String("in", "", "Input filename")
 	prefixFlag := flag.String("prefix", "", "SDFS intermediate filename prefix")
 	flag.Parse()
@@ -53,10 +37,13 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 
-	columnIdx, conversionErr := strconv.Atoi(columnIdxFlag)
-	if conversionErr != nil {
-		log.Fatal("Could not parse column index", conversionErr)
+	header := scanner.Text()
+
+	joinColumnIdx := findColumnIndex(header, joinColumn)
+	if joinColumnIdx < 0 {
+		log.Fatal("Unable to locate column for filter operation in input file header")
 	}
+
 
 	outputFiles := []string{}
 
@@ -66,8 +53,8 @@ func main() {
 		values := strings.Split(line, ",")
 
 		// check if the line has enough columns
-		if columnIdx < len(values) {
-			key := values[columnIdx]
+		if joinColumnIdx < len(values) {
+			key := values[joinColumnIdx]
 			key = strings.TrimSpace(key)
 
 			// create or retrieve file descriptor for the key
@@ -89,7 +76,7 @@ func main() {
 				log.Fatal("Error writing to output file:", err)
 			}
 		} else {
-			log.Fatalf("Column index %d out of bounds in line: %s\n", columnIdx, line)
+			log.Fatalf("Column index %d out of bounds in line: %s\n", joinColumnIdx, line)
 		}
 	}
 
@@ -109,8 +96,31 @@ func main() {
 func extractPartitionNumber(inputFileName string) string {
 	splitted := strings.Split(inputFileName, "-")
 	if (len(splitted)!=2){
-		log.Printf("WARN: invalid maple input file name format for %s", inputFileName)
+		log.Fatalf("WARN: invalid maple input file name format for %s", inputFileName)
 		return ""
 	}
 	return splitted[1]
+}
+
+
+func findColumnIndex(header string, columnName string) int {
+	splitted := strings.Split(header, ",")
+	idx := 0
+	for _, field := range splitted {
+		field = strings.Trim(field, " \n\r")
+		if field == columnName {
+			return idx
+		}
+		idx++
+	}
+	return -1
+}
+
+func getFieldByIndex(line string, index int) string {
+	splitted := strings.Split(line, ",")
+	if index < len(splitted) {
+		return splitted[index]
+	}
+	log.Fatal("Invalid maple input file, mismatch between header and record field length")
+	return ""
 }
