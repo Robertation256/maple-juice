@@ -98,6 +98,9 @@ func main() {
 
 		"maple": "test maple",
 		"juice": "test juice",
+
+		"sql_filter": "sql_filter",
+		"sql_join": "sql_join",
 	}
 
 	for {
@@ -168,6 +171,12 @@ func main() {
 		
 		case "juice":
 			routines.ProcessJuiceCmd(args)
+
+		case "sql_filter":
+			routines.ProcessFilterCmd(args)
+
+		case "sql_join":
+			routines.ProcessJoinCmd(args)
 
 
 		// debug commands

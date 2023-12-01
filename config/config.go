@@ -41,6 +41,8 @@ var LocalFileDir string
 var JobManagerFileDir string // for storing partitioned maple input files
 var NodeManagerFileDir string
 
+var TemplateFileDir string
+
 
 func InitConfig() {
 
@@ -53,7 +55,7 @@ func InitConfig() {
 	var err error
 	s, err = os.ReadFile(homeDir + "/config.txt")
 	if err != nil {
-		log.Fatal("Error reading configs", err)
+		log.Fatal("Error reading configs ", err)
 	}
 
 	entries := strings.Split(string(s), "\n")
@@ -148,6 +150,7 @@ func InitConfig() {
 	LocalFileDir = homeDir + "/local/"
 	JobManagerFileDir = homeDir + "/mr_job_manager/"
 	NodeManagerFileDir = homeDir + "/mr_node_manager/"
+	TemplateFileDir = homeDir + "/sql_template/"
 
 
 	if FileReceivePort == 0 {

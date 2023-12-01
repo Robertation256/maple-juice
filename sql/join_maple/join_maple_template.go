@@ -32,14 +32,14 @@ func main() {
 	nodeManagerFileDir := homedir + "/mr_node_manager/"
 
 	// define flags
-	columnIdxFlag := flag.String("col", "", "Column index")
+	columnIdxFlag := "{{ .Col }}"
 	inputFileFlag := flag.String("in", "", "Input filename")
 	prefixFlag := flag.String("prefix", "", "SDFS intermediate filename prefix")
 	flag.Parse()
 
 	
 	// check if required flags are provided
-	if *columnIdxFlag == "" || *inputFileFlag == "" || *prefixFlag == ""{
+	if  *inputFileFlag == "" || *prefixFlag == ""{
 		log.Fatal("Usage: go run yourprogram.go -col <column_index> -in <inputfile> -prefix <sdfs_intermediate_filename_prefix>")
 	}
 
@@ -53,7 +53,7 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 
-	columnIdx, conversionErr := strconv.Atoi(*columnIdxFlag)
+	columnIdx, conversionErr := strconv.Atoi(columnIdxFlag)
 	if conversionErr != nil {
 		log.Fatal("Could not parse column index", conversionErr)
 	}
@@ -73,7 +73,7 @@ func main() {
 			// create or retrieve file descriptor for the key
 			outputFile, exists := output[key]
 			if !exists {
-				outputFileName := fmt.Sprintf("%s-%s.txt", *prefixFlag, key)
+				outputFileName := fmt.Sprintf("%s-%s-%s.txt", *prefixFlag, extractPartitionNumber(*inputFileFlag), key)
 				outputFiles = append(outputFiles, outputFileName)
 				var err error
 				outputFile, err = os.Create(nodeManagerFileDir + outputFileName)
@@ -104,4 +104,13 @@ func main() {
 
 	fmt.Println(strings.Join(outputFiles, ","))
 	os.Exit(0)
+}
+
+func extractPartitionNumber(inputFileName string) string {
+	splitted := strings.Split(inputFileName, "-")
+	if (len(splitted)!=2){
+		log.Printf("WARN: invalid maple input file name format for %s", inputFileName)
+		return ""
+	}
+	return splitted[1]
 }
