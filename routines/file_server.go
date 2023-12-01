@@ -203,6 +203,9 @@ func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMeta
 				fileInfo.FileStatus = util.COMPLETE
 			}
 			updatedFileEntries = append(updatedFileEntries, fileInfo)
+		// its possible that file transfer is in progress and file is locked by another thread
+		} else if fileInfo.FileStatus == util.PENDING_FILE_UPLOAD || fileInfo.FileStatus == util.WAITING_REPLICATION {
+			updatedFileEntries = append(updatedFileEntries, fileInfo)
 		}
 	}
 
