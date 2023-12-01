@@ -51,14 +51,46 @@ func ProcessSqlQuery(query string) {
 	} else {
 		// join query
 
+		fileName1 := strings.Trim(splitted[3], ",")
+		fileName2 := splitted[4]
+		joinCondition := strings.Split(splitted[6], "=")
+		if len(joinCondition) != 2 {
+			log.Printf("Invalid join condition for join sql query")
+			log.Println("Filter usage: SELECT ALL FROM <file_name> WHERE \"<column_name>\"=\"<regex>\"")
+			return
+		}
 
+		left := strings.Split(joinCondition[0], ".")
+		right := strings.Split(joinCondition[1], ".")
 
+		if len(left) != 2 || len(right) != 2 {
+			log.Printf("Invalid join condition for join sql query")
+			log.Println("Filter usage: SELECT ALL FROM <file_name> WHERE \"<column_name>\"=\"<regex>\"")
+			return
+		}
 
+		leftFile := left[0]
+		rightFile := right[0]
+
+		// trim quotation marks
+		leftField := left[1][1:len(left[1])-1]
+		rightField := right[1][1:len(right[1])-1]
+		var field1, field2 string
+
+		if (leftFile == fileName1 && rightFile == fileName2) {
+			field1 = leftField
+			field2 = rightField
+		} else if (leftFile == fileName2 && rightFile == fileName1) {
+			field1 = rightField
+			field2 = leftField
+		} else {
+			log.Printf("Invalid join condition for join sql query: bad field qualifier")
+			log.Println("Filter usage: SELECT ALL FROM <file_name> WHERE \"<column_name>\"=\"<regex>\"")
+			return
+		}
+
+		executeJoinQuery(fileName1, fileName2, field1, field2)
 	}
-
-
-
-
 }
 
 
@@ -80,7 +112,7 @@ func executeFilterQuery(inputFile string, columnName string, regex string){
 	sdfsDestFileName := fmt.Sprintf("filter_query_result_%s_%d", SelfNodeId, timestamp)
 
 	// generate executable with template
-	executableName := fmt.Sprintf("filter_maple_%s_%d.go", inputFile, timestamp)
+	executableName := fmt.Sprintf("filter_maple_%s_%s_%d.go", inputFile, SelfNodeId, timestamp)
 	err = util.GenerateFilterMapleExecutables(columnName, regex, executableName)
 
 	if err != nil {
@@ -107,82 +139,106 @@ func executeFilterQuery(inputFile string, columnName string, regex string){
 	
 	// submit maple job
 	prefix := fmt.Sprintf("%s_%s_%d", inputFile, SelfNodeId, timestamp)
-	ProcessMapleCmd([]string{executableName, strconv.Itoa(config.MapleTaskNum), prefix, inputFile})
-
+	err = ProcessMapleCmd([]string{executableName, strconv.Itoa(config.MapleTaskNum), prefix, inputFile})
+	if err != nil {
+		log.Println("Error executing Maple job for query", err)
+		return 
+	}
 	// submit juice job
-	ProcessJuiceCmd([]string{"filter_juice.go", strconv.Itoa(config.JuiceTaskNum), prefix, sdfsDestFileName})
+	err = ProcessJuiceCmd([]string{"filter_juice.go", strconv.Itoa(config.JuiceTaskNum), prefix, sdfsDestFileName})
+	if err != nil {
+		log.Println("Error executing Juice job for query", err)
+		return
+	}
+	err = SDFSFetchAndConcatWithPrefix(sdfsDestFileName, sdfsDestFileName, RECEIVER_SDFS_CLIENT)
+	if err != nil {
+		log.Println("Error fetching query result to local folder", err)
+		return
+	}
 
-	SDFSFetchAndConcatWithPrefix(sdfsDestFileName, sdfsDestFileName, RECEIVER_SDFS_CLIENT)
 
-	log.Printf("Query completed with result at %s", sdfsDestFileName+"")
-
+	log.Printf("Query completed with result at %s in local folder", sdfsDestFileName)
 }
 
-// sql_join <d1> <col_idx> <d2> <col_idx> <num maples> <num juices> <sdfs_dest_filename> 
-func ProcessJoinCmd(args []string) {
 
-	// TODO: add header parsing and allow user to specificy column
-	if len(args) != 7 {
-		log.Println("Invalid sql filter command")
-		return
-	}
 
-	_, err := strconv.Atoi(args[4])
-	_, err1 := strconv.Atoi(args[5])
-
-	if err != nil || err1 != nil {
-		log.Println("Invalid maple/juice task number")
-		return
-	}
-
-	numMaples := args[4]
-	numJuices := args[5]
-
-	d1 := args[0]
-	col1 := args[1]
-	d2 := args[2]
-	col2 := args[2]
-	sdfsDestFileName := args[6]
-
-	if len(d1) == 0 || len(d2) == 0 || len(col1) == 0 || len(col2) == 0 || len(sdfsDestFileName) == 0 {
-		log.Println("file names and column cannot be empty")
+func executeJoinQuery(fileName1, fileName2, fieldName1, fieldName2 string){
+	if len(fileName1) == 0 || len(fileName2) == 0 || len(fieldName1) == 0 || len(fieldName2) == 0 || len(sdfsDestFileName) == 0 {
+		log.Println("Empty query argument found in join query")
 		return
 	}
 
 	timestamp := time.Now().UnixMilli()
 
 	// generate executable with template for both d1 and d2
-	executableNameD1 := fmt.Sprintf("join_maple_%s_%d.go", d1, timestamp)
-	err = util.GenerateJoinMapleExecutables(col1, executableNameD1)
+	executableNameD1 := fmt.Sprintf("join_maple_%s_%s_%d.go", fileName1, SelfNodeId, timestamp)
+	err := util.GenerateJoinMapleExecutables(fieldName1, executableNameD1)
 
 	if err != nil {
-		log.Println("Error generating join maple executable")
+		log.Println("Error generating maple executable for join query")
 		return
 	}
 
-	executableNameD2 := fmt.Sprintf("join_maple_%s_%d.go", d2, timestamp)
-	err = util.GenerateJoinMapleExecutables(col1, executableNameD2)
+	executableNameD2 := fmt.Sprintf("join_maple_%s_%s_%d.go", fileName2, SelfNodeId, timestamp)
+	err = util.GenerateJoinMapleExecutables(fieldName2, executableNameD2)
 
 	if err != nil {
-		log.Println("Error generating join maple executable")
+		log.Println("Error generating maple executable for join query")
 		return
 	}
 
 	// upload generated executable and input to sdfs
-	SDFSPutFile(executableNameD1, config.LocalFileDir + executableNameD1)
-	SDFSPutFile(d1, config.LocalFileDir + d1)
+	_, err = SDFSPutFile(executableNameD1, config.LocalFileDir + executableNameD1)
+	if err != nil {
+		log.Println("Error uploading executable for join query")
+		return
+	}
+	_, err = SDFSPutFile(fieldName1, config.LocalFileDir + fieldName1)
+	if err != nil {
+		log.Println("Error uploading input file for join query")
+		return
+	}
 
-	SDFSPutFile(executableNameD2, config.LocalFileDir + executableNameD2)
-	SDFSPutFile(d2, config.LocalFileDir + d2)
+	_, err = SDFSPutFile(executableNameD2, config.LocalFileDir + executableNameD2)
+	if err != nil {
+		log.Println("Error uploading executable for join query")
+		return
+	}
+	_, err = SDFSPutFile(fileName2, config.LocalFileDir + fileName2)
+	if err != nil {
+		log.Println("Error uploading input file for join query")
+		return
+	}
 
 	// create maple task
-	prefix := fmt.Sprintf("join_%s_%s_%d", d1, d2, timestamp)
-	ProcessMapleCmd([]string{executableNameD1, numMaples, prefix, d1})
-	ProcessMapleCmd([]string{executableNameD2, numMaples, prefix, d2})
+	prefix := fmt.Sprintf("join_%s_%s_%s_%d", fieldName1, fileName2, SelfNodeId, timestamp)
+	err = ProcessMapleCmd([]string{executableNameD1, strconv.Itoa(config.MapleTaskNum), prefix, fileName1})
+	if err != nil {
+		log.Println("Error executing maple job for dataset1 in join query", err)
+		return
+	}
+	err = ProcessMapleCmd([]string{executableNameD2, strconv.Itoa(config.MapleTaskNum), prefix, fileName2})
+	if err != nil {
+		log.Println("Error executing maple job for dataset2 in join query", err)
+		return
+	}
 
-
-
+	sdfsDestFilePrefix := fmt.Sprintf("join_query_result_%s_%d", SelfNodeId, timestamp)
 	// create juice task
-	ProcessJuiceCmd([]string{"join_juice.go", numJuices, prefix, sdfsDestFileName})
+	err = ProcessJuiceCmd([]string{"join_juice.go", strconv.Itoa(config.JuiceTaskNum), prefix, sdfsDestFilePrefix, "0", "0"})
 
+	if err != nil {
+		log.Println("Error executing juice job for join query", err)
+		return
+	}
+
+	err = SDFSFetchAndConcatWithPrefix(sdfsDestFilePrefix, sdfsDestFilePrefix, RECEIVER_SDFS_CLIENT)
+
+	if err != nil {
+		log.Println("Error fetching join query result to local folder", err)
+		return
+	}
+
+	log.Printf("Query completed with result at %s in local folder", sdfsDestFilePrefix)
 }
+
