@@ -11,8 +11,11 @@ import (
 	"time"
 )
 
-
+// Filter queries
 // SELECT ALL FROM <file_name> WHERE "<column_name>"="<regex>"
+// SELECT ALL FROM <file_name> WHERE "<regex>"	this one does does the whole line matching
+
+// Join queries
 // SELECT ALL FROM <file1>, <file2> WHERE <file1>."<field_name1>"=<file2>."<field_name2>"
 func ProcessSqlQuery(query string) {
 
@@ -20,7 +23,8 @@ func ProcessSqlQuery(query string) {
 
 	if len(splitted) != 6  && len(splitted) != 7{
 		log.Println("Invalid SQL query")
-		log.Println("Filter usage: SELECT ALL FROM <file_name> WHERE \"<column_name>\"=\"<regex>\"")
+		log.Println("Filter usage1 : SELECT ALL FROM <file_name> WHERE \"<column_name>\"=\"<regex>\"")
+		log.Println("Filter usage2: SELECT ALL FROM <file_name> WHERE \"<regex>\"")
 		log.Println("Join usage: SELECT ALL FROM <file1>, <file2> WHERE <file1>.\"<field_name1>\"=<file2>.\"<field_name2>\"")
 		return
 	}
@@ -28,18 +32,30 @@ func ProcessSqlQuery(query string) {
 	// filter query
 	if len(splitted) == 6 {
 		fileName := splitted[3]
-		condition := strings.Split(splitted[5], "=")
-		if len(condition) != 2{
-			log.Printf("Invalid condition for filter sql query")
-			log.Println("Filter usage: SELECT ALL FROM <file_name> WHERE \"<column_name>\"=\"<regex>\"")
-			return
-		} 
+		var regex, columnName string
 
-		columnName := condition[0]
-		regex := condition[1]
-		// trim quotation marks
-		columnName = columnName[1:len(columnName)-1]
-		regex = regex[1:len(regex)-1]
+		// queries specifies which column to filter
+		if strings.Contains(splitted[5], "=") {
+			condition := strings.Split(splitted[5], "=")
+			if len(condition) != 2{
+				log.Printf("Invalid condition for filter sql query")
+				log.Println("Filter usage1: SELECT ALL FROM <file_name> WHERE \"<column_name>\"=\"<regex>\"")
+				log.Println("Filter usage2: SELECT ALL FROM <file_name> WHERE \"<regex>\"")
+				return
+			} 
+	
+			columnName = condition[0]
+			regex = condition[1]
+			// trim quotation marks
+			columnName = columnName[1:len(columnName)-1]
+			regex = regex[1:len(regex)-1]
+
+		// query does not specify which column to filter, use the whole condition as a regex
+		} else {
+			columnName = ""
+			regex = splitted[5][1:len(splitted[5])-1]
+		}
+
 
 		executeFilterQuery(fileName, columnName, regex)
 	} else {
@@ -91,7 +107,7 @@ func ProcessSqlQuery(query string) {
 
 func executeFilterQuery(inputFile string, columnName string, regex string){
 
-	if len(inputFile) == 0 || len(regex) == 0 || len(columnName) == 0{
+	if len(inputFile) == 0 || len(regex) == 0 {
 		log.Println("Invalid filter query arguments")
 		return
 	}

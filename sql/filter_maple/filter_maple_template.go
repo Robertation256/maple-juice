@@ -23,6 +23,9 @@ func main() {
 	prefixFlag := flag.String("prefix", "", "SDFS intermediate filename prefix")
 	flag.Parse()
 
+	filterByColumn := len(filterColumn) > 0	
+	filterColumnIdx := -1
+
 	// check if required flags are provided
 	if *inputFileFlag == "" || *prefixFlag == "" {
 		log.Fatal("Usage: go run filter_maple.go -E <regex> -in <inputfile> -prefix <sdfs_intermediate_filename_prefix>")
@@ -49,22 +52,24 @@ func main() {
 	if !scanner.Scan(){
 		log.Fatal("Empty input to filter maple executable")
 	}
-	header := scanner.Text()
 
-	filterColumnIdx := findColumnIndex(header, filterColumn)
-	if filterColumnIdx < 0 {
-		log.Fatalf("Unable to locate column (%s)for filter operation in input file header (%s)", filterColumn, header)
+	if filterByColumn {
+		header := scanner.Text()
+		filterColumnIdx = findColumnIndex(header, filterColumn)
+		if filterColumnIdx < 0 {
+			log.Fatalf("Unable to locate column (%s)for filter operation in input file header (%s)", filterColumn, header)
+		}
 	}
 
 	outputFiles := []string{}
+	key := "DummyFilterKey"
+
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		field := getFieldByIndex(line, filterColumnIdx)
 
 		// check if the field matches the regular expression
-		if regexpPattern.MatchString(field) {
-			key := "DummyFilterKey"
+		if  (!filterByColumn && regexpPattern.MatchString(line)) || (regexpPattern.MatchString(getFieldByIndex(line, filterColumnIdx))) {
 
 			// create or retrieve file descriptor for the key
 			outputFile, exists := output[key]
