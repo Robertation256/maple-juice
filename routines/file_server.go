@@ -148,6 +148,7 @@ func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error 
 	if err != nil {
 		return err
 	}
+
 	this.RemoveFromReport(args.Filename)
 	return nil
 
@@ -161,6 +162,7 @@ func (this *FileService) RemoveFromReport(filename string) {
 	for i, fileinfo := range currEntries {
 		if fileinfo.FileName == filename {
 			this.Report.FileEntries = append(currEntries[:i], currEntries[i+1:]...)
+			return
 		}
 	}
 }

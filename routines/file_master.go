@@ -440,9 +440,6 @@ func (fm *FileMaster) executeDelete() error {
 						log.Println("Channel closed for async rpc call")
 					}
 					calls[i] = nil
-				case <-time.After(3 * time.Second):
-					log.Println("Rpc call timed out")
-					calls[i] = nil
 				default:
 					complete = false
 				}

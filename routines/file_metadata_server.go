@@ -416,9 +416,11 @@ func (this *FileMetadataService) HandleFileSearchRequest(regex *string, reply *[
 
 // remove a file from metadata service surveilance, most likely due to a pending deletion
 func (this *FileMetadataService) RequestTombstone(fileName *string, reply *string) error {
-	this.metadataLock.RLock()
+	this.metadataLock.Lock()
+	defer this.metadataLock.Unlock()
+
 	fileMap := util.Convert2(&this.metadata) 
-	this.metadataLock.RUnlock()
+	
 
 	_, exists := (*fileMap)[*fileName]
 	if !exists {
@@ -429,6 +431,11 @@ func (this *FileMetadataService) RequestTombstone(fileName *string, reply *strin
 	this.tombstoneLock.Lock()
 	this.tombstones[*fileName] = true
 	this.tombstoneLock.Unlock()
+
+	delete(*fileMap, *fileName)
+	prunedMetadata := util.Convert(fileMap)
+
+	this.metadata = *prunedMetadata
 
 	*reply = "ACK"
 	return nil
