@@ -109,7 +109,7 @@ func PartitionFile(scanner *bufio.Scanner, lineNum int, outputFilePath string, h
 		return err
 	}
 	defer outputFile.Close()
-	outputFile.WriteString(header)
+	outputFile.WriteString(header + "\n")
 
 	for lineNum > 0 {
 		if !scanner.Scan() {
