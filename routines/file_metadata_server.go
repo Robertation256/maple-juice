@@ -4,11 +4,12 @@ import (
 	"cs425-mp4/config"
 	"cs425-mp4/util"
 	"errors"
+	"fmt"
 	"log"
 	"net/rpc"
+	"regexp"
 	"sync"
 	"time"
-	"regexp"
 )
 
 const (
@@ -22,6 +23,8 @@ type FileMetadataService struct {
 	metadataLock sync.RWMutex
 	// nodeId -> fileName -> file info
 	metadata util.NodeToFiles
+	tombstones map[string]bool 	// a set of filenames over which repair and surveliance are halted for the sake of deletion
+	tombstoneLock sync.RWMutex 
 }
 
 func (this *FileMetadataService)ToString() string {
@@ -44,6 +47,7 @@ func (this *FileMetadataService)ToString() string {
 func NewFileMetadataService() *FileMetadataService {
 	server := FileMetadataService{
 		metadata: make(map[string]map[string]*util.FileInfo),
+		tombstones: make(map[string]bool),
 	}
 	return &server
 }
@@ -294,7 +298,13 @@ func collectMetadata() *[]util.FileServerMetadataReport {
 
 // reallocate replicas as necessary
 func (rpcServer *FileMetadataService) adjustCluster(reports *[]util.FileServerMetadataReport) {
-	nodeIdToFiles, filenameToCluster := util.CompileReports(reports)
+	rpcServer.tombstoneLock.RLock()
+	tombstones := rpcServer.tombstones
+	rpcServer.tombstoneLock.RUnlock()
+
+
+
+	nodeIdToFiles, filenameToCluster := util.CompileReports(reports, &tombstones)
 
 	checkAndRepair(nodeIdToFiles, filenameToCluster)
 
@@ -401,5 +411,36 @@ func (this *FileMetadataService) HandleFileSearchRequest(regex *string, reply *[
 	}
 
 	*reply = result
+	return nil
+}
+
+// remove a file from metadata service surveilance, most likely due to a pending deletion
+func (this *FileMetadataService) RequestTombstone(fileName *string, reply *string) error {
+	this.metadataLock.RLock()
+	fileMap := util.Convert2(&this.metadata) 
+	this.metadataLock.RUnlock()
+
+	_, exists := (*fileMap)[*fileName]
+	if !exists {
+		*reply = "FAILED"
+		return errors.New(fmt.Sprintf("Requesting tombstone for non-existent file: %s", *fileName))
+	}
+
+	this.tombstoneLock.Lock()
+	this.tombstones[*fileName] = true
+	this.tombstoneLock.Unlock()
+
+	*reply = "ACK"
+	return nil
+}
+
+
+func (this *FileMetadataService) ReleaseTombstone(fileName *string, reply *string) error {
+	this.tombstoneLock.Lock()
+	if this.tombstones[*fileName] {
+		delete(this.tombstones, *fileName)
+	}
+	this.tombstoneLock.Unlock()
+	*reply = "ACK"
 	return nil
 }

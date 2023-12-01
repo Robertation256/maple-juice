@@ -392,19 +392,36 @@ func (fm *FileMaster) DeleteFile() error {
 }
 
 func (fm *FileMaster) executeDelete() error {
-	servants := fm.GetServantIps()
 
+	metadataClient := dialMetadataService()
+	if metadataClient == nil {
+		return errors.New("Cannot connect to metadata service")
+	}
+
+	defer metadataClient.Close()
+
+	fileName := fm.Filename
+	reply := ""
+
+	// request a tombstone first so that metadata service stops repairing this file
+	err := metadataClient.Call("FileMetadataService.RequestTombstone", &fileName, &reply)
+	if err != nil {
+		return err
+	}
+
+
+	servants := fm.GetServantIps()
 	util.DeleteFile(fm.Filename, fm.SdfsFolder)
 	fm.FileServer.ChangeReportStatusPendingDelete(fm.Filename)
 
 	calls := make([]*rpc.Call, len(servants))
 
-	// todo: close clients after completion
+	// todo: add tcp connection pool
 	for idx, servant := range servants {
-		client, err := rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", servant, fm.FileServerPort))
-		if err != nil {
-			log.Println("Error dialing servant:", err)
-			return err
+		client := dial(servant, fm.FileServerPort)
+		if client == nil {
+			log.Println("Error dialing servant at " + servant)
+			return errors.New("Error dialing servant at " + servant)
 		}
 		deleteArgs := DeleteArgs{
 			Filename: fm.Filename,
@@ -438,6 +455,13 @@ func (fm *FileMaster) executeDelete() error {
 	}
 
 	fm.FileServer.RemoveFromReport(fm.Filename)
+
+	// release the tombstone so that later files with the same name is not ignored
+	err = metadataClient.Call("FileMetadataService.ReleaseTombstone", &fileName, &reply)
+	if err != nil {
+		return err
+	}
+
 	log.Printf("Global delete completed for file %s", fm.Filename)
 	return nil
 
