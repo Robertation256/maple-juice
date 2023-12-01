@@ -67,6 +67,7 @@ func (this *MRNodeManager) StartMapleTask(args *util.MapleTaskArg, reply *string
 	if err != nil {
 		errMsg := fmt.Sprintf("Error while executing Maple executable %s", err.Error())
 		log.Print(errMsg)
+		log.Print(string(output))
 		return errors.New(errMsg)
 	} 
 
