@@ -205,7 +205,7 @@ func (fm *FileMaster) executeRead(args *RWArgs) error {
 		err = client.Call("FileService.SendFileToClient", sendArgs, &reply)
 		if err != nil {
 			// some error occured, this might be casued by servant doesn't have the replica yet, etc.
-			log.Println("Servant failed to send file: ", err)
+			log.Println("Info: servant file replication in progress. Switching back to file master to file transfer")
 			needToResend = true
 		}
 	}

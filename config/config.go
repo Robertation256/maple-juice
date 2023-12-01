@@ -41,7 +41,10 @@ var LocalFileDir string
 var JobManagerFileDir string // for storing partitioned maple input files
 var NodeManagerFileDir string
 
-var TemplateFileDir string
+var TemplateFileDir string		// maple juice executable templates used by SQL layer
+
+var MapleTaskNum int = 1		// number of worker for sql query execution
+var JuiceTaskNum int = 1		// number of worker for sql query execution
 
 
 func InitConfig() {
@@ -143,6 +146,19 @@ func InitConfig() {
 			}
 			FileReceivePort = port
 
+		case "MAPLE_TASK_NUM":
+			num, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading maple task num")
+			}
+			MapleTaskNum = num
+
+		case "JUICE_TASK_NUM":
+			num, err := strconv.Atoi(kv[1])
+			if err != nil {
+				log.Fatal("Error loading juice task num")
+			}
+			JuiceTaskNum = num
 		}
 	}
 	Homedir = homeDir
@@ -175,7 +191,9 @@ func PrintConfig() {
 			"LOG_SERVER_ID: %s\n"+
 			"LOG_SERVER_HOSTNAMES: %s\n"+
 			"RPC_SERVER_PORT: %d\n"+
-			"FILE_RECEIVE_PORT: %d\n",
+			"FILE_RECEIVE_PORT: %d\n" + 
+			"MAPLE_TASK_NUM: %d\n"+
+			"JUICE_TASK_NUM: %d\n",
 
 		MembershipServicePort,
 		MembershipProtocol,
@@ -190,6 +208,8 @@ func PrintConfig() {
 		strings.Join(ServerHostnames, ","),
 		RpcServerPort,
 		FileReceivePort,
+		MapleTaskNum,
+		JuiceTaskNum,
 	)
 
 	log.Printf("\n---Config loaded---\n%s-------------------\n", configStr)

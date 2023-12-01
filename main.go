@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"strconv"
+	"strings"
 )
 
 
@@ -98,6 +99,7 @@ func main() {
 
 		"maple": "test maple",
 		"juice": "test juice",
+		"SELECT": "filter/join sql query",
 
 		"sql_filter": "sql_filter",
 		"sql_join": "sql_join",
@@ -172,11 +174,9 @@ func main() {
 		case "juice":
 			routines.ProcessJuiceCmd(args)
 
-		case "sql_filter":
-			routines.ProcessFilterCmd(args)
-
-		case "sql_join":
-			routines.ProcessJoinCmd(args)
+		case "SELECT":
+			query := "SELECT " + strings.Join(args, " ")
+			routines.ProcessSqlQuery(query)
 
 
 		// debug commands

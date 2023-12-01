@@ -11,23 +11,21 @@ import (
 )
 
 
-/*
-
-Maple (line):
-if line matches regex:
-	output (1, line)
-
-*/
 func main() {
 	log.SetOutput(os.Stderr)
 	homedir, _ := os.UserHomeDir()
 	nodeManagerFileDir := homedir + "/mr_node_manager/"
 
 	// define flags
+	filterColumn := "{{ .FilterColumn }}"
 	regexFlag := "{{ .Regex }}"
 	inputFileFlag := flag.String("in", "", "Input filename")
 	prefixFlag := flag.String("prefix", "", "SDFS intermediate filename prefix")
 	flag.Parse()
+
+	filterColumn = strings.TrimSpace(filterColumn)
+	filterByColumn := len(filterColumn) > 0	
+	filterColumnIdx := -1
 
 	// check if required flags are provided
 	if *inputFileFlag == "" || *prefixFlag == "" {
@@ -52,15 +50,27 @@ func main() {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	if !scanner.Scan(){
+		log.Fatal("Empty input to filter maple executable")
+	}
+
+	if filterByColumn {
+		header := scanner.Text()
+		filterColumnIdx = findColumnIndex(header, filterColumn)
+		if filterColumnIdx < 0 {
+			log.Fatalf("Unable to locate column (%s)for filter operation in input file header (%s)", filterColumn, header)
+		}
+	}
 
 	outputFiles := []string{}
+	key := "DummyFilterKey"
+
 
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// check if the line matches the regular expression
-		if regexpPattern.MatchString(line) {
-			key := "1"
+		// check if the field matches the regular expression
+		if  (!filterByColumn && regexpPattern.MatchString(line)) || (filterByColumn && regexpPattern.MatchString(getFieldByIndex(line, filterColumnIdx))) {
 
 			// create or retrieve file descriptor for the key
 			outputFile, exists := output[key]
@@ -99,8 +109,31 @@ func main() {
 func extractPartitionNumber(inputFileName string) string {
 	splitted := strings.Split(inputFileName, "-")
 	if (len(splitted)!=2){
-		log.Printf("WARN: invalid maple input file name format for %s", inputFileName)
+		log.Fatalf("WARN: invalid maple input file name format for %s", inputFileName)
 		return ""
 	}
 	return splitted[1]
+}
+
+
+func findColumnIndex(header string, columnName string) int {
+	splitted := strings.Split(header, ",")
+	idx := 0
+	for _, field := range splitted {
+		field = strings.Trim(field, " \n\r")
+		if field == columnName {
+			return idx
+		}
+		idx++
+	}
+	return -1
+}
+
+func getFieldByIndex(line string, index int) string {
+	splitted := strings.Split(line, ",")
+	if index < len(splitted) {
+		return splitted[index]
+	}
+	log.Fatal("Invalid maple input file, mismatch between header and record field length")
+	return ""
 }

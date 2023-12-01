@@ -1,6 +1,5 @@
 package routines
 
-
 import (
 	"cs425-mp4/config"
 	"cs425-mp4/util"
@@ -9,6 +8,7 @@ import (
 	"log"
 	"net/rpc"
 	"os"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -36,6 +36,29 @@ func SDFSFetchAndConcat(remoteFileNames []string, localFileName string, receiver
 		}
 	}
 	return nil 
+}
+
+
+// fetch all files matching a prefix from SDFS and concat into one local file
+func SDFSFetchAndConcatWithPrefix(prefix string, localFileName string, receiverTag uint8) error {
+	if len(prefix) == 0{
+		return errors.New("Empty prefix")
+	}
+
+	regex := prefix + ".*"
+	_, err := regexp.Compile(regex)
+	if err != nil {
+		return errors.New("Illegal regex character in prefix")
+	}
+
+	matchedFiles, err := SDFSSearchFileByRegex(regex)
+
+	if err != nil {
+		return err 
+	}
+
+	err = SDFSFetchAndConcat(*matchedFiles, localFileName, receiverTag)
+	return err 
 }
 
 // fetch one file from SDFS, blocks until an error/completion/timeout is reached
@@ -215,6 +238,8 @@ func SDFSSearchFileByRegex(regex string) (*[]string, error) {
 		return nil, errors.New("Failed to query file metadata service")
 	}
 
+	defer client.Close()
+
 
 	call := client.Go("FileMetadataService.HandleFileSearchRequest", &regex, reply, nil)
 	requestTimeout := time.After(time.Duration(FILE_METADATA_SERVICE_QUERY_TIMEOUT_SECONDS) * time.Second)
@@ -239,6 +264,8 @@ func queryMetadataService(requestType int, fileName string, reply *DfsResponse) 
 	if client == nil {
 		return errors.New("Failed to query file metadata service")
 	}
+
+	defer client.Close()
 
 	request := &DfsRequest{
 		FileName: fileName,

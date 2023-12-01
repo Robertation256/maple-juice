@@ -113,6 +113,12 @@ func (this *MRJobManager) executeJob(job *util.JobRequest) {
 }
 
 func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgChan *chan error, jobId int32) {
+	if job.TaskNum <=0 {
+		*errorMsgChan <- errors.New(fmt.Sprintf("Invalid number of tasks %d", job.TaskNum ))
+		return
+	}
+
+
 	// stage 1: fetch input file to local
 	inputFileName := job.SrcSdfsFileName
 	err := SDFSGetFile(inputFileName, inputFileName, RECEIVER_MR_JOB_MANAGER)
@@ -129,7 +135,9 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 		return
 	}
 
-	log.Printf("Maple input file %s contains %d lines", inputFileName, lineCount)
+	// ignore header line
+	lineCount -= 1
+	log.Printf("Maple input file %s contains %d data records", inputFileName, lineCount)
 
 	// this should never happen
 	if lineCount < job.TaskNum {
@@ -156,6 +164,12 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	}
 
 	scanner := bufio.NewScanner(file)
+	if !scanner.Scan(){
+		*errorMsgChan <- errors.New("Empty input file")
+		return
+	}
+	header := scanner.Text()
+	
 
 	for taskNumber := 0; taskNumber < job.TaskNum; taskNumber++ {
 		lineNum := linesPerWorker
@@ -164,7 +178,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 			remainder -= 1
 		}
 		partitionName := util.FmtMapleInputPartitionName(job.SrcSdfsFileName, taskNumber)
-		err := util.PartitionFile(scanner, lineNum, config.JobManagerFileDir+partitionName)
+		err := util.PartitionFile(scanner, lineNum, config.JobManagerFileDir+partitionName, header)
 		if err != nil {
 			*errorMsgChan <- err
 			return
@@ -284,6 +298,10 @@ func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobReq
 }
 
 func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgChan *chan error, jobId int32) {
+	if job.TaskNum <=0 {
+		*errorMsgChan <- errors.New(fmt.Sprintf("Invalid number of tasks %d", job.TaskNum ))
+		return
+	}
 
 	// stage 1: list all files related to each key
 	filePrefix := job.SrcSdfsFilePrefix

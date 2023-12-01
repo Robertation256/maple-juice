@@ -9,11 +9,12 @@ import (
 )
 
 type FilterMapleTemplateData struct {
+	FilterColumn string
 	Regex string
 }
 
 type JoinMapleTemplateData struct {
-	Col string
+	JoinColumn string
 }
 
 func readTemplateFile(filename string) (string, error) {
@@ -50,7 +51,7 @@ func writeToFile(filename, content string) error {
 	return err
 }
 
-func GenerateFilterMapleExecutables(regex string, executableName string) error{
+func GenerateFilterMapleExecutables(filterColumn string, regex string, executableName string) error{
 
 	// Read template content from template.go
 	templateContent, readErr := readTemplateFile(config.TemplateFileDir + "filter_maple_template.go")
@@ -59,7 +60,7 @@ func GenerateFilterMapleExecutables(regex string, executableName string) error{
 		return readErr
 	}
 
-	templateData := FilterMapleTemplateData{Regex: regex}
+	templateData := FilterMapleTemplateData{FilterColumn: filterColumn, Regex: regex}
 	sourceCode, generateErr := generateSourceCode(templateContent, templateData)
 	if generateErr != nil {
 		log.Println("Error generating filter maple executable")
@@ -76,7 +77,7 @@ func GenerateFilterMapleExecutables(regex string, executableName string) error{
 
 }
 
-func GenerateJoinMapleExecutables(col string, executableName string) error{
+func GenerateJoinMapleExecutables(joinColumn string, executableName string) error{
 
 	// Read template content from template.go
 	templateContent, readErr := readTemplateFile(config.TemplateFileDir + "join_maple_template.go")
@@ -85,7 +86,7 @@ func GenerateJoinMapleExecutables(col string, executableName string) error{
 		return readErr
 	}
 
-	templateData := JoinMapleTemplateData{Col: col}
+	templateData := JoinMapleTemplateData{JoinColumn: joinColumn}
 	sourceCode, generateErr := generateSourceCode(templateContent, templateData)
 	if generateErr != nil {
 		log.Println("Error generating filter maple executable")

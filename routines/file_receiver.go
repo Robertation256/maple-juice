@@ -125,8 +125,8 @@ func receiveFile(conn net.Conn){
 // parse out file header, create local file and return file pointer and transmission id
 func initializeFile(buf *[]byte, size int) (*os.File, *string) {
 	transmissionIdLength := binary.LittleEndian.Uint64((*buf)[:8])
-	if int(transmissionIdLength) > 200 {
-		log.Printf("Corrupted file header: transmissionId length exceed 200 characters with size: %d", int(transmissionIdLength))
+	if int(transmissionIdLength) > 500 {
+		log.Printf("Corrupted file header: transmissionId length exceed 500 characters with size: %d", int(transmissionIdLength))
 		return nil, nil
 	}
 	transmissionId := string((*buf)[8:8+int(transmissionIdLength)])
