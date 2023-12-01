@@ -406,6 +406,7 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 
 func cleanUpJuiceInput(filePrefix string) error {
 	filePrefix = strings.Replace(filePrefix, ".", "\\.", -1)
+	log.Printf("Cleaning up juice input with file prefix: " + filePrefix)
 	fileNames, err := SDFSSearchFileByRegex(filePrefix+"-p\\d+-.+")
 	if err != nil {
 		return err 
@@ -413,6 +414,7 @@ func cleanUpJuiceInput(filePrefix string) error {
 
 	var err1 error
 	for _, fileName := range *fileNames{
+		log.Printf("Deleting juice input file: "+fileName)
 		err1 = SDFSDeleteFile(fileName)
 	}
 
