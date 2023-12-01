@@ -99,6 +99,7 @@ func main() {
 
 		"maple": "test maple",
 		"juice": "test juice",
+		"SELECT": "filter/join sql query",
 
 		"sql_filter": "sql_filter",
 		"sql_join": "sql_join",

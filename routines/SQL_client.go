@@ -11,12 +11,6 @@ import (
 	"time"
 )
 
-// func InitializeSQLClient() {
-// 	// join_juice and filter_juice are all static files. upload to sdfs on init
-// 	SDFSPutFile("filter_juice.go", config.TemplateFileDir + "filter_juice.go")
-// 	SDFSPutFile("join_juice.go", config.TemplateFileDir + "join_juice.go")
-// 	SQLClientInitialized = true
-// }
 
 // SELECT ALL FROM <file_name> WHERE "<column_name>"="<regex>"
 // SELECT ALL FROM <file1>, <file2> WHERE <file1>."<field_name1>"=<file2>."<field_name2>"
