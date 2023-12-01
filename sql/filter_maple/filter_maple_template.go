@@ -23,6 +23,7 @@ func main() {
 	prefixFlag := flag.String("prefix", "", "SDFS intermediate filename prefix")
 	flag.Parse()
 
+	filterColumn = strings.TrimSpace(filterColumn)
 	filterByColumn := len(filterColumn) > 0	
 	filterColumnIdx := -1
 
