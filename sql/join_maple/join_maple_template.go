@@ -37,6 +37,9 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 
+	if !scanner.Scan(){
+		log.Fatal("Empty input to join maple executable")
+	}
 	header := scanner.Text()
 
 	joinColumnIdx := findColumnIndex(header, joinColumn)

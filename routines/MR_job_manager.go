@@ -170,7 +170,6 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	}
 	header := scanner.Text()
 	
-	log.Printf("Obtained header (%s)", header)
 
 	for taskNumber := 0; taskNumber < job.TaskNum; taskNumber++ {
 		lineNum := linesPerWorker

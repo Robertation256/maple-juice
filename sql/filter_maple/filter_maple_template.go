@@ -46,6 +46,9 @@ func main() {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	if !scanner.Scan(){
+		log.Fatal("Empty input to filter maple executable")
+	}
 	header := scanner.Text()
 
 	filterColumnIdx := findColumnIndex(header, filterColumn)
