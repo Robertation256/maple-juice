@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	TASK_MAX_RETY_NUM int = 3 // maximum number of retry for each maple/juice sub task
+	TASK_MAX_RETY_NUM int = 5 // maximum number of retry for each maple/juice sub task
 
 
 	FILE_PARTITION_BUF_SIZE    int = 32 * 1024
@@ -213,6 +213,8 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 					
 					jobCompleted = false
 					retryNum[taskNumber]++
+					time.Sleep(1*time.Second)	// SDFS cluster might be in repair, lets wait a bit
+					log.Printf("Rescheduling Maple task %d ", taskNumber)
 					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber], jobId)
 				} else {
 					// task completed
@@ -399,9 +401,11 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 						return
 					}
 					// reschedule
-					log.Print("Juice task " + taskId + " failed, rescheduling ...", err)
+					
 					jobCompleted = false
 					retryNum[taskNumber]++
+					time.Sleep(1 * time.Second)
+					log.Printf("Rescheduling juice task %d", taskNumber)
 					go this.startJuiceWorker(taskNumber, partitions[taskNumber], job, &taskResultChans[taskNumber], jobId)
 				} else {
 					// task completed
