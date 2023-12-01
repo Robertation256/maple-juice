@@ -24,7 +24,7 @@ func main() {
 	nodeManagerFileDir := homedir + "/mr_node_manager/"
 
 	// define flags
-	regexFlag := "A.*"
+	regexFlag := "{{ .Regex }}"
 	inputFileFlag := flag.String("in", "", "Input filename")
 	prefixFlag := flag.String("prefix", "", "SDFS intermediate filename prefix")
 	flag.Parse()
