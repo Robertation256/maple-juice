@@ -163,7 +163,7 @@ func executeFilterQuery(inputFile string, columnName string, regex string){
 
 
 func executeJoinQuery(fileName1, fileName2, fieldName1, fieldName2 string){
-	if len(fileName1) == 0 || len(fileName2) == 0 || len(fieldName1) == 0 || len(fieldName2) == 0 || len(sdfsDestFileName) == 0 {
+	if len(fileName1) == 0 || len(fileName2) == 0 || len(fieldName1) == 0 || len(fieldName2) == 0 {
 		log.Println("Empty query argument found in join query")
 		return
 	}
