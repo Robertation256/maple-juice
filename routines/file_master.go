@@ -4,7 +4,6 @@ import (
 	"cs425-mp4/config"
 	"cs425-mp4/util"
 	"errors"
-	"fmt"
 	"log"
 	"math/rand"
 	"net/rpc"
