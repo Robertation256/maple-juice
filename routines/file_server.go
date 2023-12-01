@@ -148,6 +148,7 @@ func (this *FileService) DeleteLocalFile(args *DeleteArgs, reply *string) error 
 	if err != nil {
 		return err
 	}
+
 	this.RemoveFromReport(args.Filename)
 	return nil
 
@@ -161,6 +162,7 @@ func (this *FileService) RemoveFromReport(filename string) {
 	for i, fileinfo := range currEntries {
 		if fileinfo.FileName == filename {
 			this.Report.FileEntries = append(currEntries[:i], currEntries[i+1:]...)
+			return
 		}
 	}
 }
@@ -185,24 +187,32 @@ func (this *FileService) CreateFileMaster(args *CreateFMArgs, reply *string) err
 }
 
 func (this *FileService) ReportMetadata(args *string, reply *util.FileServerMetadataReport) error {
-	// TODO: check all files that are pending and change status
-	this.reportLock.RLock()
-	defer this.reportLock.RUnlock()
 
-	for i, fileInfo := range this.Report.FileEntries {
-		if fileInfo.FileStatus == util.PENDING_FILE_UPLOAD || fileInfo.FileStatus == util.WAITING_REPLICATION {
-			// check if file is in sdfs folder
-			_, err := os.Stat(this.SdfsFolder + fileInfo.FileName)
-			if err == nil {
+	this.reportLock.Lock()
+	defer this.reportLock.Unlock()
+
+	// do a lazy sync with local fs upon reporting metadata
+	updatedFileEntries := make([]util.FileInfo, 0)
+
+	for _, fileInfo := range this.Report.FileEntries {
+		_, err := os.Stat(this.SdfsFolder + fileInfo.FileName)
+		if err == nil {
+			if fileInfo.FileStatus == util.PENDING_FILE_UPLOAD || fileInfo.FileStatus == util.WAITING_REPLICATION {
 				log.Println("file status changed to complete")
 				// file is in folder
-				this.Report.FileEntries[i].FileStatus = util.COMPLETE
+				fileInfo.FileStatus = util.COMPLETE
 			}
+			updatedFileEntries = append(updatedFileEntries, fileInfo)
+		// its possible that file transfer is in progress and file is locked by another thread
+		} else if fileInfo.FileStatus == util.PENDING_FILE_UPLOAD || fileInfo.FileStatus == util.WAITING_REPLICATION {
+			updatedFileEntries = append(updatedFileEntries, fileInfo)
 		}
 	}
 
+	this.Report.FileEntries = updatedFileEntries
+
 	reply.NodeId = SelfNodeId
-	reply.FileEntries = this.Report.FileEntries
+	reply.FileEntries = updatedFileEntries
 
 	return nil
 }

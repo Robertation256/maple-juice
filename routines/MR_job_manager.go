@@ -406,6 +406,7 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 
 func cleanUpJuiceInput(filePrefix string) error {
 	filePrefix = strings.Replace(filePrefix, ".", "\\.", -1)
+	log.Printf("Cleaning up juice input with file prefix: " + filePrefix)
 	fileNames, err := SDFSSearchFileByRegex(filePrefix+"-p\\d+-.+")
 	if err != nil {
 		return err 
@@ -413,6 +414,7 @@ func cleanUpJuiceInput(filePrefix string) error {
 
 	var err1 error
 	for _, fileName := range *fileNames{
+		log.Printf("Deleting juice input file: "+fileName)
 		err1 = SDFSDeleteFile(fileName)
 	}
 
@@ -480,6 +482,16 @@ func (this *MRJobManager) startJuiceWorker(taskNumber int, parition map[string][
 }
 
 func (this *MRJobManager) listenForMembershipChange() {
+	initial_workers := LocalMembershipList.AliveMembers()
+
+	// initialize
+	this.mapLock.Lock()
+	for _, workerIp := range initial_workers {
+		this.workerNode2Tasks[workerIp] = make([]string, 0)
+	}
+	this.mapLock.Unlock()
+
+	// listen for further changes
 	for {
 		select {
 		case event := <-util.MRJobManagerMembershipEventChan:

@@ -63,7 +63,8 @@ func (this *ClusterInfo) GetServantIps() []string {
 
 
 // compile reports into map of nodeId -> fileName -> FileInfo and a map of fileName -> replicaInfo
-func CompileReports(reports *[]FileServerMetadataReport) (*NodeToFiles, *FileNameToCluster) {
+// blacklist: a set of filenames that needs to be filtered out from report
+func CompileReports(reports *[]FileServerMetadataReport, blacklist *map[string]bool) (*NodeToFiles, *FileNameToCluster) {
 
 	nodeIdToFiles := make(map[string]map[string]*FileInfo)
 	fileNameToCluster := make(map[string]*ClusterInfo)
@@ -78,6 +79,10 @@ func CompileReports(reports *[]FileServerMetadataReport) (*NodeToFiles, *FileNam
 
 		for _, fileInfo := range report.FileEntries {
 			fileName := fileInfo.FileName
+			
+			if (*blacklist)[fileName] {
+				continue
+			}
 
 			nodeIdToFiles[nodeId][fileName] = &FileInfo{
 				NodeId: fileInfo.NodeId,
