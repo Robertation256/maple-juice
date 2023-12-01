@@ -50,7 +50,7 @@ func main() {
 
 	filterColumnIdx := findColumnIndex(header, filterColumn)
 	if filterColumnIdx < 0 {
-		log.Fatal("Unable to locate column for filter operation in input file header")
+		log.Fatalf("Unable to locate column (%s)for filter operation in input file header (%s)", filterColumn, header)
 	}
 
 	outputFiles := []string{}
