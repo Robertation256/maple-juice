@@ -165,6 +165,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 
 	scanner := bufio.NewScanner(file)
 	header := scanner.Text() + "\n"
+	log.Printf("Obtained header (%s)", header)
 
 	for taskNumber := 0; taskNumber < job.TaskNum; taskNumber++ {
 		lineNum := linesPerWorker
