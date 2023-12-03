@@ -79,7 +79,6 @@ func main() {
 
 	for scanner2.Scan() {
 		line := scanner2.Text()
-		fmt.Println(line)
 		splitted := strings.Split(line, ",")
 		countStr := strings.TrimSpace(splitted[1])
 		count, _ := strconv.Atoi(countStr)
