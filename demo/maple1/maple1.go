@@ -24,7 +24,7 @@ func main() {
 
 	// define flags
 	filterColumn := "Interconne"
-	interconneValue := "Fiber"
+	interconneValue := "{{ .InterconneValue }}"
 	inputFileFlag := flag.String("in", "", "Input filename")
 	prefixFlag := flag.String("prefix", "", "SDFS intermediate filename prefix")
 	flag.Parse()

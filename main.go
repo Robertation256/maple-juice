@@ -100,6 +100,7 @@ func main() {
 		"maple": "test maple",
 		"juice": "test juice",
 		"SELECT": "filter/join sql query",
+		"SPC" : "select percent composition, used for MP4 demo only",
 
 		"sql_filter": "sql_filter",
 		"sql_join": "sql_join",
@@ -178,6 +179,8 @@ func main() {
 			query := "SELECT " + strings.Join(args, " ")
 			routines.ProcessSqlQuery(query)
 
+		case "SPC":
+			routines.ProcessSpcQuery(args)
 
 		// debug commands
 		case "pl":

@@ -138,7 +138,13 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	
 	if job.PreserveInputHeader {
 		// ignore header line
+		log.Printf("Input file carries header")
 		lineCount -= 1
+	}
+
+	if lineCount == 0{
+		*errorMsgChan <- errors.New("Maple input file contains zero data records")
+		return
 	}
 	
 	log.Printf("Maple input file %s contains %d data records", inputFileName, lineCount)

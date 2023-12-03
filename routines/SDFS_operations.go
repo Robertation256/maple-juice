@@ -68,15 +68,28 @@ func sdfsFetch(remoteFileName string, localFileName string, receiverTag uint8, w
 	}
 
 	fileMetadata := &DfsResponse{}
-	err := queryMetadataService(FILE_GET, remoteFileName, fileMetadata)
-	if err != nil {
-		return err
+	maxWaitRound := 5
+	var master util.FileInfo
+	
+	for {
+		err := queryMetadataService(FILE_GET, remoteFileName, fileMetadata)
+		if err != nil {
+			return err
+		}
+	
+		master = fileMetadata.Master
+		if master.FileStatus != util.COMPLETE {
+			if maxWaitRound > 0 {
+				maxWaitRound--
+				time.Sleep(1 * time.Second)
+			} else {
+				return errors.New("Cannot fetch sdfs file: file upload is in progress, please wait and retry later")
+			}
+		} else {
+			break
+		}
 	}
 
-	master := fileMetadata.Master
-	if master.FileStatus != util.COMPLETE {
-		return errors.New("File master is not ready: file upload in progress")
-	}
 
 	fileMasterIP := util.NodeIdToIP(master.NodeId)
 	port := config.RpcServerPort
