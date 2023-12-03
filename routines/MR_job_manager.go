@@ -23,7 +23,6 @@ import (
 const (
 	TASK_MAX_RETY_NUM int = 5 // maximum number of retry for each maple/juice sub task
 
-
 	FILE_PARTITION_BUF_SIZE    int = 32 * 1024
 	MAPLE_TASK_TIMEOUT_MINUTES int = 5
 	JUICE_TASK_TIMEOUT_MINUTES int = 5
@@ -41,14 +40,14 @@ type MRJobManager struct {
 	workerNode2Tasks        map[string][]string // worker node ip -> task ids
 	mapLock                 sync.Mutex
 	transmissionIdGenerator *util.TransmissionIdGenerator
-	jobUuid					atomic.Int32
+	jobUuid                 atomic.Int32
 }
 
 func NewMRJobManager() *MRJobManager {
 	return &MRJobManager{
 		jobQueue:                make(chan *util.JobRequest, 100),
 		filePartitionBuf:        make([]byte, FILE_PARTITION_BUF_SIZE),
-		workerNode2Tasks:        make(map[string][]string),	
+		workerNode2Tasks:        make(map[string][]string),
 		transmissionIdGenerator: util.NewTransmissionIdGenerator("MR-JM-" + SelfNodeId),
 	}
 }
@@ -113,11 +112,10 @@ func (this *MRJobManager) executeJob(job *util.JobRequest) {
 }
 
 func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgChan *chan error, jobId int32) {
-	if job.TaskNum <=0 {
-		*errorMsgChan <- errors.New(fmt.Sprintf("Invalid number of tasks %d", job.TaskNum ))
+	if job.TaskNum <= 0 {
+		*errorMsgChan <- errors.New(fmt.Sprintf("Invalid number of tasks %d", job.TaskNum))
 		return
 	}
-
 
 	// stage 1: fetch input file to local
 	inputFileName := job.SrcSdfsFileName
@@ -135,18 +133,17 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 		return
 	}
 
-	
 	if job.PreserveInputHeader {
 		// ignore header line
 		log.Printf("Input file carries header")
 		lineCount -= 1
 	}
 
-	if lineCount == 0{
+	if lineCount == 0 {
 		*errorMsgChan <- errors.New("Maple input file contains zero data records")
 		return
 	}
-	
+
 	log.Printf("Maple input file %s contains %d data records", inputFileName, lineCount)
 
 	// this should never happen
@@ -168,7 +165,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	isTaskCompleted := make([]bool, job.TaskNum)
 	retryNum := make([]int, job.TaskNum)
 	taskResultChans := make([]chan error, job.TaskNum)
-	for idx := 0; idx<job.TaskNum; idx++ {
+	for idx := 0; idx < job.TaskNum; idx++ {
 		taskResultChans[idx] = make(chan error, 1)
 		retryNum[idx] = 0
 	}
@@ -177,13 +174,12 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	var header string = ""
 
 	if job.PreserveInputHeader {
-		if !scanner.Scan(){
+		if !scanner.Scan() {
 			*errorMsgChan <- errors.New("Empty input file")
 			return
 		}
 		header = scanner.Text()
 	}
-	
 
 	for taskNumber := 0; taskNumber < job.TaskNum; taskNumber++ {
 		lineNum := linesPerWorker
@@ -198,7 +194,7 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 			return
 		}
 		log.Printf("Starting initial maple task %d", taskNumber)
-		
+
 		go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber], jobId)
 	}
 
@@ -219,15 +215,15 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 				this.removeTask(taskId)
 				if err != nil {
 					log.Print(fmt.Sprintf("Maple task %d completed with error: ", taskNumber), err)
-					if (retryNum[taskNumber] >= TASK_MAX_RETY_NUM){
+					if retryNum[taskNumber] >= TASK_MAX_RETY_NUM {
 						*errorMsgChan <- errors.New(fmt.Sprintf("Failing Maple task:  task %d failed after %d retries", taskNumber, retryNum[taskNumber]))
 						return
 					}
 					// reschedule
-					
+
 					jobCompleted = false
 					retryNum[taskNumber]++
-					time.Sleep(1*time.Second)	// SDFS cluster might be in repair, lets wait a bit
+					time.Sleep(1 * time.Second) // SDFS cluster might be in repair, lets wait a bit
 					log.Printf("Rescheduling Maple task %d ", taskNumber)
 					go this.startMapleWorker(taskNumber, job, &taskResultChans[taskNumber], jobId)
 				} else {
@@ -314,54 +310,53 @@ func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobReq
 }
 
 func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgChan *chan error, jobId int32) {
-	if job.TaskNum <=0 {
-		*errorMsgChan <- errors.New(fmt.Sprintf("Invalid number of tasks %d", job.TaskNum ))
+	if job.TaskNum <= 0 {
+		*errorMsgChan <- errors.New(fmt.Sprintf("Invalid number of tasks %d", job.TaskNum))
 		return
 	}
 
 	// stage 1: list all files related to each key
 	filePrefix := job.SrcSdfsFilePrefix
-	filePrefix = strings.Replace(filePrefix, ".", "\\.", -1)	// escape dots in regex
+	filePrefix = strings.Replace(filePrefix, ".", "\\.", -1) // escape dots in regex
 
-	// Maple outputs should be <file_name>-p<partition_num>-<key> 
+	// Maple outputs should be <file_name>-p<partition_num>-<key>
 	// file name and key should not contain dash
-	regexStr := filePrefix + "-p\\d+-.+"						
+	regexStr := filePrefix + "-p\\d+-.+"
 	_, err := regexp.Compile(regexStr)
 	if err != nil {
-		*errorMsgChan <- err 
+		*errorMsgChan <- err
 		return
 	}
 
 	matchedFiles, err := SDFSSearchFileByRegex(regexStr)
 	if err != nil {
-		*errorMsgChan <- err 
+		*errorMsgChan <- err
 		return
 	}
 
 	log.Printf("Matched %d files", len(*matchedFiles))
 
 	// group file names by key
-	keyToFiles := make(map[string][]string) 
-	for _, fileName := range *matchedFiles{
+	keyToFiles := make(map[string][]string)
+	for _, fileName := range *matchedFiles {
 		log.Printf("Matched files: %s", fileName)
 		splitted := strings.Split(fileName, "-")
 		if len(splitted) > 0 {
 			key := splitted[len(splitted)-1]
 			files, exists := keyToFiles[key]
-			if ! exists {
+			if !exists {
 				files = make([]string, 0)
 			}
 			files = append(files, fileName)
 			keyToFiles[key] = files
 		}
-	} 
+	}
 
 	keys := make([]string, 0)
 	for k := range keyToFiles {
 		keys = append(keys, k)
 	}
 
-	
 	// stage 2: assign keys to worker nodes
 	if len(keys) == 0 {
 		log.Print("Juice input files not found")
@@ -374,9 +369,7 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 		job.TaskNum = len(keys)
 	}
 
-	
-
-	var partitions []map[string][]string 
+	var partitions []map[string][]string
 	if job.IsHashPartition {
 		partitions = partitionByHash(keyToFiles, job.TaskNum)
 	} else {
@@ -410,12 +403,12 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 				this.removeTask(taskId)
 				if err != nil {
 					log.Print(fmt.Sprintf("Juice task %d completed with error: ", taskNumber), err)
-					if (retryNum[taskNumber] >= TASK_MAX_RETY_NUM){
+					if retryNum[taskNumber] >= TASK_MAX_RETY_NUM {
 						*errorMsgChan <- errors.New(fmt.Sprintf("Failing Juice task:  task %d failed after %d retries", taskNumber, retryNum[taskNumber]))
 						return
 					}
 					// reschedule
-					
+
 					jobCompleted = false
 					retryNum[taskNumber]++
 					time.Sleep(1 * time.Second)
@@ -439,18 +432,17 @@ func (this *MRJobManager) executeJuiceJob(job *util.JuiceJobRequest, errorMsgCha
 	*errorMsgChan <- nil
 }
 
-
 func cleanUpJuiceInput(filePrefix string) error {
 	filePrefix = strings.Replace(filePrefix, ".", "\\.", -1)
 	log.Printf("Cleaning up juice input with file prefix: " + filePrefix)
-	fileNames, err := SDFSSearchFileByRegex(filePrefix+"-p\\d+-.+")
+	fileNames, err := SDFSSearchFileByRegex(filePrefix + "-p\\d+-.+")
 	if err != nil {
-		return err 
+		return err
 	}
 
 	var err1 error
-	for _, fileName := range *fileNames{
-		log.Printf("Deleting juice input file: "+fileName)
+	for _, fileName := range *fileNames {
+		log.Printf("Deleting juice input file: " + fileName)
 		err1 = SDFSDeleteFile(fileName)
 	}
 
@@ -467,12 +459,11 @@ func (this *MRJobManager) startJuiceWorker(taskNumber int, parition map[string][
 	}
 
 	taskArg := &util.JuiceTaskArg{
-		InputFilePrefix: job.SrcSdfsFilePrefix,
-		KeyToFileNames: parition,
+		InputFilePrefix:     job.SrcSdfsFilePrefix,
+		KeyToFileNames:      parition,
 		ExcecutableFileName: job.ExcecutableFileName,
-		OutputFilePrefix: job.OutputFileName,
+		OutputFilePrefix:    job.OutputFileName,
 	}
-
 
 	// instruct juice job start
 	client := dial(workerIp, config.RpcServerPort)
@@ -523,6 +514,7 @@ func (this *MRJobManager) listenForMembershipChange() {
 	// initialize
 	this.mapLock.Lock()
 	for _, workerIp := range initial_workers {
+		log.Printf("MJ Job Manager: adding initial worker node %s", workerIp)
 		this.workerNode2Tasks[workerIp] = make([]string, 0)
 	}
 	this.mapLock.Unlock()
@@ -534,10 +526,12 @@ func (this *MRJobManager) listenForMembershipChange() {
 			nodeIp := util.NodeIdToIP(event.NodeId)
 			if event.IsNewJoin() {
 				this.mapLock.Lock()
+				log.Printf("MJ Job Manager: Node %s joined", nodeIp)
 				this.workerNode2Tasks[nodeIp] = make([]string, 0)
 				this.mapLock.Unlock()
 			} else if event.IsOffline() {
 				this.mapLock.Lock()
+				log.Printf("MJ Job Manager: Node %s is offline", nodeIp)
 				_, exists := this.workerNode2Tasks[nodeIp]
 				if exists {
 					delete(this.workerNode2Tasks, nodeIp)
@@ -562,6 +556,13 @@ func (this *MRJobManager) assignTask(taskId string) string {
 	taskNum := 0
 	this.mapLock.Lock()
 	defer this.mapLock.Unlock()
+
+	if len(this.workerNode2Tasks) == 0 {
+		aliveNode := LocalMembershipList.AliveMembers()
+		for _, ip := range aliveNode {
+			this.workerNode2Tasks[ip] = make([]string, 0)
+		}
+	}
 
 	log.Printf("Assigning MJ task, worker pool size is %d", len(this.workerNode2Tasks))
 
@@ -597,7 +598,6 @@ func (this *MRJobManager) removeTask(taskId string) {
 	}
 }
 
-
 func partitionByHash(keyToFiles map[string][]string, taskNum int) []map[string][]string {
 	var fnvHash hash.Hash32 = fnv.New32a()
 	buckets := make([]map[string][]string, taskNum)
@@ -609,7 +609,7 @@ func partitionByHash(keyToFiles map[string][]string, taskNum int) []map[string][
 	for key, files := range keyToFiles {
 		fnvHash.Reset()
 		fnvHash.Write([]byte(key))
-		bucketId := int(fnvHash.Sum32())%taskNum
+		bucketId := int(fnvHash.Sum32()) % taskNum
 		buckets[bucketId][key] = files
 	}
 
@@ -622,9 +622,8 @@ func partitionByHash(keyToFiles map[string][]string, taskNum int) []map[string][
 	return result
 }
 
-
 func partitionByRange(keyToFiles map[string][]string, taskNum int) []map[string][]string {
-	if taskNum > len(keyToFiles){
+	if taskNum > len(keyToFiles) {
 		taskNum = len(keyToFiles)
 	}
 
@@ -644,7 +643,7 @@ func partitionByRange(keyToFiles map[string][]string, taskNum int) []map[string]
 	r := len(keyToFiles) % taskNum
 	k := 0
 
-	for i:=0; i<len(result); i++ {
+	for i := 0; i < len(result); i++ {
 		bucketSize := d
 		if r > 0 {
 			bucketSize += 1
