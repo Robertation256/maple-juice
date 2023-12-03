@@ -175,6 +175,8 @@ func ProcessSpcQuery(args []string) {
 	phaseOneOut := fmt.Sprintf("out_spc1_%s_%d", selfNodeId, timestamp)
 	phaseTwoOut := fmt.Sprintf("out_spc2_%s_%d", selfNodeId, timestamp)
 
+
+	log.Println("Starting SPC phase 1")
 	err = ProcessMapleCmd([]string{mapleOneExeName, strconv.Itoa(config.MapleTaskNum), phaseOnePrefix, inputFile, "1"})
 	if err != nil {
 		log.Println("Error executing maple for SPC phase 1", err)
@@ -187,7 +189,23 @@ func ProcessSpcQuery(args []string) {
 		return
 	}
 
+	err = SDFSFetchAndConcatWithPrefix(phaseOneOut, phaseOneOut, RECEIVER_SDFS_CLIENT)
 
+	if err != nil {
+		log.Println("Error fetching SPC phase 1 result to local folder", err)
+		return
+	}
+
+	log.Println("Completed SPC phase 1")
+
+	log.Printf("Uploading concatenated phase1 output file")
+	_, err = SDFSPutFile(phaseOneOut, config.LocalFileDir + phaseOneOut)
+	if err != nil {
+		log.Println("Error uploading concatenated phase1 output file", err)
+	}
+
+
+	log.Println("Starting SPC phase 2")
 	err = ProcessMapleCmd([]string{mapleTwoExeName, strconv.Itoa(config.MapleTaskNum), phaseTwoPrefix, phaseOneOut, "0"})
 	if err != nil {
 		log.Println("Error executing maple for SPC phase 2", err)
