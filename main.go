@@ -92,18 +92,15 @@ func main() {
 		"ls":				 "ls sdfsfilename: list all VM addresses where this file is currently replicated (If you are splitting files into blocks, just set the block size to be large enough that each file is one block)",
 		"multiread": 		 "launches reads from VMi… VMj simultaneously to filename. (Note that you have to implement this anyway for your report's item (iv) experiments).",
 
-		// debug commands
-		"pl": "print leader",
-		"pm": "print metadata",
-		"rp": "print local report",
-
 		"maple": "test maple",
 		"juice": "test juice",
 		"SELECT": "filter/join sql query",
 		"SPC" : "select percent composition, used for MP4 demo only",
 
-		"sql_filter": "sql_filter",
-		"sql_join": "sql_join",
+		// debug commands
+		"pl": "print leader",
+		"pm": "print metadata",
+		"rp": "print local report",
 	}
 
 	for {
