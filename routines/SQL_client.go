@@ -152,17 +152,17 @@ func ProcessSpcQuery(args []string) {
 		log.Println("Error uploading maple1", err)
 	}
 
-	_, err = SDFSPutFile(mapleTwoExeName, config.LocalFileDir + mapleTwoExeName)
+	_, err = SDFSPutFile(mapleTwoExeName, config.TemplateFileDir + mapleTwoExeName)
 	if err != nil {
 		log.Println("Error uploading maple2", err)
 	}
 
-	_, err = SDFSPutFile(juiceOneExeName, config.LocalFileDir + juiceOneExeName)
+	_, err = SDFSPutFile(juiceOneExeName, config.TemplateFileDir + juiceOneExeName)
 	if err != nil {
 		log.Println("Error uploading juice1", err)
 	}
 
-	_, err = SDFSPutFile(juiceTwoExeName, config.LocalFileDir + juiceTwoExeName)
+	_, err = SDFSPutFile(juiceTwoExeName, config.TemplateFileDir + juiceTwoExeName)
 	if err != nil {
 		log.Println("Error uploading juice2", err)
 	}
