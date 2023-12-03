@@ -175,6 +175,12 @@ func ProcessSpcQuery(args []string) {
 	phaseOneOut := fmt.Sprintf("out_spc1_%s_%d", selfNodeId, timestamp)
 	phaseTwoOut := fmt.Sprintf("out_spc2_%s_%d", selfNodeId, timestamp)
 
+	phaseOnePrefix = strings.Replace(phaseOnePrefix, "-", "_", -1)
+	phaseTwoPrefix = strings.Replace(phaseTwoPrefix, "-", "_", -1)
+
+	phaseOneOut = strings.Replace(phaseOneOut, "-", "_", -1)
+	phaseTwoOut = strings.Replace(phaseTwoOut, "-", "_", -1)
+
 
 	log.Println("Starting SPC phase 1")
 	err = ProcessMapleCmd([]string{mapleOneExeName, strconv.Itoa(config.MapleTaskNum), phaseOnePrefix, inputFile, "1"})
