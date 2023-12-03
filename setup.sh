@@ -39,7 +39,6 @@ cp ~/cs-425-mp-4/sql/join_maple/* ~/sql_template/
 
 cp ~/cs-425-mp-4/demo/maple1/maple1.go ~/sql_template/demo_maple1.go
 cp ~/cs-425-mp-4/demo/maple2/maple2.go ~/sql_template/demo_maple2.go
-
 cp ~/cs-425-mp-4/demo/juice1/juice1.go ~/sql_template/demo_juice1.go
 cp ~/cs-425-mp-4/demo/juice2/juice2.go ~/sql_template/demo_juice2.go
 

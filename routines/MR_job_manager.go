@@ -295,7 +295,7 @@ func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobReq
 	case <-timeout:
 		*resultChan <- errors.New("Timeout executing Maple task" + taskId)
 		return
-	case _, ok := <-call.Done: // check if channel has output ready
+	case c, ok := <-call.Done: // check if channel has output ready
 		if !ok {
 			log.Println("MR Job Master: Channel closed for async rpc call")
 			*resultChan <- errors.New("Unexpected connection break down")
@@ -304,7 +304,7 @@ func (this *MRJobManager) startMapleWorker(taskNumber int, job *util.MapleJobReq
 			if retFlag == "ACK" {
 				*resultChan <- nil
 			} else {
-				errMsg := fmt.Sprintf("MR Job Master: Maple task %s failed", taskId)
+				errMsg := fmt.Sprintf("MR Job Master: Juice task %s failed with error %s", taskId, c.Error.Error())
 				log.Print(errMsg)
 				*resultChan <- errors.New(errMsg)
 			}
@@ -499,7 +499,7 @@ func (this *MRJobManager) startJuiceWorker(taskNumber int, parition map[string][
 	case <-timeout:
 		*resultChan <- errors.New("Timeout executing Juice task" + taskId)
 		return
-	case _, ok := <-call.Done: // check if channel has output ready
+	case c, ok := <-call.Done: // check if channel has output ready
 		if !ok {
 			log.Println("MR Job Master: Channel closed for async rpc call")
 			*resultChan <- errors.New("Unexpected connection break down")
@@ -508,7 +508,7 @@ func (this *MRJobManager) startJuiceWorker(taskNumber int, parition map[string][
 			if retFlag == "ACK" {
 				*resultChan <- nil
 			} else {
-				errMsg := fmt.Sprintf("MR Job Master: Juice task %s failed", taskId)
+				errMsg := fmt.Sprintf("MR Job Master: Juice task %s failed with error %s", taskId, c.Error.Error())
 				log.Print(errMsg)
 				*resultChan <- errors.New(errMsg)
 			}
