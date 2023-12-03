@@ -204,6 +204,7 @@ func ProcessSpcQuery(args []string) {
 		log.Println("Error uploading concatenated phase1 output file", err)
 	}
 
+	time.Sleep(1 * time.Second)
 
 	log.Println("Starting SPC phase 2")
 	err = ProcessMapleCmd([]string{mapleTwoExeName, strconv.Itoa(config.MapleTaskNum), phaseTwoPrefix, phaseOneOut, "0"})
