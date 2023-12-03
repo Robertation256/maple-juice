@@ -331,23 +331,23 @@ func executeJoinQuery(fileName1, fileName2, fieldName1, fieldName2 string){
 	// upload generated executable and input to sdfs
 	_, err = SDFSPutFile(executableNameD1, config.LocalFileDir + executableNameD1)
 	if err != nil {
-		log.Println("Error uploading executable for join query")
+		log.Println("Error uploading executable for join query", err)
 		return
 	}
-	_, err = SDFSPutFile(fieldName1, config.LocalFileDir + fieldName1)
+	_, err = SDFSPutFile(fileName1, config.LocalFileDir + fileName1)
 	if err != nil {
-		log.Println("Error uploading input file for join query")
+		log.Println("Error uploading input file for join query", err)
 		return
 	}
 
 	_, err = SDFSPutFile(executableNameD2, config.LocalFileDir + executableNameD2)
 	if err != nil {
-		log.Println("Error uploading executable for join query")
+		log.Println("Error uploading executable for join query", err)
 		return
 	}
 	_, err = SDFSPutFile(fileName2, config.LocalFileDir + fileName2)
 	if err != nil {
-		log.Println("Error uploading input file for join query")
+		log.Println("Error uploading input file for join query", err)
 		return
 	}
 
