@@ -563,6 +563,8 @@ func (this *MRJobManager) assignTask(taskId string) string {
 	this.mapLock.Lock()
 	defer this.mapLock.Unlock()
 
+	log.Printf("Assigning MJ task, worker pool size is %d", len(this.workerNode2Tasks))
+
 	for nodeIp, tasks := range this.workerNode2Tasks {
 		if len(assigneeIP) == 0 || len(tasks) < taskNum {
 			assigneeIP = nodeIp
