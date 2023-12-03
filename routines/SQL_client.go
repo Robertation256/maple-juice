@@ -323,6 +323,8 @@ func executeJoinQuery(fileName1, fileName2, fieldName1, fieldName2 string){
 	executableNameD2 := fmt.Sprintf("join_maple_%s_%s_%d.go", fileName2, SelfNodeId, timestamp)
 	err = util.GenerateJoinMapleExecutables(fieldName2, executableNameD2)
 
+	executableJuiceName := "join_juice.go"
+
 	if err != nil {
 		log.Println("Error generating maple executable for join query")
 		return
@@ -351,6 +353,13 @@ func executeJoinQuery(fileName1, fileName2, fieldName1, fieldName2 string){
 		return
 	}
 
+
+	_, err = SDFSPutFile(executableJuiceName, config.TemplateFileDir + executableJuiceName)
+	if err != nil {
+		log.Println("Error uploading juice executable for join query", err)
+		return
+	}
+
 	// create maple task
 	prefix := fmt.Sprintf("join_%s_%s_%s_%d", fieldName1, fileName2, SelfNodeId, timestamp)
 	err = ProcessMapleCmd([]string{executableNameD1, strconv.Itoa(config.MapleTaskNum), prefix, fileName1, "1"})
@@ -366,7 +375,7 @@ func executeJoinQuery(fileName1, fileName2, fieldName1, fieldName2 string){
 
 	sdfsDestFilePrefix := fmt.Sprintf("join_query_result_%s_%d", SelfNodeId, timestamp)
 	// create juice task
-	err = ProcessJuiceCmd([]string{"join_juice.go", strconv.Itoa(config.JuiceTaskNum), prefix, sdfsDestFilePrefix, "0", "0"})
+	err = ProcessJuiceCmd([]string{executableJuiceName , strconv.Itoa(config.JuiceTaskNum), prefix, sdfsDestFilePrefix, "0", "0"})
 
 	if err != nil {
 		log.Println("Error executing juice job for join query", err)
