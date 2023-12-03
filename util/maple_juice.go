@@ -23,6 +23,7 @@ type MapleJobRequest struct {
 	TaskNum             int
 	SrcSdfsFileName     string
 	OutputFilePrefix    string
+	PreserveInputHeader bool
 }
 
 type JuiceJobRequest struct {
@@ -109,8 +110,11 @@ func PartitionFile(scanner *bufio.Scanner, lineNum int, outputFilePath string, h
 		return err
 	}
 	defer outputFile.Close()
-	outputFile.WriteString(header + "\n")
 
+	if len(header) > 0 {
+		outputFile.WriteString(header + "\n")
+	}
+	
 	for lineNum > 0 {
 		if !scanner.Scan() {
 			return scanner.Err()

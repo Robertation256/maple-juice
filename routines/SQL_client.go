@@ -149,7 +149,7 @@ func executeFilterQuery(inputFile string, columnName string, regex string){
 	
 	// submit maple job
 	prefix := fmt.Sprintf("%s_%s_%d", inputFile, SelfNodeId, timestamp)
-	err = ProcessMapleCmd([]string{executableName, strconv.Itoa(config.MapleTaskNum), prefix, inputFile})
+	err = ProcessMapleCmd([]string{executableName, strconv.Itoa(config.MapleTaskNum), prefix, inputFile, "1"})
 	if err != nil {
 		log.Println("Error executing Maple job for query", err)
 		return 
@@ -222,12 +222,12 @@ func executeJoinQuery(fileName1, fileName2, fieldName1, fieldName2 string){
 
 	// create maple task
 	prefix := fmt.Sprintf("join_%s_%s_%s_%d", fieldName1, fileName2, SelfNodeId, timestamp)
-	err = ProcessMapleCmd([]string{executableNameD1, strconv.Itoa(config.MapleTaskNum), prefix, fileName1})
+	err = ProcessMapleCmd([]string{executableNameD1, strconv.Itoa(config.MapleTaskNum), prefix, fileName1, "1"})
 	if err != nil {
 		log.Println("Error executing maple job for dataset1 in join query", err)
 		return
 	}
-	err = ProcessMapleCmd([]string{executableNameD2, strconv.Itoa(config.MapleTaskNum), prefix, fileName2})
+	err = ProcessMapleCmd([]string{executableNameD2, strconv.Itoa(config.MapleTaskNum), prefix, fileName2, "1"})
 	if err != nil {
 		log.Println("Error executing maple job for dataset2 in join query", err)
 		return

@@ -9,9 +9,9 @@ import (
 	"strconv"
 )
 
-//maple <maple_exe> <num_maples> <sdfs_intermediate_filename_prefix> <sdfs_src_filename>
+//maple <maple_exe> <num_maples> <sdfs_intermediate_filename_prefix> <sdfs_src_filename> <input_has_header>
 func ProcessMapleCmd(args []string) error {
-	if (len(args) != 4){
+	if (len(args) != 5){
 		log.Print("Invalid maple command")
 		return errors.New("Invalid maple command")
 	}
@@ -20,6 +20,12 @@ func ProcessMapleCmd(args []string) error {
 	if (err != nil){
 		log.Print("Invalid maple task number")
 		return errors.New("Invalid maple task number")
+	}
+
+	handleInputHeader, err := strconv.Atoi(args[4]);
+	if (err != nil || (handleInputHeader != 0 && handleInputHeader != 1)){
+		log.Print("Invalid input_has_header flag")
+		return errors.New("Invalid input_has_header flag")
 	}
 
 	mapleExeName := args[0]
@@ -37,6 +43,7 @@ func ProcessMapleCmd(args []string) error {
 			TaskNum: taskNum,
 			SrcSdfsFileName: sdfsSrcFileName,
 			OutputFilePrefix: sdfsIntermediateFileName,
+			PreserveInputHeader: handleInputHeader==1,
 		},
 	}
 

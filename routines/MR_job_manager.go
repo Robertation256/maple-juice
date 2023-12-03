@@ -135,8 +135,12 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 		return
 	}
 
-	// ignore header line
-	lineCount -= 1
+	
+	if job.PreserveInputHeader {
+		// ignore header line
+		lineCount -= 1
+	}
+	
 	log.Printf("Maple input file %s contains %d data records", inputFileName, lineCount)
 
 	// this should never happen
@@ -164,11 +168,15 @@ func (this *MRJobManager) executeMapleJob(job *util.MapleJobRequest, errorMsgCha
 	}
 
 	scanner := bufio.NewScanner(file)
-	if !scanner.Scan(){
-		*errorMsgChan <- errors.New("Empty input file")
-		return
+	var header string = ""
+
+	if job.PreserveInputHeader {
+		if !scanner.Scan(){
+			*errorMsgChan <- errors.New("Empty input file")
+			return
+		}
+		header = scanner.Text()
 	}
-	header := scanner.Text()
 	
 
 	for taskNumber := 0; taskNumber < job.TaskNum; taskNumber++ {
