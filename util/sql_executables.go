@@ -17,6 +17,10 @@ type JoinMapleTemplateData struct {
 	JoinColumn string
 }
 
+type DemoMapleOneData struct {
+	InterconneValue string
+}
+
 func readTemplateFile(filename string) (string, error) {
 	content, err := os.ReadFile(filename)
 	if err != nil {
@@ -74,7 +78,6 @@ func GenerateFilterMapleExecutables(filterColumn string, regex string, executabl
 	}
 
 	return nil
-
 }
 
 func GenerateJoinMapleExecutables(joinColumn string, executableName string) error{
@@ -101,4 +104,30 @@ func GenerateJoinMapleExecutables(joinColumn string, executableName string) erro
 
 	return nil
 
+}
+
+
+func GenerateDemoMapleOneExecutable(interConValue string, executableName string) error{
+
+	// Read template content from template.go
+	templateContent, readErr := readTemplateFile(config.TemplateFileDir + "demo_maple1.go")
+	if readErr != nil {
+		log.Println("Error reading template file", readErr)
+		return readErr
+	}
+
+	templateData := DemoMapleOneData{InterconneValue: interConValue}
+	sourceCode, generateErr := generateSourceCode(templateContent, templateData)
+	if generateErr != nil {
+		log.Println("Error generating filter maple executable")
+		return generateErr
+	}
+
+	writeErr := writeToFile(config.LocalFileDir + executableName, sourceCode)
+	if writeErr != nil {
+		log.Println("Error writing to output file:")
+		return writeErr
+	}
+
+	return nil
 }

@@ -103,6 +103,112 @@ func ProcessSqlQuery(query string) {
 	}
 }
 
+// Select percent composition, used for MP4 demo only
+// SPC "<interconne_type>" FROM <input_file>
+func ProcessSpcQuery(args []string) {
+	if len(args) != 3 {
+		log.Print("Invalid select percent composition query")
+		log.Print("Usage: SPC \"<interconne_type>\" FROM <input_file>")
+		return
+	}
+	interConnType := args[0][1:len(args[0])-1]
+	inputFile := args[2]
+
+	if len(interConnType) == 0 || len(inputFile) == 0{
+		log.Print("Invalid select percent composition query arguments")
+		log.Print("Usage: SPC \"<interconne_type>\" FROM <input_file>")
+		return
+	}
+
+	
+
+	timestamp := time.Now().UnixMilli()
+	selfNodeId := SelfNodeId
+
+	mapleOneExeName := fmt.Sprintf("demo_maple1_%s_%d.go", selfNodeId, timestamp)
+	mapleTwoExeName := "demo_maple2.go"
+	juiceOneExeName := "demo_juice1.go"
+	juiceTwoExeName := "demo_juice2.go"
+
+	err := util.GenerateDemoMapleOneExecutable(interConnType, mapleOneExeName)
+
+	if err != nil {
+		log.Println("Error generating maple executable for SPC phase 1")
+		return
+	}
+
+	// todo: make these async uploads
+	// upload input file and executable to sdfs
+	log.Printf("Uploading query input file")
+	_, err = SDFSPutFile(inputFile, config.LocalFileDir + inputFile)
+	if err != nil {
+		log.Println("Error uploading input file", err)
+	}
+
+
+	log.Printf("Uploading executables")
+	_, err = SDFSPutFile(mapleOneExeName, config.LocalFileDir + mapleOneExeName)
+	if err != nil {
+		log.Println("Error uploading maple1", err)
+	}
+
+	_, err = SDFSPutFile(mapleTwoExeName, config.LocalFileDir + mapleTwoExeName)
+	if err != nil {
+		log.Println("Error uploading maple2", err)
+	}
+
+	_, err = SDFSPutFile(juiceOneExeName, config.LocalFileDir + juiceOneExeName)
+	if err != nil {
+		log.Println("Error uploading juice1", err)
+	}
+
+	_, err = SDFSPutFile(juiceTwoExeName, config.LocalFileDir + juiceTwoExeName)
+	if err != nil {
+		log.Println("Error uploading juice2", err)
+	}
+
+
+	// start maple1
+	phaseOnePrefix := fmt.Sprintf("maple_spc1_%s_%d", selfNodeId, timestamp)
+	phaseTwoPrefix := fmt.Sprintf("maple_spc2_%s_%d", selfNodeId, timestamp)
+
+	phaseOneOut := fmt.Sprintf("out_spc1_%s_%d", selfNodeId, timestamp)
+	phaseTwoOut := fmt.Sprintf("out_spc2_%s_%d", selfNodeId, timestamp)
+
+	err = ProcessMapleCmd([]string{mapleOneExeName, strconv.Itoa(config.MapleTaskNum), phaseOnePrefix, inputFile, "1"})
+	if err != nil {
+		log.Println("Error executing maple for SPC phase 1", err)
+		return
+	}
+
+	err = ProcessJuiceCmd([]string{juiceOneExeName, strconv.Itoa(config.JuiceTaskNum), phaseOnePrefix, phaseOneOut, "0", "0"})
+	if err != nil {
+		log.Println("Error executing juice for SPC phase 1", err)
+		return
+	}
+
+
+	err = ProcessMapleCmd([]string{mapleTwoExeName, strconv.Itoa(config.MapleTaskNum), phaseTwoPrefix, phaseOneOut, "0"})
+	if err != nil {
+		log.Println("Error executing maple for SPC phase 2", err)
+		return
+	}
+
+	err = ProcessJuiceCmd([]string{juiceTwoExeName, strconv.Itoa(config.JuiceTaskNum), phaseTwoPrefix, phaseTwoOut, "0", "0"})
+	if err != nil {
+		log.Println("Error executing juice for SPC phase 2", err)
+		return
+	}
+
+	err = SDFSFetchAndConcatWithPrefix(phaseTwoOut, phaseTwoOut, RECEIVER_SDFS_CLIENT)
+
+	if err != nil {
+		log.Println("Error fetching SPC query result to local folder", err)
+		return
+	}
+
+	log.Printf("SPC Query completed with result at %s in local folder", phaseTwoOut)
+}
 
 
 func executeFilterQuery(inputFile string, columnName string, regex string){

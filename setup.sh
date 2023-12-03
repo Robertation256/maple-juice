@@ -37,6 +37,12 @@ cp ~/cs-425-mp-4/sql/filter_maple/* ~/sql_template/
 cp ~/cs-425-mp-4/sql/join_juice/* ~/sql_template/
 cp ~/cs-425-mp-4/sql/join_maple/* ~/sql_template/
 
+cp ~/cs-425-mp-4/demo/maple1/maple1.go ~/sql_template/demo_maple1.go
+cp ~/cs-425-mp-4/demo/maple2/maple1.go ~/sql_template/demo_maple2.go
+
+cp ~/cs-425-mp-4/demo/juice1/juice1.go ~/sql_template/demo_juice1.go
+cp ~/cs-425-mp-4/demo/juice2/juice2.go ~/sql_template/demo_juice2.go
+
 cd local
 touch test_maple_input
 echo -e "Oliver\nEmma\nLiam\nAva\nNoah\nSophia\nJackson\nIsabella\nLucas\nMia\nAiden\nAmelia\nEthan\nHarper\nLogan\nEvelyn\nMason\nAbigail\nCaleb\nGrace" > test_maple_input
