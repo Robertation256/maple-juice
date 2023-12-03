@@ -62,7 +62,7 @@ func main() {
 		}
 	}
 
-	outputFile.WriteString(fmt.Sprintf("%s, %d", key, count))
+	outputFile.WriteString(fmt.Sprintf("%s, %d\n", key, count))
 
 	fmt.Println(*outputFileFlag)
 	os.Exit(0)
