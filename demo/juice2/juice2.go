@@ -57,9 +57,7 @@ func main() {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
 		splitted := strings.Split(line, ",")
-		fmt.Println(splitted)
 		if len(splitted) != 2 {
 			log.Fatal("Wrong input format")
 		}
