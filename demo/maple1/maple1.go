@@ -73,6 +73,10 @@ func main() {
 			// slash is a path separatir in go and is not allowed in filename
 			key = strings.ReplaceAll(key, "/", " OR ")
 
+			if len(key) == 0 {
+				key = "EmptyString"
+			}
+
 			// create or retrieve file descriptor for the key
 			outputFile, exists := output[key]
 			if !exists {
