@@ -186,6 +186,9 @@ func (this *MRNodeManager) StartJuiceTask(args *util.JuiceTaskArg, reply *string
 			cmd := exec.Command("go", cmdArgs...)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
+				errMsg := fmt.Sprintf("Error while executing Juice executable %s", err.Error())
+				log.Print(errMsg)
+				log.Print(string(output))
 				executionErrorChan <- err
 				return
 			}
