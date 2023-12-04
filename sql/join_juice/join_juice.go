@@ -75,6 +75,8 @@ func main() {
 			log.Fatalf("Invalid line format: %s", line)
 		}
 		dataset := strings.TrimSpace(parts[0])
+		// remove the partition number from dataset
+		dataset = strings.TrimSpace(strings.Split(dataset, "-")[0])
 		content := strings.TrimSpace(parts[1])
 		datasetToLines[dataset] = append(datasetToLines[dataset], content)
 	}
@@ -83,16 +85,14 @@ func main() {
 		log.Fatal("Error reading input file:", err)
 	}
 
-	// check if there are exactly two keys (datasets) in datasetToLines
-	if len(datasetToLines) != 2 {
+	// there should be exactly two keys when there is a match
+	// when there is no match, there is only one key
+	if len(datasetToLines) != 2 && len(datasetToLines) != 1 {
+		for key := range datasetToLines {
+			log.Println(key)
+		}
 		log.Fatal("There should be exactly two datasets in the input file")
-	}
-
-	var keys []string
-	for key := range datasetToLines {
-		keys = append(keys, key)
-	}
-	d1, d2 := keys[0], keys[1]
+	} 
 
 	// write output to file
 	outputFile, err := os.Create(nodeManagerFileDir + *outputFileFlag)
@@ -101,12 +101,20 @@ func main() {
 	}
 	defer outputFile.Close()
 
-	// combine lines from d1 and d2
-	for _, i1 := range datasetToLines[d1] {
-		for _, i2 := range datasetToLines[d2] {
-			_, err := outputFile.WriteString(i1 + ", " + i2 + "\n")
-			if err != nil {
-				log.Fatal("Error writing to output file:", err)
+	if len(datasetToLines) == 2 { 
+		var keys []string
+		for key := range datasetToLines {
+			keys = append(keys, key)
+		}
+		d1, d2 := keys[0], keys[1]
+
+		// combine lines from d1 and d2
+		for _, i1 := range datasetToLines[d1] {
+			for _, i2 := range datasetToLines[d2] {
+				_, err := outputFile.WriteString(i1 + ", " + i2 + "\n")
+				if err != nil {
+					log.Fatal("Error writing to output file:", err)
+				}
 			}
 		}
 	}
