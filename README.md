@@ -8,11 +8,10 @@
 
    **Please make sure there isn't a folder named `log` under your home directory.**
 
-4. Make necessary changes to the config.txt file under home directory.
+4. Make necessary changes to the config.txt file under home directory. Please set `IS_INTRODUCER` to `TRUE` on at least one VM and use the ip of that VM as INTRODUCER_IP for other VMs.
 5. Run the program with `go run main.go`. 
-    
-   **Starting the program as a bootstrap server means the current vm will also act as an introducer.**
-7. Follow the prompts to finish starting up services
+6. Follow the prompts to finish starting up services.
+7. Enter a command or type `help` for a list of available commands
 
 
 
