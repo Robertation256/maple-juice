@@ -69,12 +69,12 @@ func main() {
 		// check if the field matches the regular expression
 		if getFieldByIndex(line, filterColumnIdx) == interconneValue {
 
-			key = strings.TrimSpace(getFieldByIndex(line, detectionColumnIdx))
+			key = getFieldByIndex(line, detectionColumnIdx)
 			// slash is a path separatir in go and is not allowed in filename
 			key = strings.ReplaceAll(key, "/", " OR ")
 
-			if len(key) == 0 {
-				key = "EmptyString"
+			if len(strings.TrimSpace(key)) == 0 {
+				key = "'" + key + "'" 
 			}
 
 			// create or retrieve file descriptor for the key
