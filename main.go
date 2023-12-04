@@ -94,8 +94,8 @@ func main() {
 
 		"maple": "test maple",
 		"juice": "test juice",
-		"SELECT": "filter/join sql query",
-		"SPC" : "select percent composition, used for MP4 demo only",
+		"SELECT": "filter/join sql query. for command format please see SQL_client.go",
+		"SPC" : "select percent composition, used for MP4 demo only. for command format please see SQL_client.go",
 
 		// debug commands
 		"pl": "print leader",
