@@ -5,7 +5,7 @@ import (
 	"text/template"
 	"strings"
 	"log"
-	"cs425-mp4/config"
+	"maple-juice/config"
 )
 
 type FilterMapleTemplateData struct {

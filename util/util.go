@@ -9,6 +9,8 @@ import (
 	"strings"
 	"bufio"
 	"os"
+	"net/rpc"
+	"time"
 )
 
 func Prompt(title string, cmd *string, args *[]string, isValidCmd func(string) bool) {
@@ -123,4 +125,25 @@ func NodeIdToIP(nodeId string) string {
 		return ""
 	}
 	return splitted[0]
+}
+
+
+func Dial(hostname string, port int) *rpc.Client {
+	var err error
+	var c *rpc.Client
+	clientChan := make(chan *rpc.Client, 1)
+	go func() {
+		c, err = rpc.DialHTTP("tcp", fmt.Sprintf("%s:%d", hostname, port))
+		clientChan <- c
+	}()
+
+	select {
+	case client := <-clientChan:
+		if err == nil {
+			return client
+		}
+	case <-time.After(10 * time.Second):
+		return nil
+	}
+	return nil
 }

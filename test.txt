@@ -1,8 +1,0 @@
-abcd1234
-this
-is
-a
-test
-again
-and
-again

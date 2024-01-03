@@ -1,7 +1,7 @@
 package util
 
 import (
-	"cs425-mp4/config"
+	"maple-juice/config"
 	"errors"
 	"log"
 	"os"
