@@ -1,6 +1,5 @@
 cd ~
 
-
 mkdir -p sdfs
 mkdir -p local
 mkdir -p mr_job_manager
@@ -32,18 +31,14 @@ echo "LOG_FILE_NAME=log" >> config.txt
 echo "LOG_SERVER_ID=vm$1" >> config.txt
 echo "SERVER_HOSTNAMES=fa23-cs425-3801.cs.illinois.edu,fa23-cs425-3802.cs.illinois.edu,fa23-cs425-3803.cs.illinois.edu,fa23-cs425-3804.cs.illinois.edu,fa23-cs425-3805.cs.illinois.edu,fa23-cs425-3806.cs.illinois.edu,fa23-cs425-3807.cs.illinois.edu,fa23-cs425-3808.cs.illinois.edu,fa23-cs425-3809.cs.illinois.edu,fa23-cs425-3810.cs.illinois.edu" >> config.txt
 
-cp ~/cs-425-mp-4/sql/filter_juice/* ~/sql_template/
-cp ~/cs-425-mp-4/sql/filter_maple/* ~/sql_template/
-cp ~/cs-425-mp-4/sql/join_juice/* ~/sql_template/
-cp ~/cs-425-mp-4/sql/join_maple/* ~/sql_template/
+cp ~/maple-juice/sql/filter_juice/* ~/sql_template/
+cp ~/maple-juice/sql/filter_maple/* ~/sql_template/
+cp ~/maple-juice/sql/join_juice/* ~/sql_template/
+cp ~/maple-juice/sql/join_maple/* ~/sql_template/
 
-cp ~/cs-425-mp-4/demo/maple1/maple1.go ~/sql_template/demo_maple1.go
-cp ~/cs-425-mp-4/demo/maple2/maple2.go ~/sql_template/demo_maple2.go
-cp ~/cs-425-mp-4/demo/juice1/juice1.go ~/sql_template/demo_juice1.go
-cp ~/cs-425-mp-4/demo/juice2/juice2.go ~/sql_template/demo_juice2.go
-
-cd local
-touch test_maple_input
-echo -e "Oliver\nEmma\nLiam\nAva\nNoah\nSophia\nJackson\nIsabella\nLucas\nMia\nAiden\nAmelia\nEthan\nHarper\nLogan\nEvelyn\nMason\nAbigail\nCaleb\nGrace" > test_maple_input
+cp ~/maple-juice/demo/maple1/maple1.go ~/sql_template/demo_maple1.go
+cp ~/maple-juice/demo/maple2/maple2.go ~/sql_template/demo_maple2.go
+cp ~/maple-juice/demo/juice1/juice1.go ~/sql_template/demo_juice1.go
+cp ~/maple-juice/demo/juice2/juice2.go ~/sql_template/demo_juice2.go
 
 
