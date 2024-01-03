@@ -1,9 +1,14 @@
 package main
 
 import (
-	"cs425-mp4/config"
-	"cs425-mp4/routines"
-	"cs425-mp4/util"
+	"maple-juice/config"
+	"maple-juice/util"
+	"maple-juice/membership"
+	"maple-juice/leaderelection"
+	"maple-juice/dfs"
+	"maple-juice/logger"
+	"maple-juice/maplejuice"
+	"maple-juice/sql"
 	"fmt"
 	"log"
 	"net"
@@ -20,36 +25,36 @@ func main() {
 	var cmd string
 	var args []string
 
-	routines.InitSignals()
+	util.InitSignals()
 	config.InitConfig()
 
 	util.CreateProcessLogger(config.LogFilePath)
 	defer util.ProcessLogger.Close()
 	
 
-	routines.InitLocalMembershipList()
+	membership.InitLocalMembershipList()
 
 	if config.IsIntroducer {
-		go routines.StartIntroducer()
+		go membership.StartIntroducer()
 	}
 
-	go routines.StartMembershipListServer()
-	go routines.StartLeaderElectionServer()
+	go membership.StartMembershipListServer()
+	go leaderelection.StartLeaderElectionServer()
 
-	go routines.StartFileReceiver(config.FileReceivePort)
+	go dfs.StartFileReceiver(config.FileReceivePort)
 
 
 	// register and start up rpc services
-	fileMetadataService :=routines.NewFileMetadataService()
+	fileMetadataService :=dfs.NewFileMetadataService()
 	fileMetadataService.Register()
-	grepService := routines.NewGrepService()
+	grepService := logger.NewGrepService()
 	grepService.Register()
-	routines.NewDfsRemoteReader().Register()
-	fileService := routines.NewFileService(config.RpcServerPort, config.Homedir, config.ServerHostnames)
+	dfs.NewDfsRemoteReader().Register()
+	fileService := dfs.NewFileService(config.RpcServerPort, config.Homedir, config.ServerHostnames)
 	fileService.Register()
-	mrNodeManager := new(routines.MRNodeManager);
+	mrNodeManager := new(maplejuice.MRNodeManager);
 	mrNodeManager.Register();
-	routines.NewMRJobManager().Register();
+	maplejuice.NewMRJobManager().Register();
 
 
 	rpc.HandleHTTP()
@@ -64,18 +69,18 @@ func main() {
 
 	// don't allow commands until all servers properly started
 	fmt.Println("Starting servers...\n")
-	routines.WaitAllServerStart()
-	routines.InitializeClient()
+	util.WaitAllServerStart()
+	dfs.InitializeClient()
 
 	if config.IsIntroducer {
-		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%d\n", routines.LocalMembershipList.SelfEntry.Ip[0],
-			routines.LocalMembershipList.SelfEntry.Ip[1],
-			routines.LocalMembershipList.SelfEntry.Ip[2],
-			routines.LocalMembershipList.SelfEntry.Ip[3],
+		fmt.Printf("Introducer service started at: %d.%d.%d.%d:%d\n", membership.LocalMembershipList.SelfEntry.Ip[0],
+			membership.LocalMembershipList.SelfEntry.Ip[1],
+			membership.LocalMembershipList.SelfEntry.Ip[2],
+			membership.LocalMembershipList.SelfEntry.Ip[3],
 			config.IntroducerPort)
 	}
 
-	fmt.Printf("Local membership service started at: %s\n\n", routines.LocalMembershipList.SelfEntry.Addr())
+	fmt.Printf("Local membership service started at: %s\n\n", membership.LocalMembershipList.SelfEntry.Addr())
 	validCommands := map[string]string{
 		"list_mem":          "list the membership list",
 		"list_self":         "list local machine info",
@@ -118,34 +123,34 @@ func main() {
 		switch cmd {
 		case "list_mem":
 			// print membership list
-			fmt.Println(routines.LocalMembershipList.ToString())
+			fmt.Println(membership.LocalMembershipList.ToString())
 		case "list_self":
 			// print local machine info
-			fmt.Println(routines.LocalMembershipList.SelfEntry.ToString())
+			fmt.Println(membership.LocalMembershipList.SelfEntry.ToString())
 		case "leave":
 			// voluntary leave
-			routines.SignalTermination()
-			routines.HEARTBEAT_SENDER_TERM.Wait()
+			util.SignalTermination()
+			util.HEARTBEAT_SENDER_TERM.Wait()
 			return
 		case "enable_suspicion":
 			// switch to GS
-			if routines.LocalMembershipList.Protocol == util.GS {
+			if membership.LocalMembershipList.Protocol == util.GS {
 				fmt.Println("Suspicion already enabled in current protocol. No changes were made")
 			} else {
-				routines.LocalMembershipList.UpdateProtocol(util.GS)
+				membership.LocalMembershipList.UpdateProtocol(util.GS)
 				fmt.Println("Switched protocol to GS")
 			}
 		case "disable_suspicion":
 			// switch to G
-			if routines.LocalMembershipList.Protocol == util.G {
+			if membership.LocalMembershipList.Protocol == util.G {
 				fmt.Println("Suspicion already disabled in current protocol. No changes were made")
 			} else {
-				routines.LocalMembershipList.UpdateProtocol(util.G)
+				membership.LocalMembershipList.UpdateProtocol(util.G)
 				fmt.Println("Switched protocol to G")
 			}
 		case "droprate":
 			if len(args) == 1 && util.IsValidDropRate(args[0]) {
-				routines.ReceiverDropRate, _ = strconv.ParseFloat(args[0], 64)
+				membership.ReceiverDropRate, _ = strconv.ParseFloat(args[0], 64)
 			} else {
 				fmt.Println("Invalid drop rate input, expected floating point number")
 			}
@@ -167,21 +172,19 @@ func main() {
 			fmt.Println()
 		
 		case "maple":
-			routines.ProcessMapleCmd(args)
+			maplejuice.ProcessMapleCmd(args)
 		
 		case "juice":
-			routines.ProcessJuiceCmd(args)
+			maplejuice.ProcessJuiceCmd(args)
 
 		case "SELECT":
 			query := "SELECT " + strings.Join(args, " ")
-			routines.ProcessSqlQuery(query)
+			sql.ProcessSqlQuery(query)
 
-		case "SPC":
-			routines.ProcessSpcQuery(args)
 
 		// debug commands
 		case "pl":
-			fmt.Println(routines.LeaderId)
+			fmt.Println(leaderelection.LeaderId)
 		case "pm":
 			fmt.Println(fileMetadataService.ToString())
 		case "rp":
@@ -191,7 +194,7 @@ func main() {
 			}
 			
 		default:
-			routines.ProcessDfsCmd(cmd, args)
+			dfs.ProcessDfsCmd(cmd, args)
 		}
 	}
 }
