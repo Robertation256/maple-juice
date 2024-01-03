@@ -1,5 +1,5 @@
 # About MapleJuice
-MapleJuice, as its name infers, is a MapleReduce-like distributed computing framework. The framework includes two parts: a simple distributed file system and a MapleJuice engine built on top of Go socket and rpc. This project also contains implementations of a gossip-style membership protocol and a quorum-based leader election protocol that help maintain the topology of the service cluster.
+MapleJuice, as its name infers, is a MapReduce-like distributed computing framework. The framework includes two parts: a simple distributed file system and a MapleJuice engine built on top of Go socket and rpc. This project also contains implementations of a gossip-style membership protocol and a quorum-based leader election protocol that help maintain the topology of the service cluster.
 
 # Running the program
 1. Install Go
