@@ -1,14 +1,14 @@
 # Instructions
 ## Running the program
 1. Install Go
-2. Clone the repo and cd into project folder: `cd cs-425-mp-4`
+2. Clone and cd into project folder
 3. Run the setup script with the following command (server id can be any number and is used only for easy identification when retrieving logs from remote servers)
 
    `sh setup.sh <server-id>`
 
    **Please make sure there isn't a folder named `log` under your home directory.**
 
-4. Make necessary changes to the config.txt file under home directory. Please set `IS_INTRODUCER` to `TRUE` on at least one VM and use the ip of that VM as INTRODUCER_IP for other VMs.
+4. Make necessary changes to the config.txt file under home directory. Set `IS_INTRODUCER`=`TRUE` for the introducer node and set the INTRODUCER_IP for other node correspondingly.
 5. Run the program with `go run main.go`. 
 6. Follow the prompts to finish starting up services.
 7. Enter a command or type `help` for a list of available commands
